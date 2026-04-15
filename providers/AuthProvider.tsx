@@ -32,7 +32,6 @@ export interface AuthContextType {
   logout: () => Promise<void>;
 }
 
-// EXPORT AuthContext here
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -52,19 +51,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (userDoc.exists()) {
             const userData = userDoc.data();
+            // Ensure displayName is never empty - fallback to email prefix
+            const displayName = userData.displayName || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User';
+            
             setProfile({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
-              displayName: userData.displayName || firebaseUser.displayName,
+              displayName: displayName,
               role: userData.role || 'user',
               subscriptionTier: userData.subscriptionTier || 'free',
               photoURL: userData.photoURL || firebaseUser.photoURL,
             });
             setIsAdmin(userData.role === 'admin' || userData.isAdmin === true);
           } else {
+            // Create new user with email prefix as default username
+            const defaultDisplayName = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User';
             const newUserData = {
               email: firebaseUser.email,
-              displayName: firebaseUser.displayName || '',
+              displayName: defaultDisplayName,
               role: 'user',
               subscriptionTier: 'free',
               createdAt: new Date().toISOString(),
@@ -73,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setProfile({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
+              displayName: defaultDisplayName,
               role: 'user',
               subscriptionTier: 'free',
               photoURL: firebaseUser.photoURL,
@@ -102,11 +106,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, displayName: string) => {
     const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
-    await updateProfile(newUser, { displayName });
+    
+    // If no display name provided, use email prefix
+    const finalDisplayName = displayName || email.split('@')[0];
+    
+    await updateProfile(newUser, { displayName: finalDisplayName });
     
     await setDoc(doc(db, 'users', newUser.uid), {
       email: newUser.email,
-      displayName: displayName,
+      displayName: finalDisplayName,
       role: 'user',
       subscriptionTier: 'free',
       createdAt: new Date().toISOString(),

@@ -4,23 +4,33 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { collection, query, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { useAuth } from '@/providers/AuthProvider';
+import { useRouter } from 'next/navigation';
+import { Loader2, X } from 'lucide-react';
 
 interface Topic {
   id: string;
   title: string;
   author: string;
+  authorId: string;
   category: string;
   replies: number;
   views: number;
   lastReply: string;
   isPremium: boolean;
   preview: string;
+  content?: string;
 }
 
 export default function ForumPage() {
+  const { user, profile } = useAuth();
+  const router = useRouter();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('all');
+  const [showModal, setShowModal] = useState(false);
+  const [newTopic, setNewTopic] = useState({ title: '', content: '', category: 'Q&A' });
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     loadTopics();
@@ -42,6 +52,45 @@ export default function ForumPage() {
     }
   };
 
+  const handleCreateTopic = async () => {
+    if (!user) {
+      alert('Please sign in to create a topic');
+      router.push('/login');
+      return;
+    }
+    
+    if (!newTopic.title.trim() || !newTopic.content.trim()) {
+      alert('Please fill in both title and content');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await addDoc(collection(db, 'forum_topics'), {
+        title: newTopic.title.trim(),
+        content: newTopic.content.trim(),
+        preview: newTopic.content.substring(0, 100) + (newTopic.content.length > 100 ? '...' : ''),
+        author: profile?.displayName || user.email?.split('@')[0] || 'User',
+        authorId: user.uid,
+        category: newTopic.category,
+        replies: 0,
+        views: 0,
+        lastReply: new Date().toISOString(),
+        createdAt: serverTimestamp(),
+        isPremium: false
+      });
+      
+      setNewTopic({ title: '', content: '', category: 'Q&A' });
+      setShowModal(false);
+      loadTopics();
+    } catch (error) {
+      console.error('Error creating topic:', error);
+      alert('Failed to create topic. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const categories = ['all', 'Success Stories', 'Q&A', 'Herb Combinations', 'Mental Health', 'Chronic Conditions'];
 
   const filteredTopics = activeCategory === 'all' 
@@ -51,7 +100,7 @@ export default function ForumPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
-        <div className="text-[#97A97C] text-xl">Loading community...</div>
+        <Loader2 className="w-8 h-8 animate-spin text-[#97A97C]" />
       </div>
     );
   }
@@ -75,7 +124,16 @@ export default function ForumPage() {
           {/* Sidebar */}
           <div className="lg:w-1/4">
             <div className="bg-white rounded-lg shadow p-6 mb-6">
-              <button className="w-full bg-[#97A97C] text-white py-3 rounded font-bold hover:bg-[#7A8A63] mb-4">
+              <button 
+                onClick={() => {
+                  if (!user) {
+                    router.push('/login');
+                  } else {
+                    setShowModal(true);
+                  }
+                }}
+                className="w-full bg-[#97A97C] text-white py-3 rounded font-bold hover:bg-[#7A8A63] mb-4 transition-colors"
+              >
                 + Start New Topic
               </button>
               <div className="text-sm text-gray-600">
@@ -134,6 +192,12 @@ export default function ForumPage() {
             {filteredTopics.length === 0 && (
               <div className="text-center py-12 bg-white rounded-lg shadow">
                 <p className="text-gray-600">No topics in this category yet. Be the first to share!</p>
+                <button 
+                  onClick={() => setShowModal(true)}
+                  className="mt-4 text-[#97A97C] font-medium hover:underline"
+                >
+                  Start a new topic
+                </button>
               </div>
             )}
           </div>
@@ -150,6 +214,79 @@ export default function ForumPage() {
           </ul>
         </div>
       </div>
+
+      {/* Create Topic Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto relative">
+            <button 
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+              aria-label="Close dialog"
+              type="button"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            <h2 className="text-2xl font-bold text-[#2C3E2D] mb-4">Start New Topic</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 text-[#2C3E2D]">Category</label>
+                <select 
+                  value={newTopic.category}
+                  onChange={(e) => setNewTopic({...newTopic, category: e.target.value})}
+                  className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:ring-2 focus:ring-[#97A97C]"
+                  aria-label="Select category"
+                >
+                  {categories.filter(c => c !== 'all').map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1 text-[#2C3E2D]">Title</label>
+                <input
+                  type="text"
+                  value={newTopic.title}
+                  onChange={(e) => setNewTopic({...newTopic, title: e.target.value})}
+                  className="w-full border border-gray-300 rounded p-2 focus:outline-none focus:ring-2 focus:ring-[#97A97C]"
+                  placeholder="What's your question or topic?"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-1 text-[#2C3E2D]">Content</label>
+                <textarea
+                  value={newTopic.content}
+                  onChange={(e) => setNewTopic({...newTopic, content: e.target.value})}
+                  className="w-full border border-gray-300 rounded p-2 h-32 focus:outline-none focus:ring-2 focus:ring-[#97A97C]"
+                  placeholder="Share your thoughts in detail..."
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowModal(false)}
+                className="flex-1 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50 transition-colors"
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateTopic}
+                disabled={submitting}
+                className="flex-1 py-2 bg-[#97A97C] text-white rounded hover:bg-[#7A8A63] disabled:opacity-50 transition-colors"
+                type="button"
+              >
+                {submitting ? 'Creating...' : 'Create Topic'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
