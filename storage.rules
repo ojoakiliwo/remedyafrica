@@ -1,0 +1,24 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow anyone to read images
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+    
+    // Practitioner photos - only authenticated users can upload their own
+    match /practitioner-photos/{userId}/{allPaths=**} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Profile pictures - only authenticated users can upload their own
+    match /profile-pictures/{userId}/{allPaths=**} {
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Herb images - only admins can upload
+    match /herbs/{allPaths=**} {
+      allow write: if request.auth != null && request.auth.token.admin == true;
+    }
+  }
+}
