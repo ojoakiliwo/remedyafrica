@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Camera, X, Upload, Leaf, Loader2, RefreshCw, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -18,6 +18,8 @@ interface HerbSuggestion {
 
 interface IdentificationResult {
   suggestions: HerbSuggestion[];
+  message?: string;
+  error?: string;
 }
 
 export default function HerbIdentifier() {
@@ -29,29 +31,62 @@ export default function HerbIdentifier() {
   const [cameraReady, setCameraReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const router = useRouter();
 
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, [stream]);
+  }, []);
 
-  // FIX: Play video when stream is ready
+  // Handle video stream - FIX for race condition
   useEffect(() => {
-    if (stream && videoRef.current) {
-      videoRef.current.srcObject = stream;
-      videoRef.current.play().catch(err => {
-        console.error('Video play error:', err);
-      });
-    }
-  }, [stream]);
+    const video = videoRef.current;
+    if (!video || !stream) return;
+
+    const handleCanPlay = () => {
+      video.play()
+        .then(() => {
+          setCameraReady(true);
+        })
+        .catch(err => {
+          console.error('Video play error:', err);
+          // Retry once after short delay
+          setTimeout(() => {
+            video.play().catch(() => {});
+          }, 500);
+        });
+    };
+
+    video.srcObject = stream;
+    video.addEventListener('canplay', handleCanPlay);
+    
+    // Fallback: if canplay doesn't fire, try anyway after 1s
+    const fallbackTimer = setTimeout(() => {
+      if (!cameraReady) {
+        handleCanPlay();
+      }
+    }, 1000);
+
+    return () => {
+      video.removeEventListener('canplay', handleCanPlay);
+      clearTimeout(fallbackTimer);
+    };
+  }, [stream, cameraReady]);
 
   const startCamera = async () => {
     try {
       setCameraReady(false);
+      
+      // Stop any existing stream
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+      
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'environment',
@@ -61,15 +96,14 @@ export default function HerbIdentifier() {
         audio: false
       });
       
+      streamRef.current = mediaStream;
       setStream(mediaStream);
       setIsOpen(true);
       
-      // Wait for video to be ready
-      setTimeout(() => setCameraReady(true), 500);
     } catch (err: any) {
       console.error('Camera error:', err);
       if (err.name === 'NotAllowedError') {
-        toast.error('Camera permission denied. Please allow camera access in your browser settings.');
+        toast.error('Camera permission denied. Please allow camera access.');
       } else if (err.name === 'NotFoundError') {
         toast.error('No camera found. Please use upload instead.');
       } else {
@@ -78,38 +112,42 @@ export default function HerbIdentifier() {
     }
   };
 
-  const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
     }
+    setStream(null);
     setIsOpen(false);
     setCapturedImage(null);
     setResult(null);
     setCameraReady(false);
-  };
+  }, []);
 
   const captureImage = () => {
-    if (videoRef.current && canvasRef.current && cameraReady) {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      
-      // FIX: Ensure video dimensions are available
-      if (video.videoWidth === 0 || video.videoHeight === 0) {
-        toast.error('Camera not ready. Please wait a moment.');
-        return;
-      }
-      
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(video, 0, 0);
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
-        setCapturedImage(imageData);
-        identifyHerb(imageData);
-      }
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    if (!video || !canvas || !cameraReady) {
+      toast.error('Camera not ready. Please wait a moment.');
+      return;
+    }
+    
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      toast.error('Camera still initializing. Please try again.');
+      return;
+    }
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0);
+      // Compress image to avoid API limits (0.7 = 70% quality)
+      const imageData = canvas.toDataURL('image/jpeg', 0.7);
+      setCapturedImage(imageData);
+      identifyHerb(imageData);
     }
   };
 
@@ -118,26 +156,31 @@ export default function HerbIdentifier() {
     setResult(null);
     
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
+      
       const response = await fetch('/api/identify-herb', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageBase64 })
+        body: JSON.stringify({ image: imageBase64 }),
+        signal: controller.signal
       });
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Identification failed');
-      }
+      clearTimeout(timeoutId);
       
       const data: IdentificationResult = await response.json();
       setResult(data);
       
-      if (!data.suggestions || data.suggestions.length === 0) {
-        toast.info('No herbs identified. Try a clearer photo or different angle.');
+      if (data.error || !data.suggestions || data.suggestions.length === 0) {
+        toast.info(data.message || 'No plant identified. Try a clearer photo.');
       }
     } catch (error: any) {
       console.error('Identification error:', error);
-      toast.error(error.message || 'Identification failed. Please try again.');
+      if (error.name === 'AbortError') {
+        toast.error('Identification timed out. Please try again.');
+      } else {
+        toast.error('Identification failed. Please try again.');
+      }
     } finally {
       setIdentifying(false);
     }
@@ -145,21 +188,21 @@ export default function HerbIdentifier() {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('Image too large. Please choose an image under 5MB.');
-        return;
-      }
-      
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setCapturedImage(base64);
-        setIsOpen(true);
-        identifyHerb(base64);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    
+    if (file.size > 3 * 1024 * 1024) {
+      toast.error('Image too large. Please choose an image under 3MB.');
+      return;
     }
+    
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64 = reader.result as string;
+      setCapturedImage(base64);
+      setIsOpen(true);
+      identifyHerb(base64);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleViewInDatabase = (herbName: string) => {
@@ -180,15 +223,14 @@ export default function HerbIdentifier() {
         </div>
         <h3 className="text-xl font-bold text-[#2C3E2D] mb-2">Identify Herbs</h3>
         <p className="text-gray-600 mb-6">
-          Take a photo of any herb to identify it using AI and learn about its medicinal properties.
+          Take a photo of any herb to identify it using AI.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Button 
             onClick={startCamera} 
             className="bg-[#97A97C] hover:bg-[#7A8A63] text-white"
-            aria-label="Open camera to identify herb"
           >
-            <Camera className="w-4 h-4 mr-2" aria-hidden="true" />
+            <Camera className="w-4 h-4 mr-2" />
             Open Camera
           </Button>
           <label className="cursor-pointer">
@@ -197,10 +239,9 @@ export default function HerbIdentifier() {
               accept="image/*" 
               className="hidden" 
               onChange={handleFileUpload}
-              aria-label="Upload herb photo from device"
             />
-            <Button variant="outline" className="border-[#97A97C] text-[#2C3E2D] hover:bg-[#97A97C]/10">
-              <Upload className="w-4 h-4 mr-2" aria-hidden="true" />
+            <Button variant="outline" className="border-[#97A97C] text-[#2C3E2D]">
+              <Upload className="w-4 h-4 mr-2" />
               Upload Photo
             </Button>
           </label>
@@ -210,36 +251,33 @@ export default function HerbIdentifier() {
   }
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col" role="dialog" aria-modal="true" aria-label="Herb identification camera">
+    <div className="fixed inset-0 bg-black z-50 flex flex-col">
       <div className="flex justify-between items-center p-4 bg-black/90 text-white border-b border-gray-800">
         <div className="flex items-center gap-2">
-          <Leaf className="w-5 h-5 text-[#97A97C]" aria-hidden="true" />
+          <Leaf className="w-5 h-5 text-[#97A97C]" />
           <h3 className="font-bold text-lg">Herb Identifier</h3>
         </div>
         <button 
           onClick={stopCamera} 
-          className="p-2 hover:bg-white/10 rounded-full transition-colors"
-          aria-label="Close camera and return to homepage"
+          className="p-2 hover:bg-white/10 rounded-full"
+          aria-label="Close camera"
         >
-          <X className="w-6 h-6" aria-hidden="true" />
+          <X className="w-6 h-6" />
         </button>
       </div>
       
       <div className="flex-1 relative overflow-hidden bg-black">
         {!capturedImage ? (
           <div className="relative h-full flex items-center justify-center">
-            {/* FIX: Better video handling with playsInline and muted */}
             <video 
               ref={videoRef} 
               autoPlay 
               playsInline 
               muted
-              className={`w-full h-full object-cover ${cameraReady ? 'opacity-100' : 'opacity-0'}`}
-              aria-label="Camera feed for herb identification"
+              className={`w-full h-full object-cover transition-opacity duration-300 ${cameraReady ? 'opacity-100' : 'opacity-0'}`}
             />
             <canvas ref={canvasRef} className="hidden" />
             
-            {/* Loading state */}
             {!cameraReady && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <Loader2 className="w-12 h-12 animate-spin text-[#97A97C]" />
@@ -254,9 +292,9 @@ export default function HerbIdentifier() {
                 onClick={captureImage}
                 disabled={!cameraReady}
                 className="w-20 h-20 bg-white rounded-full border-4 border-[#97A97C] flex items-center justify-center shadow-lg active:scale-95 transition-transform disabled:opacity-50"
-                aria-label="Capture photo of herb"
+                aria-label="Capture photo"
               >
-                <div className="w-14 h-14 bg-[#97A97C] rounded-full" aria-hidden="true" />
+                <div className="w-14 h-14 bg-[#97A97C] rounded-full" />
               </button>
             </div>
             
@@ -267,9 +305,9 @@ export default function HerbIdentifier() {
                   accept="image/*" 
                   className="hidden" 
                   onChange={handleFileUpload}
-                  aria-label="Upload herb photo instead of using camera"
+                  aria-label="Upload photo"
                 />
-                <Upload className="w-5 h-5" aria-hidden="true" />
+                <Upload className="w-5 h-5" />
               </label>
             </div>
           </div>
@@ -278,26 +316,26 @@ export default function HerbIdentifier() {
             <div className="relative">
               <img 
                 src={capturedImage} 
-                alt="Captured herb for identification" 
+                alt="Captured herb" 
                 className="w-full h-64 object-cover"
               />
               <button 
                 onClick={retakePhoto}
-                className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+                className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full"
                 aria-label="Retake photo"
               >
-                <RefreshCw className="w-5 h-5" aria-hidden="true" />
+                <RefreshCw className="w-5 h-5" />
               </button>
             </div>
             
             <div className="p-6 space-y-6">
               {identifying ? (
                 <div className="py-12 text-center">
-                  <Loader2 className="w-12 h-12 animate-spin text-[#97A97C] mx-auto mb-4" aria-hidden="true" />
+                  <Loader2 className="w-12 h-12 animate-spin text-[#97A97C] mx-auto mb-4" />
                   <p className="text-gray-600 text-lg">Analyzing herb...</p>
                   <p className="text-gray-400 text-sm mt-2">This may take a few seconds</p>
                 </div>
-              ) : result && result.suggestions && result.suggestions.length > 0 ? (
+              ) : result?.suggestions && result.suggestions.length > 0 ? (
                 <div className="space-y-4">
                   <div className="text-center mb-6">
                     <h4 className="text-2xl font-bold text-[#2C3E2D] mb-1">
@@ -308,88 +346,31 @@ export default function HerbIdentifier() {
                       <span className="bg-[#97A97C] text-white px-4 py-1.5 rounded-full text-sm font-medium">
                         {result.suggestions[0].confidence}% Match
                       </span>
-                      <span className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full text-sm">
-                        {result.suggestions[0].family}
-                      </span>
                     </div>
                   </div>
                   
-                  <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-200">
-                    <div className="flex gap-4">
-                      {result.suggestions[0].imageUrl && (
-                        <img 
-                          src={result.suggestions[0].imageUrl} 
-                          alt={`${result.suggestions[0].commonName} herb`}
-                          className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
-                        />
-                      )}
-                      <div className="flex-1">
-                        <h5 className="font-semibold text-[#2C3E2D] mb-2">Top Match</h5>
-                        <p className="text-gray-600 text-sm mb-3">
-                          This appears to be <strong>{result.suggestions[0].commonName}</strong> (
-                          <em>{result.suggestions[0].name}</em>
-                          ), a member of the {result.suggestions[0].family} family.
-                        </p>
-                        <a 
-                          href={result.suggestions[0].wikiUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[#97A97C] hover:underline text-sm inline-flex items-center gap-1"
-                        >
-                          Learn more on Wikipedia →
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <Button 
-                      className="w-full bg-[#97A97C] hover:bg-[#7A8A63] text-white py-6 text-lg"
-                      onClick={() => handleViewInDatabase(result.suggestions[0].commonName)}
-                    >
-                      <Search className="w-5 h-5 mr-2" aria-hidden="true" />
-                      Find in RemedyAfrica Database
-                    </Button>
-                    
-                    {result.suggestions.length > 1 && (
-                      <div className="pt-4">
-                        <h5 className="font-semibold text-gray-700 mb-3">Other Possibilities</h5>
-                        <div className="space-y-2">
-                          {result.suggestions.slice(1).map((suggestion) => (
-                            <button
-                              key={suggestion.id}
-                              onClick={() => handleViewInDatabase(suggestion.commonName)}
-                              className="w-full bg-white border border-gray-200 rounded-lg p-3 flex items-center justify-between hover:border-[#97A97C] hover:bg-[#97A97C]/5 transition-colors text-left"
-                            >
-                              <div>
-                                <p className="font-medium text-[#2C3E2D]">{suggestion.commonName}</p>
-                                <p className="text-xs text-gray-500">{suggestion.name}</p>
-                              </div>
-                              <span className="text-sm text-[#97A97C] font-medium">
-                                {suggestion.confidence}%
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <Button 
+                    className="w-full bg-[#97A97C] hover:bg-[#7A8A63] text-white py-6 text-lg"
+                    onClick={() => handleViewInDatabase(result.suggestions![0].commonName)}
+                  >
+                    <Search className="w-5 h-5 mr-2" />
+                    Find in RemedyAfrica Database
+                  </Button>
                 </div>
               ) : (
                 <div className="py-12 text-center">
                   <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Leaf className="w-8 h-8 text-gray-400" aria-hidden="true" />
+                    <Leaf className="w-8 h-8 text-gray-400" />
                   </div>
-                  <h4 className="text-xl font-semibold text-gray-700 mb-2">No Matches Found</h4>
-                  <p className="text-gray-500 mb-6">
-                    We couldn&apos;t identify this herb. Try taking a clearer photo with better lighting.
-                  </p>
+                  <h4 className="text-xl font-semibold text-gray-700 mb-2">
+                    {result?.message || 'No Matches Found'}
+                  </h4>
                   <Button 
                     variant="outline" 
-                    className="border-[#97A97C] text-[#2C3E2D]"
+                    className="border-[#97A97C] text-[#2C3E2D] mt-4"
                     onClick={retakePhoto}
                   >
-                    <Camera className="w-4 h-4 mr-2" aria-hidden="true" />
+                    <Camera className="w-4 h-4 mr-2" />
                     Try Again
                   </Button>
                 </div>
