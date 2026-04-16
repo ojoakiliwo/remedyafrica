@@ -1,10 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Camera, X, Upload, Leaf, Loader2, RefreshCw, Search } from 'lucide-react';
+import { Camera, X, Upload, Leaf, Loader2, RefreshCw, Search, Bookmark, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useAuth } from '@/providers/AuthProvider';
+import { db } from '@/lib/firebase/client';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 
 interface HerbSuggestion {
   id: number;
@@ -23,18 +27,19 @@ interface IdentificationResult {
 }
 
 export default function HerbIdentifier() {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [identifying, setIdentifying] = useState(false);
   const [result, setResult] = useState<IdentificationResult | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
+  const [savedToCollection, setSavedToCollection] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const router = useRouter();
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (streamRef.current) {
@@ -43,33 +48,23 @@ export default function HerbIdentifier() {
     };
   }, []);
 
-  // Handle video stream - FIX for race condition
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !stream) return;
 
     const handleCanPlay = () => {
       video.play()
-        .then(() => {
-          setCameraReady(true);
-        })
+        .then(() => setCameraReady(true))
         .catch(err => {
           console.error('Video play error:', err);
-          // Retry once after short delay
-          setTimeout(() => {
-            video.play().catch(() => {});
-          }, 500);
+          setTimeout(() => video.play().catch(() => {}), 500);
         });
     };
 
     video.srcObject = stream;
     video.addEventListener('canplay', handleCanPlay);
-    
-    // Fallback: if canplay doesn't fire, try anyway after 1s
     const fallbackTimer = setTimeout(() => {
-      if (!cameraReady) {
-        handleCanPlay();
-      }
+      if (!cameraReady) handleCanPlay();
     }, 1000);
 
     return () => {
@@ -81,34 +76,22 @@ export default function HerbIdentifier() {
   const startCamera = async () => {
     try {
       setCameraReady(false);
-      
-      // Stop any existing stream
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
       
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false
       });
       
       streamRef.current = mediaStream;
       setStream(mediaStream);
       setIsOpen(true);
-      
+      setSavedToCollection(false);
     } catch (err: any) {
       console.error('Camera error:', err);
-      if (err.name === 'NotAllowedError') {
-        toast.error('Camera permission denied. Please allow camera access.');
-      } else if (err.name === 'NotFoundError') {
-        toast.error('No camera found. Please use upload instead.');
-      } else {
-        toast.error('Could not access camera. Please use upload instead.');
-      }
+      toast.error('Could not access camera. Please use upload instead.');
     }
   };
 
@@ -122,6 +105,7 @@ export default function HerbIdentifier() {
     setCapturedImage(null);
     setResult(null);
     setCameraReady(false);
+    setSavedToCollection(false);
   }, []);
 
   const captureImage = () => {
@@ -144,10 +128,61 @@ export default function HerbIdentifier() {
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.drawImage(video, 0, 0);
-      // Compress image to avoid API limits (0.7 = 70% quality)
       const imageData = canvas.toDataURL('image/jpeg', 0.7);
       setCapturedImage(imageData);
       identifyHerb(imageData);
+    }
+  };
+
+  const saveToUserHistory = async (suggestions: HerbSuggestion[], imageData: string) => {
+    if (!user) return;
+    
+    try {
+      const topMatch = suggestions[0];
+      
+      await addDoc(collection(db, 'user_plant_history'), {
+        userId: user.uid,
+        timestamp: serverTimestamp(),
+        topMatch: topMatch,
+        allResults: suggestions,
+        confidence: topMatch.confidence,
+        savedAt: serverTimestamp()
+      });
+      
+      const myHerbsQuery = query(
+        collection(db, 'my_herbs'),
+        where('userId', '==', user.uid),
+        where('plantName', '==', topMatch.name)
+      );
+      const existing = await getDocs(myHerbsQuery);
+      
+      if (existing.empty) {
+        await addDoc(collection(db, 'my_herbs'), {
+          userId: user.uid,
+          plantName: topMatch.name,
+          commonName: topMatch.commonName,
+          family: topMatch.family,
+          wikiUrl: topMatch.wikiUrl,
+          imageUrl: topMatch.imageUrl,
+          identifiedFromPhoto: true,
+          dateIdentified: serverTimestamp(),
+          timesIdentified: 1
+        });
+        toast.success('Added to My Herbs collection!');
+      } else {
+        const docRef = existing.docs[0].ref;
+        const currentData = existing.docs[0].data();
+        await updateDoc(docRef, {
+          timesIdentified: (currentData.timesIdentified || 1) + 1,
+          lastIdentified: serverTimestamp()
+        });
+        toast.info('Plant already in your collection. Updated count!');
+      }
+      
+      setSavedToCollection(true);
+    } catch (error) {
+      console.error('Error saving to history:', error);
+      toast.error('Failed to save to your collection');
     }
   };
 
@@ -156,31 +191,25 @@ export default function HerbIdentifier() {
     setResult(null);
     
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout
-      
       const response = await fetch('/api/identify-herb', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: imageBase64 }),
-        signal: controller.signal
       });
-      
-      clearTimeout(timeoutId);
       
       const data: IdentificationResult = await response.json();
       setResult(data);
       
-      if (data.error || !data.suggestions || data.suggestions.length === 0) {
-        toast.info(data.message || 'No plant identified. Try a clearer photo.');
+      if (data.suggestions && data.suggestions.length > 0) {
+        if (user) {
+          await saveToUserHistory(data.suggestions, imageBase64);
+        }
+      } else if (data.message) {
+        toast.info(data.message);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Identification error:', error);
-      if (error.name === 'AbortError') {
-        toast.error('Identification timed out. Please try again.');
-      } else {
-        toast.error('Identification failed. Please try again.');
-      }
+      toast.error('Identification failed. Please try again.');
     } finally {
       setIdentifying(false);
     }
@@ -200,12 +229,22 @@ export default function HerbIdentifier() {
       const base64 = reader.result as string;
       setCapturedImage(base64);
       setIsOpen(true);
+      setSavedToCollection(false);
       identifyHerb(base64);
     };
     reader.readAsDataURL(file);
   };
 
   const handleViewInDatabase = (herbName: string) => {
+    if (user) {
+      addDoc(collection(db, 'search_queries'), {
+        userId: user.uid,
+        query: herbName,
+        source: 'herb_identifier',
+        timestamp: serverTimestamp()
+      }).catch(() => {});
+    }
+    
     router.push(`/search?q=${encodeURIComponent(herbName)}`);
     stopCamera();
   };
@@ -213,6 +252,7 @@ export default function HerbIdentifier() {
   const retakePhoto = () => {
     setCapturedImage(null);
     setResult(null);
+    setSavedToCollection(false);
   };
 
   if (!isOpen) {
@@ -225,12 +265,9 @@ export default function HerbIdentifier() {
         <p className="text-gray-600 mb-6">
           Take a photo of any herb to identify it using AI.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <Button 
-            onClick={startCamera} 
-            className="bg-[#97A97C] hover:bg-[#7A8A63] text-white"
-          >
-            <Camera className="w-4 h-4 mr-2" />
+        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
+          <Button onClick={startCamera} className="bg-[#97A97C] hover:bg-[#7A8A63] text-white">
+            <Camera className="w-4 h-4 mr-2" aria-hidden="true" />
             Open Camera
           </Button>
           <label className="cursor-pointer">
@@ -239,30 +276,43 @@ export default function HerbIdentifier() {
               accept="image/*" 
               className="hidden" 
               onChange={handleFileUpload}
+              aria-label="Upload herb photo from device"
             />
             <Button variant="outline" className="border-[#97A97C] text-[#2C3E2D]">
-              <Upload className="w-4 h-4 mr-2" />
+              <Upload className="w-4 h-4 mr-2" aria-hidden="true" />
               Upload Photo
             </Button>
           </label>
         </div>
+        {user && (
+          <div className="mt-4 flex gap-4 justify-center text-sm text-gray-500">
+            <Link href="/my-herbs" className="hover:text-[#97A97C] flex items-center gap-1">
+              <Bookmark className="w-4 h-4" aria-hidden="true" /> My Herbs
+            </Link>
+            <Link href="/history" className="hover:text-[#97A97C] flex items-center gap-1">
+              <History className="w-4 h-4" aria-hidden="true" /> History
+            </Link>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col">
+    <div className="fixed inset-0 bg-black z-50 flex flex-col" role="dialog" aria-modal="true" aria-label="Herb identification camera">
       <div className="flex justify-between items-center p-4 bg-black/90 text-white border-b border-gray-800">
         <div className="flex items-center gap-2">
-          <Leaf className="w-5 h-5 text-[#97A97C]" />
+          <Leaf className="w-5 h-5 text-[#97A97C]" aria-hidden="true" />
           <h3 className="font-bold text-lg">Herb Identifier</h3>
         </div>
         <button 
           onClick={stopCamera} 
           className="p-2 hover:bg-white/10 rounded-full"
           aria-label="Close camera"
+          title="Close camera"
+          type="button"
         >
-          <X className="w-6 h-6" />
+          <X className="w-6 h-6" aria-hidden="true" />
         </button>
       </div>
       
@@ -275,12 +325,13 @@ export default function HerbIdentifier() {
               playsInline 
               muted
               className={`w-full h-full object-cover transition-opacity duration-300 ${cameraReady ? 'opacity-100' : 'opacity-0'}`}
+              aria-label="Camera feed"
             />
-            <canvas ref={canvasRef} className="hidden" />
+            <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
             
             {!cameraReady && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <Loader2 className="w-12 h-12 animate-spin text-[#97A97C]" />
+                <Loader2 className="w-12 h-12 animate-spin text-[#97A97C]" aria-hidden="true" />
               </div>
             )}
             
@@ -289,12 +340,14 @@ export default function HerbIdentifier() {
                 Position herb in frame and tap to capture
               </p>
               <button 
-                onClick={captureImage}
-                disabled={!cameraReady}
-                className="w-20 h-20 bg-white rounded-full border-4 border-[#97A97C] flex items-center justify-center shadow-lg active:scale-95 transition-transform disabled:opacity-50"
-                aria-label="Capture photo"
+                onClick={captureImage} 
+                disabled={!cameraReady} 
+                className="w-20 h-20 bg-white rounded-full border-4 border-[#97A97C] flex items-center justify-center shadow-lg disabled:opacity-50 active:scale-95 transition-transform"
+                aria-label="Capture photo of herb"
+                title="Capture photo"
+                type="button"
               >
-                <div className="w-14 h-14 bg-[#97A97C] rounded-full" />
+                <div className="w-14 h-14 bg-[#97A97C] rounded-full" aria-hidden="true" />
               </button>
             </div>
             
@@ -305,9 +358,9 @@ export default function HerbIdentifier() {
                   accept="image/*" 
                   className="hidden" 
                   onChange={handleFileUpload}
-                  aria-label="Upload photo"
+                  aria-label="Upload photo instead of using camera"
                 />
-                <Upload className="w-5 h-5" />
+                <Upload className="w-5 h-5" aria-hidden="true" />
               </label>
             </div>
           </div>
@@ -316,35 +369,42 @@ export default function HerbIdentifier() {
             <div className="relative">
               <img 
                 src={capturedImage} 
-                alt="Captured herb" 
+                alt="Captured herb for identification" 
                 className="w-full h-64 object-cover"
               />
               <button 
-                onClick={retakePhoto}
+                onClick={retakePhoto} 
                 className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full"
                 aria-label="Retake photo"
+                title="Retake photo"
+                type="button"
               >
-                <RefreshCw className="w-5 h-5" />
+                <RefreshCw className="w-5 h-5" aria-hidden="true" />
               </button>
             </div>
             
             <div className="p-6 space-y-6">
               {identifying ? (
                 <div className="py-12 text-center">
-                  <Loader2 className="w-12 h-12 animate-spin text-[#97A97C] mx-auto mb-4" />
-                  <p className="text-gray-600 text-lg">Analyzing herb...</p>
-                  <p className="text-gray-400 text-sm mt-2">This may take a few seconds</p>
+                  <Loader2 className="w-12 h-12 animate-spin text-[#97A97C] mx-auto mb-4" aria-hidden="true" />
+                  <p className="text-gray-600">Analyzing herb...</p>
                 </div>
               ) : result?.suggestions && result.suggestions.length > 0 ? (
                 <div className="space-y-4">
                   <div className="text-center mb-6">
-                    <h4 className="text-2xl font-bold text-[#2C3E2D] mb-1">
-                      {result.suggestions[0].commonName}
-                    </h4>
+                    {savedToCollection && (
+                      <span className="inline-block mb-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded flex items-center gap-1 justify-center">
+                        <Bookmark className="w-3 h-3" aria-hidden="true" /> Saved to My Herbs
+                      </span>
+                    )}
+                    <h4 className="text-2xl font-bold text-[#2C3E2D] mb-1">{result.suggestions[0].commonName}</h4>
                     <p className="text-gray-500 italic">{result.suggestions[0].name}</p>
                     <div className="flex items-center justify-center gap-2 mt-3">
                       <span className="bg-[#97A97C] text-white px-4 py-1.5 rounded-full text-sm font-medium">
                         {result.suggestions[0].confidence}% Match
+                      </span>
+                      <span className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-full text-sm">
+                        {result.suggestions[0].family}
                       </span>
                     </div>
                   </div>
@@ -353,25 +413,27 @@ export default function HerbIdentifier() {
                     className="w-full bg-[#97A97C] hover:bg-[#7A8A63] text-white py-6 text-lg"
                     onClick={() => handleViewInDatabase(result.suggestions![0].commonName)}
                   >
-                    <Search className="w-5 h-5 mr-2" />
+                    <Search className="w-5 h-5 mr-2" aria-hidden="true" />
                     Find in RemedyAfrica Database
                   </Button>
+                  
+                  {!savedToCollection && user && (
+                    <Button 
+                      variant="outline" 
+                      className="w-full border-[#97A97C] text-[#2C3E2D]"
+                      onClick={() => saveToUserHistory(result.suggestions!, capturedImage)}
+                    >
+                      <Bookmark className="w-4 h-4 mr-2" aria-hidden="true" />
+                      Save to My Herbs
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="py-12 text-center">
-                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Leaf className="w-8 h-8 text-gray-400" />
-                  </div>
-                  <h4 className="text-xl font-semibold text-gray-700 mb-2">
-                    {result?.message || 'No Matches Found'}
-                  </h4>
-                  <Button 
-                    variant="outline" 
-                    className="border-[#97A97C] text-[#2C3E2D] mt-4"
-                    onClick={retakePhoto}
-                  >
-                    <Camera className="w-4 h-4 mr-2" />
-                    Try Again
+                  <Leaf className="w-16 h-16 text-gray-400 mx-auto mb-4" aria-hidden="true" />
+                  <h4 className="text-xl font-semibold text-gray-700 mb-2">{result?.message || 'No Matches'}</h4>
+                  <Button variant="outline" className="border-[#97A97C] text-[#2C3E2D] mt-4" onClick={retakePhoto}>
+                    <Camera className="w-4 h-4 mr-2" aria-hidden="true" /> Try Again
                   </Button>
                 </div>
               )}

@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Header } from '@/components/Header';
 import { SearchForm } from '@/components/SearchForm';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Leaf, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/providers/AuthProvider';
+import { db } from '@/lib/firebase/client';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 // Sample data - in real app, fetch from Firebase
 const SAMPLE_HERBS = [
@@ -74,28 +76,70 @@ const SAMPLE_HERBS = [
 ];
 
 export default function SearchPage() {
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
   const [results, setResults] = useState<typeof SAMPLE_HERBS>([]);
   const [loading, setLoading] = useState(true);
+  const [hasTracked, setHasTracked] = useState(false);
 
   useEffect(() => {
     // Simulate search delay
     setLoading(true);
-    setTimeout(() => {
+    
+    const performSearch = async () => {
+      // Filter results
       const filtered = SAMPLE_HERBS.filter(herb =>
         herb.name.toLowerCase().includes(query.toLowerCase()) ||
         herb.ailments.some(a => a.toLowerCase().includes(query.toLowerCase())) ||
         herb.description.toLowerCase().includes(query.toLowerCase())
       );
+      
       setResults(filtered);
       setLoading(false);
-    }, 800);
-  }, [query]);
+      
+      // OPTION 2: Track search query for analytics (only once per query)
+      if (query && query.trim() && !hasTracked) {
+        try {
+          await addDoc(collection(db, 'search_queries'), {
+            query: query.trim().toLowerCase(),
+            userId: user?.uid || 'anonymous',
+            timestamp: serverTimestamp(),
+            resultsCount: filtered.length,
+            source: 'search_page'
+          });
+          setHasTracked(true);
+        } catch (error) {
+          // Silent fail for analytics
+          console.log('Analytics tracking failed:', error);
+        }
+      }
+    };
+    
+    performSearch();
+    
+    // Reset tracking when query changes
+    return () => {
+      if (query) setHasTracked(false);
+    };
+  }, [query, user, hasTracked]);
 
   return (
     <div className="min-h-screen bg-[#F5F5DC]">
-      <Header />
+      {/* Header */}
+      <header className="bg-[#2C3E2D] text-white py-4 px-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <Link href="/" className="flex items-center space-x-2">
+            <img src="/logo.png" alt="RemedyAfrica" className="h-10 w-10 object-contain" />
+            <span className="text-xl font-bold">RemedyAfrica</span>
+          </Link>
+          <nav className="hidden md:flex space-x-6">
+            <Link href="/" className="hover:text-[#97A97C]">Home</Link>
+            <Link href="/practitioners" className="hover:text-[#97A97C]">Practitioners</Link>
+            <Link href="/forum" className="hover:text-[#97A97C]">Forum</Link>
+          </nav>
+        </div>
+      </header>
 
       <main className="container mx-auto px-4 py-8">
         {/* Back to home link with logo */}
