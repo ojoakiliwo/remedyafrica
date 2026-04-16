@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useAuth } from '@/providers/AuthProvider';
 import { Button } from '@/components/ui/button';
-import { Leaf, Menu, X, User, LayoutDashboard, LogOut } from 'lucide-react';
+import { Leaf, Menu, X, User, LayoutDashboard, LogOut, Shield } from 'lucide-react';
 import { useState } from 'react';
 
 export function Navbar() {
@@ -22,6 +22,9 @@ export function Navbar() {
   // Get display name from profile or email
   const displayName = profile?.displayName || user?.email?.split('@')[0] || 'User';
   const firstLetter = displayName.charAt(0).toUpperCase();
+  
+  // Check if user is admin from profile
+  const isAdmin = profile?.role === 'admin' || profile?.isAdmin === true;
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-[#97A97C]/20 bg-[#F5F5DC]/95 backdrop-blur-md">
@@ -87,6 +90,9 @@ export function Navbar() {
                   <span className="text-[#2C3E2D] font-medium max-w-[100px] truncate">
                     {displayName}
                   </span>
+                  {isAdmin && (
+                    <Shield className="w-4 h-4 text-amber-600" />
+                  )}
                 </button>
 
                 {/* Dropdown Menu */}
@@ -95,6 +101,9 @@ export function Navbar() {
                     <div className="px-4 py-2 border-b border-gray-100">
                       <p className="text-sm font-medium text-[#2C3E2D] truncate">{displayName}</p>
                       <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      {isAdmin && (
+                        <p className="text-xs text-amber-600 font-medium mt-1">Administrator</p>
+                      )}
                     </div>
                     <Link 
                       href="/profile" 
@@ -112,12 +121,37 @@ export function Navbar() {
                       <LayoutDashboard className="w-4 h-4 mr-2" />
                       Dashboard
                     </Link>
+                    
+                    {/* Admin Link - Only show if admin */}
+                    {isAdmin && (
+                      <>
+                        <div className="border-t border-gray-100 my-1"></div>
+                        <Link 
+                          href="/admin" 
+                          className="block px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 flex items-center font-medium"
+                          onClick={() => setDropdownOpen(false)}
+                        >
+                          <Shield className="w-4 h-4 mr-2" />
+                          Admin Panel
+                        </Link>
+                        <Link 
+                          href="/admin/applications" 
+                          className="block px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 flex items-center"
+                          onClick={() => setDropdownOpen(false)}
+                        >
+                          <span className="w-4 h-4 mr-2 text-xs flex items-center justify-center">•</span>
+                          Applications
+                        </Link>
+                      </>
+                    )}
+                    
+                    <div className="border-t border-gray-100 my-1"></div>
                     <button
                       onClick={() => {
                         handleLogout();
                         setDropdownOpen(false);
                       }}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center border-t border-gray-100"
+                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center"
                     >
                       <LogOut className="w-4 h-4 mr-2" />
                       Logout
@@ -177,6 +211,9 @@ export function Navbar() {
                     )}
                     <div>
                       <p className="font-medium text-[#2C3E2D]">{displayName}</p>
+                      {isAdmin && (
+                        <p className="text-xs text-amber-600">Administrator</p>
+                      )}
                     </div>
                   </div>
                   <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="text-[#2C3E2D] hover:text-[#97A97C] pl-4">
@@ -185,12 +222,27 @@ export function Navbar() {
                   <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="text-[#2C3E2D] hover:text-[#97A97C] pl-4">
                     Dashboard
                   </Link>
+                  
+                  {/* Admin Links in Mobile */}
+                  {isAdmin && (
+                    <>
+                      <div className="border-t border-gray-200 my-2"></div>
+                      <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="text-amber-700 font-medium pl-4 flex items-center">
+                        <Shield className="w-4 h-4 mr-2" />
+                        Admin Panel
+                      </Link>
+                      <Link href="/admin/applications" onClick={() => setMobileMenuOpen(false)} className="text-amber-600 text-sm pl-8">
+                        Review Applications
+                      </Link>
+                    </>
+                  )}
+                  
                   <button
                     onClick={() => {
                       handleLogout();
                       setMobileMenuOpen(false);
                     }}
-                    className="text-left text-red-600 pl-4"
+                    className="text-left text-red-600 pl-4 border-t border-gray-200 pt-2"
                   >
                     Logout
                   </button>

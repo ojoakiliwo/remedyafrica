@@ -48,20 +48,47 @@ if (!uid) {
   console.error('To find your UID:');
   console.error('1. Go to Firebase Console → Authentication → Users');
   console.error('2. Copy the UID of the user you want to make admin');
+  console.error('');
+  console.error('Or run in browser console when logged in:');
+  console.error('  console.log(auth.currentUser.uid)');
   process.exit(1);
 }
 
-console.log('Setting admin claim for UID:', uid);
-
-admin.auth().setCustomUserClaims(uid, { admin: true })
-  .then(() => {
-    console.log(`✅ Success! User ${uid} is now an admin.`);
+async function setAdmin() {
+  try {
+    console.log('Setting admin claim for UID:', uid);
+    
+    // 1. Set custom claim in Auth
+    await admin.auth().setCustomUserClaims(uid, { admin: true });
+    console.log(`✅ Custom claim set for user ${uid}`);
+    
+    // 2. Update Firestore user document with role field
+    const db = admin.firestore();
+    await db.collection('users').doc(uid).set({
+      role: 'admin',
+      isAdmin: true,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    console.log(`✅ Firestore document updated with role: 'admin'`);
+    
     console.log('');
-    console.log('⚠️  IMPORTANT: The user must sign out and sign back in for changes to take effect.');
+    console.log('🎉 SUCCESS! User is now an admin.');
+    console.log('');
+    console.log('⚠️  IMPORTANT: The user must SIGN OUT and SIGN BACK IN for changes to take effect.');
+    console.log('');
+    console.log('The user document now has:');
+    console.log('  - role: "admin"');
+    console.log('  - isAdmin: true');
+    console.log('');
+    console.log('Auth token now has:');
+    console.log('  - admin: true (custom claim)');
+    
     process.exit(0);
-  })
-  .catch((error) => {
-    console.error('❌ Error setting admin claim:', error.message);
+  } catch (error) {
+    console.error('❌ Error:', error.message);
     console.error('Error code:', error.code);
     process.exit(1);
-  });
+  }
+}
+
+setAdmin();
