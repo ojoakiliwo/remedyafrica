@@ -26,6 +26,7 @@ export default function HerbIdentifier() {
   const [identifying, setIdentifying] = useState(false);
   const [result, setResult] = useState<IdentificationResult | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [cameraReady, setCameraReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const router = useRouter();
@@ -38,20 +39,42 @@ export default function HerbIdentifier() {
     };
   }, [stream]);
 
+  // FIX: Play video when stream is ready
+  useEffect(() => {
+    if (stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(err => {
+        console.error('Video play error:', err);
+      });
+    }
+  }, [stream]);
+
   const startCamera = async () => {
     try {
+      setCameraReady(false);
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' }
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
       });
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
       setStream(mediaStream);
       setIsOpen(true);
-    } catch (err) {
+      
+      // Wait for video to be ready
+      setTimeout(() => setCameraReady(true), 500);
+    } catch (err: any) {
       console.error('Camera error:', err);
-      toast.error('Could not access camera. Please allow camera permissions or use upload instead.');
+      if (err.name === 'NotAllowedError') {
+        toast.error('Camera permission denied. Please allow camera access in your browser settings.');
+      } else if (err.name === 'NotFoundError') {
+        toast.error('No camera found. Please use upload instead.');
+      } else {
+        toast.error('Could not access camera. Please use upload instead.');
+      }
     }
   };
 
@@ -63,12 +86,19 @@ export default function HerbIdentifier() {
     setIsOpen(false);
     setCapturedImage(null);
     setResult(null);
+    setCameraReady(false);
   };
 
   const captureImage = () => {
-    if (videoRef.current && canvasRef.current) {
+    if (videoRef.current && canvasRef.current && cameraReady) {
       const canvas = canvasRef.current;
       const video = videoRef.current;
+      
+      // FIX: Ensure video dimensions are available
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        toast.error('Camera not ready. Please wait a moment.');
+        return;
+      }
       
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -95,18 +125,19 @@ export default function HerbIdentifier() {
       });
       
       if (!response.ok) {
-        throw new Error('Identification failed');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Identification failed');
       }
       
       const data: IdentificationResult = await response.json();
       setResult(data);
       
-      if (data.suggestions.length === 0) {
+      if (!data.suggestions || data.suggestions.length === 0) {
         toast.info('No herbs identified. Try a clearer photo or different angle.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Identification error:', error);
-      toast.error('Identification failed. Please try again.');
+      toast.error(error.message || 'Identification failed. Please try again.');
     } finally {
       setIdentifying(false);
     }
@@ -124,6 +155,7 @@ export default function HerbIdentifier() {
       reader.onloadend = () => {
         const base64 = reader.result as string;
         setCapturedImage(base64);
+        setIsOpen(true);
         identifyHerb(base64);
       };
       reader.readAsDataURL(file);
@@ -193,18 +225,26 @@ export default function HerbIdentifier() {
         </button>
       </div>
       
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative overflow-hidden bg-black">
         {!capturedImage ? (
-          <div className="relative h-full">
+          <div className="relative h-full flex items-center justify-center">
+            {/* FIX: Better video handling with playsInline and muted */}
             <video 
               ref={videoRef} 
               autoPlay 
               playsInline 
               muted
-              className="w-full h-full object-cover"
+              className={`w-full h-full object-cover ${cameraReady ? 'opacity-100' : 'opacity-0'}`}
               aria-label="Camera feed for herb identification"
             />
             <canvas ref={canvasRef} className="hidden" />
+            
+            {/* Loading state */}
+            {!cameraReady && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Loader2 className="w-12 h-12 animate-spin text-[#97A97C]" />
+              </div>
+            )}
             
             <div className="absolute bottom-8 left-0 right-0 flex flex-col items-center gap-4">
               <p className="text-white/80 text-sm bg-black/50 px-4 py-2 rounded-full">
@@ -212,7 +252,8 @@ export default function HerbIdentifier() {
               </p>
               <button 
                 onClick={captureImage}
-                className="w-20 h-20 bg-white rounded-full border-4 border-[#97A97C] flex items-center justify-center shadow-lg active:scale-95 transition-transform"
+                disabled={!cameraReady}
+                className="w-20 h-20 bg-white rounded-full border-4 border-[#97A97C] flex items-center justify-center shadow-lg active:scale-95 transition-transform disabled:opacity-50"
                 aria-label="Capture photo of herb"
               >
                 <div className="w-14 h-14 bg-[#97A97C] rounded-full" aria-hidden="true" />
@@ -256,7 +297,7 @@ export default function HerbIdentifier() {
                   <p className="text-gray-600 text-lg">Analyzing herb...</p>
                   <p className="text-gray-400 text-sm mt-2">This may take a few seconds</p>
                 </div>
-              ) : result && result.suggestions.length > 0 ? (
+              ) : result && result.suggestions && result.suggestions.length > 0 ? (
                 <div className="space-y-4">
                   <div className="text-center mb-6">
                     <h4 className="text-2xl font-bold text-[#2C3E2D] mb-1">
