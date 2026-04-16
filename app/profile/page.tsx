@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/providers/AuthProvider';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase/client';
@@ -18,14 +18,28 @@ export default function ProfilePage() {
   const { user, profile } = useAuth();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [mounted, setMounted] = useState(false);
   
   const [loading, setLoading] = useState(false);
-  const [displayName, setDisplayName] = useState(profile?.displayName || '');
+  const [displayName, setDisplayName] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [message, setMessage] = useState('');
+
+  // FIX: Set mounted after hydration, update displayName from profile
+  useEffect(() => {
+    setMounted(true);
+    if (profile?.displayName) {
+      setDisplayName(profile.displayName);
+    }
+  }, [profile]);
+
+  // FIX: Prevent hydration mismatch and early return issues
+  if (!mounted) {
+    return <div className="min-h-screen bg-[#F5F5F0]" />;
+  }
 
   if (!user) {
     router.push('/login');
@@ -96,7 +110,10 @@ export default function ProfilePage() {
       try {
         await updateProfile(user, { photoURL });
         await updateDoc(doc(db, 'users', user.uid), { photoURL });
-        window.location.reload();
+        // FIX: Check if window exists before reloading
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
       } catch (error) {
         console.error('Error updating photo:', error);
       }
