@@ -20,14 +20,21 @@ import {
 import Link from 'next/link';
 import { toast } from 'sonner';
 
+// Updated interface to match the structure from Bulk Upload
 interface Herb {
   id: string;
   name: string;
-  scientificName?: string;
+  scientificName: string;
   category: string;
   description: string;
+  preparation?: string;
+  warnings?: string;
+  benefits?: string;
+  origin?: string;
+  partsUsed?: string;
   images?: string[];
-  status?: string;
+  status?: 'draft' | 'published';
+  searchKeywords?: string[];
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -39,6 +46,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   'respiratory': 'Respiratory Health',
   'womens-health': "Women's Health",
   'mens-health': "Men's Health",
+  'uncategorized': 'Uncategorized', // Added to match Bulk Upload default
 };
 
 export default function ManageHerbsPage() {
@@ -78,15 +86,21 @@ export default function ManageHerbsPage() {
     }
   };
 
-  const filteredHerbs = herbs.filter(herb => 
-    herb.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    herb.scientificName?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Enhanced search to include the keywords we generated in Bulk Upload
+  const filteredHerbs = herbs.filter(herb => {
+    const term = searchTerm.toLowerCase();
+    return (
+      herb.name.toLowerCase().includes(term) ||
+      herb.scientificName?.toLowerCase().includes(term) ||
+      herb.category?.toLowerCase().includes(term) ||
+      herb.searchKeywords?.some(keyword => keyword.toLowerCase().includes(term))
+    );
+  });
 
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
-        <p className="text-red-600">Access denied. Admin only.</p>
+        <p className="text-red-600 font-semibold">Access denied. Admin only.</p>
       </div>
     );
   }
@@ -111,7 +125,7 @@ export default function ManageHerbsPage() {
           </div>
           <div className="flex gap-2">
             <Link href="/admin/herbs/bulk">
-              <Button variant="outline" className="border-[#97A97C] text-[#97A97C]">
+              <Button variant="outline" className="border-[#97A97C] text-[#97A97C] hover:bg-[#97A97C]/10">
                 <Upload className="w-4 h-4 mr-2" />
                 Bulk Upload
               </Button>
@@ -130,10 +144,10 @@ export default function ManageHerbsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <Input
-              placeholder="Search herbs by name or scientific name..."
+              placeholder="Search by name, scientific name, or benefits..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 focus-visible:ring-[#97A97C]"
             />
           </div>
         </div>
@@ -144,15 +158,15 @@ export default function ManageHerbsPage() {
             <Loader2 className="w-12 h-12 text-[#97A97C] animate-spin" />
           </div>
         ) : filteredHerbs.length === 0 ? (
-          <div className="bg-white rounded-xl p-12 text-center">
+          <div className="bg-white rounded-xl p-12 text-center border-2 border-dashed border-gray-200">
             <Leaf className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-600">No herbs found</h3>
-            <p className="text-gray-500">Try adjusting your search or upload a new herb</p>
+            <p className="text-gray-500">Try adjusting your search or perform a bulk upload.</p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredHerbs.map((herb) => (
-              <div key={herb.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+              <div key={herb.id} className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-all duration-300 border border-transparent hover:border-[#97A97C]/30">
                 <div className="aspect-video bg-gray-200 relative">
                   {herb.images && herb.images[0] ? (
                     <img 
@@ -166,51 +180,58 @@ export default function ManageHerbsPage() {
                     </div>
                   )}
                   <div className="absolute top-2 right-2">
-                    <span className={`text-xs px-2 py-1 rounded-full ${
+                    <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-1 rounded-full ${
                       herb.status === 'draft' 
-                        ? 'bg-yellow-100 text-yellow-800' 
-                        : 'bg-green-100 text-green-800'
+                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' 
+                        : 'bg-green-100 text-green-800 border border-green-200'
                     }`}>
-                      {herb.status === 'draft' ? 'Draft' : 'Active'}
+                      {herb.status || 'Published'}
                     </span>
                   </div>
                 </div>
                 
                 <div className="p-4">
-                  <h3 className="font-bold text-lg text-[#2C3E2D] mb-1">{herb.name}</h3>
-                  <p className="text-sm text-gray-500 italic mb-2">{herb.scientificName}</p>
-                  <p className="text-xs text-[#97A97C] uppercase font-semibold mb-3">
-                    {CATEGORY_LABELS[herb.category] || herb.category}
-                  </p>
-                  <p className="text-sm text-gray-600 line-clamp-2 mb-4">
+                  <h3 className="font-bold text-lg text-[#2C3E2D] mb-1 truncate">{herb.name}</h3>
+                  <p className="text-sm text-gray-400 italic mb-2 truncate">{herb.scientificName}</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[11px] text-[#97A97C] uppercase font-bold bg-[#97A97C]/5 px-2 py-0.5 rounded">
+                      {CATEGORY_LABELS[herb.category] || herb.category || 'Uncategorized'}
+                    </p>
+                    {herb.origin && (
+                       <p className="text-[10px] text-gray-400">📍 {herb.origin}</p>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600 line-clamp-2 mb-4 h-10">
                     {herb.description}
                   </p>
                   
                   <div className="flex gap-2">
                     <Link href={`/herb/${herb.id}`} className="flex-1">
-                      <Button variant="outline" size="sm" className="w-full">
-                        <Eye className="w-4 h-4 mr-1" />
+                      <Button variant="outline" size="sm" className="w-full text-xs">
+                        <Eye className="w-3.5 h-3.5 mr-1" />
                         View
+                      </Button>
+                    </Link>
+                    <Link href={`/admin/herbs/edit/${herb.id}`}>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="border-blue-200 text-blue-600 hover:bg-blue-50"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
                       </Button>
                     </Link>
                     <Button 
                       variant="outline" 
                       size="sm"
-                      className="border-blue-500 text-blue-500 hover:bg-blue-50"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
                       onClick={() => handleDelete(herb.id, herb.name)}
                       disabled={deletingId === herb.id}
-                      className="border-red-500 text-red-500 hover:bg-red-50"
+                      className="border-red-100 text-red-500 hover:bg-red-50"
                     >
                       {deletingId === herb.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       )}
                     </Button>
                   </div>

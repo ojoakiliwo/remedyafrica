@@ -23,7 +23,7 @@ const plans = [
   },
   {
     name: 'Premium',
-    price: 2500,
+    price: 9.99,
     period: 'month',
     description: 'Unlock full healing potential',
     features: [
@@ -38,7 +38,7 @@ const plans = [
   },
   {
     name: 'Premium Pro',
-    price: 5000,
+    price: 19.99,
     period: 'month',
     description: 'For serious practitioners',
     features: [
@@ -62,7 +62,7 @@ export default function SubscriptionPage() {
       router.push('/login?redirect=/subscription');
       return;
     }
-    alert(`This would connect to Paystack for ${tier} subscription`);
+    alert(`This would connect to Stripe for ${tier} subscription ($${plans.find(p => p.tier === tier)?.price}/month)`);
   };
 
   return (
@@ -97,7 +97,7 @@ export default function SubscriptionPage() {
               </CardTitle>
               <div className="mt-2">
                 <span className="text-3xl font-bold text-[#2C3E2D]">
-                  {plan.price === 0 ? 'Free' : `₦${plan.price.toLocaleString()}`}
+                  {plan.price === 0 ? 'Free' : `$${plan.price}`}
                 </span>
                 {plan.price > 0 && <span className="text-gray-500">/{plan.period}</span>}
               </div>
