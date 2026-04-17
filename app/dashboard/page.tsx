@@ -11,7 +11,8 @@ import {
   Heart, 
   History,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Shield
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { db } from '@/lib/firebase/client';
@@ -44,7 +45,7 @@ interface PlantHistory {
 }
 
 export default function DashboardPage() {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const router = useRouter();
   const [savedHerbs, setSavedHerbs] = useState<SavedHerb[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
@@ -52,7 +53,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!user && !isLoading) {
       router.push('/login');
       return;
     }
@@ -60,13 +61,12 @@ export default function DashboardPage() {
     if (user) {
       fetchUserData();
     }
-  }, [user, loading, router]);
+  }, [user, router]);
 
   const fetchUserData = async () => {
     if (!user) return;
     
     try {
-      // Fetch saved herbs
       const herbsQuery = query(
         collection(db, 'my_herbs'),
         where('userId', '==', user.uid),
@@ -81,7 +81,6 @@ export default function DashboardPage() {
       })) as SavedHerb[];
       setSavedHerbs(herbsData);
 
-      // Fetch consultations
       const consultationsQuery = query(
         collection(db, 'consultations'),
         where('patientId', '==', user.uid),
@@ -97,7 +96,6 @@ export default function DashboardPage() {
       })) as Consultation[];
       setConsultations(consultationsData);
 
-      // Fetch plant identification history
       const historyQuery = query(
         collection(db, 'user_plant_history'),
         where('userId', '==', user.uid),
@@ -119,45 +117,45 @@ export default function DashboardPage() {
     }
   };
 
-  if (loading || isLoading) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-700"></div>
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F5DC]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#97A97C]"></div>
       </div>
     );
   }
 
   if (!user) return null;
 
+  const displayName = profile?.displayName || user?.email?.split('@')[0] || 'User';
+
   return (
-    <div className="min-h-screen bg-stone-50">
-      {/* Header */}
-      <div className="bg-emerald-900 text-amber-50 py-12">
+    <div className="min-h-screen bg-[#F5F5DC]">
+      <div className="bg-[#2C3E2D] text-[#F5F5DC] py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-emerald-800 rounded-full">
-              <User className="w-8 h-8" />
+            <div className="p-3 bg-[#97A97C] rounded-full">
+              <User className="w-8 h-8 text-[#2C3E2D]" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">Welcome back, {user.displayName || 'User'}</h1>
-              <p className="text-emerald-200 mt-1">Manage your herbal journey and consultations</p>
+              <h1 className="text-3xl font-bold">Welcome back, {displayName}</h1>
+              <p className="text-[#97A97C] mt-1">Manage your herbal journey and consultations</p>
             </div>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Link href="/identify">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-emerald-100">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-[#97A97C]/20 bg-white">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-emerald-100 rounded-lg">
-                    <Sparkles className="w-6 h-6 text-emerald-700" />
+                  <div className="p-3 bg-[#97A97C]/20 rounded-lg">
+                    <Sparkles className="w-6 h-6 text-[#97A97C]" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-stone-900">Identify Plant</h3>
+                    <h3 className="font-semibold text-[#2C3E2D]">Identify Plant</h3>
                     <p className="text-sm text-stone-600">Upload a photo to identify</p>
                   </div>
                 </div>
@@ -166,14 +164,14 @@ export default function DashboardPage() {
           </Link>
 
           <Link href="/practitioners">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-emerald-100">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-[#97A97C]/20 bg-white">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-emerald-100 rounded-lg">
-                    <Calendar className="w-6 h-6 text-emerald-700" />
+                  <div className="p-3 bg-[#97A97C]/20 rounded-lg">
+                    <Calendar className="w-6 h-6 text-[#97A97C]" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-stone-900">Book Consultation</h3>
+                    <h3 className="font-semibold text-[#2C3E2D]">Book Consultation</h3>
                     <p className="text-sm text-stone-600">Find a practitioner</p>
                   </div>
                 </div>
@@ -182,14 +180,14 @@ export default function DashboardPage() {
           </Link>
 
           <Link href="/forum">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-emerald-100">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-[#97A97C]/20 bg-white">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-emerald-100 rounded-lg">
-                    <MessageSquare className="w-6 h-6 text-emerald-700" />
+                  <div className="p-3 bg-[#97A97C]/20 rounded-lg">
+                    <MessageSquare className="w-6 h-6 text-[#97A97C]" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-stone-900">Community</h3>
+                    <h3 className="font-semibold text-[#2C3E2D]">Community</h3>
                     <p className="text-sm text-stone-600">Join the discussion</p>
                   </div>
                 </div>
@@ -199,15 +197,14 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Saved Herbs */}
-          <Card>
+          <Card className="border-[#97A97C]/20 bg-white">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-[#2C3E2D]">
                 <Heart className="w-5 h-5 text-red-500" />
                 Saved Herbs
               </CardTitle>
               <Link href="/herbs">
-                <Button variant="ghost" size="sm" className="text-emerald-700">
+                <Button variant="ghost" size="sm" className="text-[#97A97C]">
                   View All <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
@@ -218,7 +215,7 @@ export default function DashboardPage() {
                   <Leaf className="w-12 h-12 mx-auto mb-3 opacity-30" />
                   <p>No saved herbs yet</p>
                   <Link href="/herbs">
-                    <Button variant="outline" className="mt-4" size="sm">
+                    <Button variant="outline" className="mt-4 border-[#97A97C] text-[#97A97C]" size="sm">
                       Browse Herbs
                     </Button>
                   </Link>
@@ -226,15 +223,15 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-3">
                   {savedHerbs.map((herb) => (
-                    <div key={herb.id} className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
+                    <div key={herb.id} className="flex items-center justify-between p-3 bg-[#F5F5DC] rounded-lg">
                       <div>
-                        <p className="font-medium text-stone-900">{herb.herbName}</p>
+                        <p className="font-medium text-[#2C3E2D]">{herb.herbName}</p>
                         <p className="text-xs text-stone-500">
                           Saved {herb.savedAt?.toLocaleDateString()}
                         </p>
                       </div>
                       <Link href={`/herb/${herb.herbId}`}>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" className="text-[#97A97C]">
                           View
                         </Button>
                       </Link>
@@ -245,15 +242,14 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Consultations */}
-          <Card>
+          <Card className="border-[#97A97C]/20 bg-white">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-emerald-600" />
+              <CardTitle className="flex items-center gap-2 text-[#2C3E2D]">
+                <Calendar className="w-5 h-5 text-[#97A97C]" />
                 My Consultations
               </CardTitle>
               <Link href="/consultations">
-                <Button variant="ghost" size="sm" className="text-emerald-700">
+                <Button variant="ghost" size="sm" className="text-[#97A97C]">
                   View All <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
@@ -264,7 +260,7 @@ export default function DashboardPage() {
                   <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
                   <p>No consultations yet</p>
                   <Link href="/practitioners">
-                    <Button variant="outline" className="mt-4" size="sm">
+                    <Button variant="outline" className="mt-4 border-[#97A97C] text-[#97A97C]" size="sm">
                       Find Practitioner
                     </Button>
                   </Link>
@@ -272,15 +268,15 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-3">
                   {consultations.map((consultation) => (
-                    <div key={consultation.id} className="flex items-center justify-between p-3 bg-stone-50 rounded-lg">
+                    <div key={consultation.id} className="flex items-center justify-between p-3 bg-[#F5F5DC] rounded-lg">
                       <div>
-                        <p className="font-medium text-stone-900">{consultation.practitionerName}</p>
+                        <p className="font-medium text-[#2C3E2D]">{consultation.practitionerName}</p>
                         <p className="text-xs text-stone-500 capitalize">
                           {consultation.status} • {consultation.scheduledDate?.toLocaleDateString() || 'Not scheduled'}
                         </p>
                       </div>
                       <Link href={`/consultation/${consultation.id}`}>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" className="text-[#97A97C]">
                           {consultation.status === 'active' ? 'Join' : 'View'}
                         </Button>
                       </Link>
@@ -291,15 +287,14 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Plant Identification History */}
-          <Card className="lg:col-span-2">
+          <Card className="lg:col-span-2 border-[#97A97C]/20 bg-white">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-[#2C3E2D]">
                 <History className="w-5 h-5 text-amber-600" />
                 Plant Identification History
               </CardTitle>
               <Link href="/history">
-                <Button variant="ghost" size="sm" className="text-emerald-700">
+                <Button variant="ghost" size="sm" className="text-[#97A97C]">
                   View All <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
@@ -310,7 +305,7 @@ export default function DashboardPage() {
                   <History className="w-12 h-12 mx-auto mb-3 opacity-30" />
                   <p>No identifications yet</p>
                   <Link href="/identify">
-                    <Button variant="outline" className="mt-4" size="sm">
+                    <Button variant="outline" className="mt-4 border-[#97A97C] text-[#97A97C]" size="sm">
                       Identify a Plant
                     </Button>
                   </Link>
@@ -318,7 +313,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {plantHistory.map((item) => (
-                    <div key={item.id} className="border rounded-lg overflow-hidden">
+                    <div key={item.id} className="border border-[#97A97C]/20 rounded-lg overflow-hidden bg-[#F5F5DC]">
                       <div className="aspect-video bg-stone-100 relative">
                         {item.imageUrl && (
                           <img 
@@ -329,7 +324,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <div className="p-3">
-                        <p className="font-medium text-stone-900">{item.plantName}</p>
+                        <p className="font-medium text-[#2C3E2D]">{item.plantName}</p>
                         <p className="text-xs text-stone-500">
                           {Math.round(item.confidence * 100)}% confidence
                         </p>
@@ -345,11 +340,13 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Admin Section */}
         {isAdmin && (
           <Card className="mt-8 border-amber-200 bg-amber-50">
             <CardHeader>
-              <CardTitle className="text-amber-900">Admin Controls</CardTitle>
+              <CardTitle className="text-amber-900 flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                Admin Controls
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-4">

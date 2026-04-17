@@ -32,7 +32,7 @@ export interface AuthContextType {
   logout: () => Promise<void>;
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -51,7 +51,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            // Ensure displayName is never empty - fallback to email prefix
             const displayName = userData.displayName || firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User';
             
             setProfile({
@@ -64,7 +63,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             });
             setIsAdmin(userData.role === 'admin' || userData.isAdmin === true);
           } else {
-            // Create new user with email prefix as default username
             const defaultDisplayName = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User';
             const newUserData = {
               email: firebaseUser.email,
@@ -106,10 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, displayName: string) => {
     const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
-    
-    // If no display name provided, use email prefix
     const finalDisplayName = displayName || email.split('@')[0];
-    
     await updateProfile(newUser, { displayName: finalDisplayName });
     
     await setDoc(doc(db, 'users', newUser.uid), {
