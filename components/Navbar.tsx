@@ -7,7 +7,7 @@ import { Leaf, Menu, X, User, LayoutDashboard, LogOut, Shield } from 'lucide-rea
 import { useState } from 'react';
 
 export function Navbar() {
-  const { user, profile, logout } = useAuth();
+  const { user, profile, logout, isAdmin } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -22,9 +22,6 @@ export function Navbar() {
   // Get display name from profile or email
   const displayName = profile?.displayName || user?.email?.split('@')[0] || 'User';
   const firstLetter = displayName.charAt(0).toUpperCase();
-  
-  // Check if user is admin from profile
-  const isAdmin = profile?.role === 'admin' || profile?.isAdmin === true;
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-[#97A97C]/20 bg-[#F5F5DC]/95 backdrop-blur-md">
