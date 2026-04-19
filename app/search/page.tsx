@@ -67,7 +67,7 @@ interface AISearchResult {
   relatedConditions: string[];
 }
 
-// AI Knowledge Base for fallback when API fails
+// AI Knowledge Base - EXPANDED with more conditions
 const KNOWLEDGE_BASE: Record<string, AISearchResult> = {
   arthritis: {
     condition: 'Arthritis',
@@ -159,6 +159,71 @@ const KNOWLEDGE_BASE: Record<string, AISearchResult> = {
     suggestedApproach: 'Vasodilating and heart-supportive herbs with lifestyle changes.',
     safetyWarning: 'Monitor blood pressure regularly. Do not stop prescribed medication without consulting your doctor.',
     relatedConditions: ['high blood pressure', 'heart health', 'cardiovascular']
+  },
+  // NEW: Male reproductive health
+  'low sperm count': {
+    condition: 'Low Sperm Count (Oligospermia)',
+    description: 'A condition where the semen contains fewer sperm than normal, which can reduce fertility. Often linked to hormonal imbalances, lifestyle factors, or nutritional deficiencies.',
+    symptoms: ['Difficulty conceiving', 'Low semen volume', 'Hormonal imbalances', 'Fatigue', 'Reduced libido'],
+    suggestedHerbs: ['maca root', 'tribulus terrestris', 'ashwagandha', 'ginseng', 'fenugreek', 'damiana'],
+    suggestedApproach: 'Adaptogenic and hormone-balancing herbs combined with lifestyle improvements and stress reduction.',
+    safetyWarning: 'Consult a healthcare provider for proper diagnosis. Herbal remedies should complement, not replace, medical treatment for fertility issues.',
+    relatedConditions: ['infertility', 'low testosterone', 'erectile dysfunction', 'fatigue']
+  },
+  // NEW: More reproductive health
+  'infertility': {
+    condition: 'Infertility',
+    description: 'The inability to conceive after one year of unprotected intercourse. Can affect both men and women and may have various underlying causes.',
+    symptoms: ['Difficulty conceiving', 'Irregular menstrual cycles', 'Hormonal issues', 'Low sperm count'],
+    suggestedHerbs: ['maca root', 'vitex', 'red clover', 'ashwagandha', 'tribulus terrestris'],
+    suggestedApproach: 'Hormone-balancing herbs for both partners, stress reduction, and nutritional support.',
+    safetyWarning: 'Both partners should seek medical evaluation. Herbal remedies support fertility but may not address underlying medical conditions.',
+    relatedConditions: ['low sperm count', 'hormonal imbalance', 'stress', 'fatigue']
+  },
+  // NEW: Common African conditions
+  'malaria': {
+    condition: 'Malaria',
+    description: 'A mosquito-borne infectious disease common in tropical regions including many parts of Africa. Caused by Plasmodium parasites.',
+    symptoms: ['Fever', 'Chills', 'Headache', 'Muscle pain', 'Fatigue', 'Nausea'],
+    suggestedHerbs: ['neem', 'artemisia annua', 'garlic', 'ginger', 'papaya leaf'],
+    suggestedApproach: 'Antiparasitic and immune-supporting herbs. MUST be used alongside conventional antimalarial treatment.',
+    safetyWarning: 'URGENT: Malaria can be life-threatening. Seek immediate medical attention and use conventional antimalarial drugs. Herbs are supportive only.',
+    relatedConditions: ['fever', 'infection', 'fatigue', 'immune support']
+  },
+  // NEW: Women's health
+  'menstrual pain': {
+    condition: 'Menstrual Pain (Dysmenorrhea)',
+    description: 'Painful menstrual periods caused by uterine contractions. Common symptoms include cramping, lower back pain, and nausea.',
+    symptoms: ['Cramping', 'Lower back pain', 'Nausea', 'Headaches', 'Bloating'],
+    suggestedHerbs: ['ginger', 'chamomile', 'cramp bark', 'raspberry leaf', 'cinnamon'],
+    suggestedApproach: 'Antispasmodic and anti-inflammatory herbs to relieve cramping and pain.',
+    relatedConditions: ['pain', 'inflammation', 'stress', 'hormonal imbalance']
+  },
+  // NEW: More general conditions
+  'fever': {
+    condition: 'Fever',
+    description: 'A temporary increase in body temperature, often due to an infection. The body\'s natural defense mechanism.',
+    symptoms: ['High temperature', 'Sweating', 'Chills', 'Headache', 'Muscle aches'],
+    suggestedHerbs: ['ginger', 'elderflower', 'peppermint', 'yarrow', 'basil'],
+    suggestedApproach: 'Herbs to promote sweating and cool the body, combined with hydration and rest.',
+    safetyWarning: 'Seek medical attention if fever exceeds 39°C (102°F) or persists more than 3 days, especially in children.',
+    relatedConditions: ['infection', 'cold', 'flu', 'malaria']
+  },
+  'cough': {
+    condition: 'Cough',
+    description: 'A reflex action to clear the airways of irritants, mucus, or foreign particles. Can be dry or productive.',
+    symptoms: ['Persistent coughing', 'Throat irritation', 'Mucus production', 'Chest tightness'],
+    suggestedHerbs: ['ginger', 'honey', 'licorice root', 'thyme', 'eucalyptus'],
+    suggestedApproach: 'Expectorant and soothing herbs to clear mucus and soothe the throat.',
+    relatedConditions: ['cold', 'flu', 'respiratory infection', 'congestion']
+  },
+  'wound healing': {
+    condition: 'Wound Healing',
+    description: 'The natural process of repairing damaged skin and tissue. Can be supported with topical and internal remedies.',
+    symptoms: ['Cuts', 'Scrapes', 'Slow-healing wounds', 'Risk of infection'],
+    suggestedHerbs: ['aloe vera', 'honey', 'calendula', 'tea tree', 'turmeric'],
+    suggestedApproach: 'Topical antiseptic and healing herbs combined with internal immune support.',
+    relatedConditions: ['skin conditions', 'infection risk', 'inflammation']
   }
 };
 
@@ -246,57 +311,68 @@ export default function SearchPage() {
     });
   };
 
-  // AI Analysis function
+  // AI Analysis function - FIXED to always use knowledge base as fallback
   const analyzeCondition = async (queryTerm: string) => {
     setLoading(true);
     setError(null);
     setCurrentStep('analyzing');
     
     try {
-      // Call AI API
-      const response = await fetch('/api/ai-search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          query: queryTerm,
-          context: { type: 'symptom_search' }
-        }),
-      });
+      // First, check if we have this in our knowledge base
+      const normalizedQuery = queryTerm.toLowerCase().trim();
+      const knowledgeEntry = Object.entries(KNOWLEDGE_BASE).find(([key]) => 
+        normalizedQuery.includes(key) || key.includes(normalizedQuery)
+      );
 
       let aiData: AISearchResult;
-      
-      if (response.ok) {
-        const apiResult = await response.json();
-        // Enhance with knowledge base if API returns limited data
-        const normalizedQuery = queryTerm.toLowerCase();
-        const knowledgeEntry = Object.entries(KNOWLEDGE_BASE).find(([key]) => 
-          normalizedQuery.includes(key) || key.includes(normalizedQuery)
-        );
-        
-        if (knowledgeEntry) {
-          aiData = { ...knowledgeEntry[1], ...apiResult };
+
+      // Try API first
+      try {
+        const response = await fetch('/api/ai-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            query: queryTerm,
+            context: { type: 'symptom_search' }
+          }),
+        });
+
+        if (response.ok) {
+          const apiResult = await response.json();
+          
+          // If we have knowledge base entry, merge it with API result
+          if (knowledgeEntry) {
+            aiData = { ...knowledgeEntry[1], ...apiResult };
+          } else {
+            // API returned data but no knowledge base entry - use API data or create generic
+            aiData = {
+              condition: apiResult.condition || queryTerm.charAt(0).toUpperCase() + queryTerm.slice(1),
+              description: apiResult.description || `Information about ${queryTerm}. This condition may benefit from traditional herbal remedies.`,
+              symptoms: apiResult.symptoms || ['Varies by individual'],
+              suggestedHerbs: apiResult.suggestedHerbs || ['ginger', 'turmeric', 'garlic', 'green tea'],
+              suggestedApproach: apiResult.suggestedApproach || 'Consult with a practitioner for personalized recommendations.',
+              relatedConditions: apiResult.relatedConditions || [],
+              safetyWarning: apiResult.safetyWarning
+            };
+          }
         } else {
-          // Generate generic response if not in knowledge base
-          aiData = {
-            condition: queryTerm.charAt(0).toUpperCase() + queryTerm.slice(1),
-            description: `Information about ${queryTerm}. This condition may benefit from traditional herbal remedies.`,
-            symptoms: ['Varies by individual'],
-            suggestedHerbs: ['ginger', 'turmeric', 'garlic', 'green tea'],
-            suggestedApproach: 'Consult with a practitioner for personalized recommendations.',
-            relatedConditions: []
-          };
+          // API failed - use knowledge base or generic fallback
+          throw new Error('API failed');
         }
-      } else {
-        // Fallback to knowledge base
-        const normalizedQuery = queryTerm.toLowerCase();
-        const knowledgeEntry = Object.entries(KNOWLEDGE_BASE).find(([key]) => 
-          normalizedQuery.includes(key) || key.includes(normalizedQuery)
-        );
-        
+      } catch (apiErr) {
+        // API error - fall back to knowledge base or generic response
         if (knowledgeEntry) {
           aiData = knowledgeEntry[1];
         } else {
-          throw new Error('Could not analyze condition');
+          // Create a generic response for unknown conditions
+          aiData = {
+            condition: queryTerm.charAt(0).toUpperCase() + queryTerm.slice(1),
+            description: `Information about ${queryTerm}. While this specific condition is not extensively documented in our traditional African medicine database, many health concerns can be addressed through holistic approaches combining herbal remedies, dietary changes, and lifestyle modifications.`,
+            symptoms: ['Varies by individual', 'Please consult for specific symptoms'],
+            suggestedHerbs: ['ginger', 'turmeric', 'garlic', 'green tea', 'moringa'],
+            suggestedApproach: 'General wellness herbs combined with practitioner consultation for personalized treatment.',
+            relatedConditions: ['general wellness', 'preventive care']
+          };
         }
       }
 
@@ -525,7 +601,7 @@ export default function SearchPage() {
           {!searchQuery && (
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               <span className="text-xs text-[#999]">Popular:</span>
-              {['Arthritis', 'Stress Relief', 'Migraine', 'Digestion', 'Sleep Issues'].map((t) => (
+              {['Arthritis', 'Stress Relief', 'Migraine', 'Low Sperm Count', 'Digestion', 'Sleep Issues'].map((t) => (
                 <button 
                   key={t} 
                   onClick={() => { 
