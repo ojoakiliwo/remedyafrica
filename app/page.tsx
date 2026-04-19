@@ -13,12 +13,41 @@ import {
   Video,
   Leaf
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import HerbIdentifier from '@/components/HerbIdentifier';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 
 export default function HomePage() {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const [logoError, setLogoError] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check admin status
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      
+      try {
+        // Check if user has admin claim in their profile
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setIsAdmin(userData.role === 'admin' || userData.isAdmin === true);
+        } else {
+          setIsAdmin(false);
+        }
+      } catch (err) {
+        console.error('Error checking admin status:', err);
+        setIsAdmin(false);
+      }
+    };
+
+    checkAdmin();
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-[#F5F5F0]">
@@ -50,7 +79,7 @@ export default function HomePage() {
                 Find a Healer
               </Button>
             </Link>
-            <Link href="/category/mental-wellness">
+            <Link href="/search">
               <Button variant="outline" className="border-white text-white hover:bg-white hover:text-[#2C3E2D] px-8 py-6 text-lg">
                 <Search className="w-5 h-5 mr-2" />
                 Explore Remedies
@@ -83,18 +112,18 @@ export default function HomePage() {
         </p>
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Herbs Database */}
-          <Link href="/category/mental-wellness" className="group">
+          {/* AI Health Search */}
+          <Link href="/search" className="group">
             <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all hover:-translate-y-1 h-full">
               <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-green-200 transition-colors">
-                <img src="/logo.png" alt="Herbs" className="w-8 h-8 object-contain opacity-80" onError={(e) => {e.currentTarget.style.display='none'}} />
+                <Search className="w-7 h-7 text-green-600" />
               </div>
-              <h3 className="font-bold text-xl mb-2 text-[#2C3E2D]">Herbal Remedies</h3>
+              <h3 className="font-bold text-xl mb-2 text-[#2C3E2D]">AI Health Search</h3>
               <p className="text-gray-600 mb-4">
-                Browse our comprehensive database of traditional African herbs, their benefits, and preparation methods.
+                Describe your symptoms and our AI will suggest herbal remedies and connect you with practitioners.
               </p>
               <span className="text-[#97A97C] font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-                Explore Herbs <ArrowRight className="w-4 h-4" />
+                Search Now <ArrowRight className="w-4 h-4" />
               </span>
             </div>
           </Link>
@@ -211,7 +240,7 @@ export default function HomePage() {
         <div className="grid md:grid-cols-3 gap-8 text-center">
           <div>
             <div className="w-16 h-16 bg-[#97A97C]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <img src="/logo.png" alt="Traditional" className="w-10 h-10 object-contain" onError={(e) => {e.currentTarget.style.display='none'}} />
+              <Leaf className="w-8 h-8 text-[#97A97C]" />
             </div>
             <h3 className="font-bold text-xl mb-2 text-[#2C3E2D]">Traditional Wisdom</h3>
             <p className="text-gray-600">
@@ -244,7 +273,7 @@ export default function HomePage() {
         <div className="max-w-6xl mx-auto grid md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <img src="/logo.png" alt="RemedyAfrica" className="h-8 w-8 object-contain" onError={(e) => {e.currentTarget.style.display='none'}} />
+              <Leaf className="h-8 w-8 text-[#97A97C]" />
               <span className="font-bold text-xl">RemedyAfrica</span>
             </div>
             <p className="text-gray-400 text-sm">
@@ -255,7 +284,7 @@ export default function HomePage() {
             <h4 className="font-bold mb-4">Quick Links</h4>
             <ul className="space-y-2 text-sm text-gray-400">
               <li><Link href="/practitioners" className="hover:text-white">Find a Healer</Link></li>
-              <li><Link href="/category/mental-wellness" className="hover:text-white">Herbal Remedies</Link></li>
+              <li><Link href="/search" className="hover:text-white">AI Health Search</Link></li>
               <li><Link href="/booking" className="hover:text-white">Book Consultation</Link></li>
               <li><Link href="/forum" className="hover:text-white">Community</Link></li>
             </ul>
