@@ -98,6 +98,10 @@ export default function AdminApplicationsPage() {
       
       for (const docSnap of snapshot.docs) {
         const raw = docSnap.data();
+        // FIX: Ensure certifications is always an array
+        const certs = raw.certifications;
+        const safeCerts = Array.isArray(certs) ? certs : [];
+        
         data.push({
           id: docSnap.id,
           name: raw.name || 'Unknown',
@@ -107,7 +111,7 @@ export default function AdminApplicationsPage() {
           experience: raw.experience || 0,
           specialty: raw.specialty || 'General',
           bio: raw.bio || '',
-          certifications: Array.isArray(raw.certifications) ? raw.certifications : [],
+          certifications: safeCerts,
           status: raw.status || 'pending',
           createdAt: raw.createdAt?.toDate() || new Date(),
           photoURL: raw.photoURL || ''
@@ -135,7 +139,7 @@ export default function AdminApplicationsPage() {
         experience: application.experience,
         specialty: application.specialty,
         bio: application.bio,
-        certifications: application.certifications,
+        certifications: application.certifications || [],
         photoURL: application.photoURL || '',
         isVerified: true,
         isActive: true,
@@ -333,6 +337,9 @@ function ApplicationCard({
   processing: boolean;
   showActions?: boolean;
 }) {
+  // FIX: Ensure certifications is always an array before using .map()
+  const certifications = application.certifications || [];
+  
   return (
     <Card className="border-[#e8e4df]">
       <CardContent className="p-6">
@@ -381,9 +388,10 @@ function ApplicationCard({
               {application.bio}
             </p>
 
-            {application.certifications.length > 0 && (
+            {/* FIX: Safe check - ensure certifications exists and has items before mapping */}
+            {certifications.length > 0 && (
               <div className="flex flex-wrap gap-1">
-                {application.certifications.map((cert, idx) => (
+                {certifications.map((cert, idx) => (
                   <span key={idx} className="text-xs bg-[#f0efe9] px-2 py-1 rounded-full">
                     {cert}
                   </span>
