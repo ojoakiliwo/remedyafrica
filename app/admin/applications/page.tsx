@@ -8,14 +8,14 @@ import { collection, query, getDocs, doc, getDoc, updateDoc, deleteDoc, orderBy 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  ArrowLeft, 
-  CheckCircle, 
-  XCircle, 
-  Loader2, 
-  User, 
-  Mail, 
-  Phone, 
+import {
+  ArrowLeft,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  User,
+  Mail,
+  Phone,
   MapPin,
   FileText,
   Trash2
@@ -42,7 +42,7 @@ export default function AdminApplicationsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
-  
+
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState<Application[]>([]);
   const [processing, setProcessing] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export default function AdminApplicationsPage() {
         router.push('/login');
         return;
       }
-      
+
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
@@ -63,7 +63,7 @@ export default function AdminApplicationsPage() {
           // Practitioners (role === 'practitioner') are NOT admins.
           const adminStatus = userData.role === 'admin';
           setIsAdmin(adminStatus);
-          
+
           if (!adminStatus) {
             toast.error('Access denied - Admin only');
             router.push('/');
@@ -79,7 +79,7 @@ export default function AdminApplicationsPage() {
         router.push('/');
         return;
       }
-      
+
       fetchApplications();
     };
 
@@ -92,16 +92,16 @@ export default function AdminApplicationsPage() {
         collection(db, 'practitioner_applications'),
         orderBy('createdAt', 'desc')
       );
-      
+
       const snapshot = await getDocs(q);
       const data: Application[] = [];
-      
+
       for (const docSnap of snapshot.docs) {
         const raw = docSnap.data();
         // FIX: Ensure certifications is always an array
         const certs = raw.certifications;
         const safeCerts = Array.isArray(certs) ? certs : [];
-        
+
         data.push({
           id: docSnap.id,
           name: raw.name || 'Unknown',
@@ -117,7 +117,7 @@ export default function AdminApplicationsPage() {
           photoURL: raw.photoURL || ''
         });
       }
-      
+
       setApplications(data);
     } catch (error) {
       console.error('Error fetching applications:', error);
@@ -188,7 +188,7 @@ export default function AdminApplicationsPage() {
 
   const handleDelete = async (applicationId: string) => {
     if (!confirm('Are you sure you want to delete this application?')) return;
-    
+
     try {
       await deleteDoc(doc(db, 'practitioner_applications', applicationId));
       toast.success('Application deleted');
@@ -256,9 +256,9 @@ export default function AdminApplicationsPage() {
                 </h2>
                 <div className="space-y-4">
                   {pendingApps.map((app) => (
-                    <ApplicationCard 
-                      key={app.id} 
-                      application={app} 
+                    <ApplicationCard
+                      key={app.id}
+                      application={app}
                       onApprove={() => handleApprove(app)}
                       onReject={() => handleReject(app.id)}
                       onDelete={() => handleDelete(app.id)}
@@ -278,10 +278,10 @@ export default function AdminApplicationsPage() {
                 </h2>
                 <div className="space-y-4">
                   {approvedApps.map((app) => (
-                    <ApplicationCard 
-                      key={app.id} 
-                      application={app} 
-                      onApprove={() => {}}
+                    <ApplicationCard
+                      key={app.id}
+                      application={app}
+                      onApprove={() => { }}
                       onReject={() => handleReject(app.id)}
                       onDelete={() => handleDelete(app.id)}
                       processing={processing === app.id}
@@ -301,11 +301,11 @@ export default function AdminApplicationsPage() {
                 </h2>
                 <div className="space-y-4">
                   {rejectedApps.map((app) => (
-                    <ApplicationCard 
-                      key={app.id} 
-                      application={app} 
+                    <ApplicationCard
+                      key={app.id}
+                      application={app}
                       onApprove={() => handleApprove(app)}
-                      onReject={() => {}}
+                      onReject={() => { }}
                       onDelete={() => handleDelete(app.id)}
                       processing={processing === app.id}
                       showActions={false}
@@ -322,14 +322,14 @@ export default function AdminApplicationsPage() {
 }
 
 // Application Card Component
-function ApplicationCard({ 
-  application, 
-  onApprove, 
-  onReject, 
+function ApplicationCard({
+  application,
+  onApprove,
+  onReject,
   onDelete,
   processing,
   showActions = true
-}: { 
+}: {
   application: Application;
   onApprove: () => void;
   onReject: () => void;
@@ -339,7 +339,7 @@ function ApplicationCard({
 }) {
   // FIX: Ensure certifications is always an array before using .map()
   const certifications = application.certifications || [];
-  
+
   return (
     <Card className="border-[#e8e4df]">
       <CardContent className="p-6">
@@ -353,8 +353,8 @@ function ApplicationCard({
                 <h3 className="text-lg font-semibold text-[#2c3e33]">{application.name}</h3>
                 <Badge className={
                   application.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                  application.status === 'approved' ? 'bg-green-100 text-green-700' :
-                  'bg-red-100 text-red-700'
+                    application.status === 'approved' ? 'bg-green-100 text-green-700' :
+                      'bg-red-100 text-red-700'
                 }>
                   {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
                 </Badge>

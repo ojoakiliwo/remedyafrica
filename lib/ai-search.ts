@@ -104,6 +104,6 @@ export async function smartSearch(
       herbalOptionsAvailable: relatedHerbs.length > 0,
     },
     matchingHerbs: relatedHerbs.length > 0 ? relatedHerbs : undefined,
-    requiresSubscription: userSubscription === null, // Require login for practitioners
+    requiresSubscription: userSubscription === null,
   };
 }

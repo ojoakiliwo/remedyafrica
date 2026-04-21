@@ -1,183 +1,239 @@
 'use client';
 
-import { useAuth } from '@/providers/AuthProvider';
-import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { 
-  Leaf, 
-  Users, 
-  Shield, 
-  Upload,
-  FileText,
-  Settings
-} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 import { db } from '@/lib/firebase/client';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, limit, doc, getDoc } from 'firebase/firestore';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  Users, 
+  Leaf, 
+  Calendar, 
+  TrendingUp, 
+  Shield,
+  ArrowRight,
+  Loader2
+} from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AdminDashboard() {
-  const { isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  
   const [stats, setStats] = useState({
-    herbs: 0,
-    practitioners: 0,
-    pendingApps: 0,
-    users: 0
+    totalUsers: 0,
+    totalPractitioners: 0,
+    pendingApplications: 0,
+    totalConsultations: 0,
+    totalHerbs: 0
   });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && !isAdmin) {
-      router.push('/');
-    }
-  }, [isAdmin, authLoading, router]);
-
-  useEffect(() => {
-    if (!isAdmin) return;
-
-    // Real-time stats
-    const unsubHerbs = onSnapshot(collection(db, 'herbs'), (snap) => {
-      setStats(prev => ({ ...prev, herbs: snap.size }));
-    });
-
-    const unsubPractitioners = onSnapshot(collection(db, 'practitioners'), (snap) => {
-      setStats(prev => ({ ...prev, practitioners: snap.size }));
-    });
-
-    const unsubApps = onSnapshot(
-      query(collection(db, 'practitioner_applications'), where('status', '==', 'pending')),
-      (snap) => {
-        setStats(prev => ({ ...prev, pendingApps: snap.size }));
+    const checkAdmin = async () => {
+      if (!user) {
+        router.push('/login');
+        return;
       }
-    );
-
-    const unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
-      setStats(prev => ({ ...prev, users: snap.size }));
-    });
-
-    setLoading(false);
-
-    return () => {
-      unsubHerbs();
-      unsubPractitioners();
-      unsubApps();
-      unsubUsers();
+      
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const adminStatus = userData.role === 'admin' || userData.isAdmin === true;
+          setIsAdmin(adminStatus);
+          
+          if (!adminStatus) {
+            toast.error('Access denied');
+            router.push('/');
+            return;
+          }
+        } else {
+          router.push('/');
+          return;
+        }
+      } catch (err) {
+        console.error('Error checking admin:', err);
+        router.push('/');
+        return;
+      }
+      
+      fetchStats();
     };
-  }, [isAdmin]);
 
-  if (authLoading || loading) {
+    checkAdmin();
+  }, [user, router]);
+
+  const fetchStats = async () => {
+    try {
+      // Fetch counts from Firestore
+      const usersSnap = await getDocs(query(collection(db, 'users'), limit(1000)));
+      const practitionersSnap = await getDocs(query(collection(db, 'practitioners'), limit(1000)));
+      const applicationsSnap = await getDocs(query(collection(db, 'practitioner_applications'), limit(100)));
+      const consultationsSnap = await getDocs(query(collection(db, 'consultations'), limit(1000)));
+      const herbsSnap = await getDocs(query(collection(db, 'herbs'), limit(1000)));
+
+      setStats({
+        totalUsers: usersSnap.size,
+        totalPractitioners: practitionersSnap.size,
+        pendingApplications: applicationsSnap.size,
+        totalConsultations: consultationsSnap.size,
+        totalHerbs: herbsSnap.size
+      });
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#97A97C]"></div>
+      <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#5c7c6b]" />
       </div>
     );
   }
 
-  if (!isAdmin) return null;
+  if (!isAdmin) {
+    return null;
+  }
 
   const adminCards = [
     {
-      title: 'Upload Herb',
-      description: 'Add new herbal remedies to the database with images and descriptions',
-      icon: Upload,
-      href: '/admin/herbs/upload',
-      color: 'bg-green-100 text-green-600',
-    },
-    {
-      title: 'Manage Herbs',
-      description: 'Edit, update, or remove existing herbs from the database',
+      title: 'Herbs Database',
+      count: stats.totalHerbs,
       icon: Leaf,
-      href: '/admin/herbs/list',
-      color: 'bg-emerald-100 text-emerald-600',
+      href: '/admin/herbs',
+      color: 'text-green-600',
+      bgColor: 'bg-green-100'
     },
     {
-      title: 'Bulk Upload',
-      description: 'Import multiple herbs via CSV file',
-      icon: Upload,
-      href: '/admin/herbs/bulk',
-      color: 'bg-amber-100 text-amber-600',
+      title: 'Practitioners',
+      count: stats.totalPractitioners,
+      icon: Users,
+      href: '/admin/practitioners',
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100'
     },
     {
       title: 'Applications',
-      description: 'Review and approve practitioner applications',
-      icon: FileText,
+      count: stats.pendingApplications,
+      icon: Shield,
       href: '/admin/applications',
-      color: 'bg-blue-100 text-blue-600',
-      badge: stats.pendingApps > 0 ? stats.pendingApps.toString() : undefined,
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-100'
     },
     {
-      title: 'Manage Practitioners',
-      description: 'View, verify, or suspend practitioner accounts',
-      icon: Users,
-      href: '/admin/practitioners',
-      color: 'bg-purple-100 text-purple-600',
-    },
-    {
-      title: 'Platform Settings',
-      description: 'Configure platform settings and permissions',
-      icon: Settings,
-      href: '/admin/settings',
-      color: 'bg-gray-100 text-gray-600',
-    },
+      title: 'Consultations',
+      count: stats.totalConsultations,
+      icon: Calendar,
+      href: '/admin/consultations',
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-100'
+    }
   ];
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] py-12 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Shield className="w-8 h-8 text-[#97A97C]" />
-            <h1 className="text-3xl font-bold text-[#2C3E2D]">Admin Dashboard</h1>
-          </div>
-          <p className="text-gray-600">
-            Manage herbs, practitioners, and platform content
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <p className="text-sm text-gray-500 mb-1">Total Herbs</p>
-            <p className="text-2xl font-bold text-[#2C3E2D]">{stats.herbs}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <p className="text-sm text-gray-500 mb-1">Practitioners</p>
-            <p className="text-2xl font-bold text-[#2C3E2D]">{stats.practitioners}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <p className="text-sm text-gray-500 mb-1">Pending Applications</p>
-            <p className="text-2xl font-bold text-orange-600">{stats.pendingApps}</p>
-          </div>
-          <div className="bg-white p-6 rounded-xl shadow-sm">
-            <p className="text-sm text-gray-500 mb-1">Total Users</p>
-            <p className="text-2xl font-bold text-[#2C3E2D]">{stats.users}</p>
+    <div className="min-h-screen bg-[#faf9f7]">
+      {/* Header */}
+      <div className="bg-white border-b border-[#e8e4df]">
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-[#2c3e33]">Admin Dashboard</h1>
+              <p className="text-sm text-[#5a5a5a]">Manage your platform</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-[#5a5a5a]">Total Users: {stats.totalUsers}</span>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Stats Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {adminCards.map((card) => (
-            <Link 
-              key={card.href} 
-              href={card.href}
-              className="group bg-white p-6 rounded-xl shadow-md hover:shadow-xl transition-all hover:-translate-y-1"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${card.color}`}>
-                  <card.icon className="w-6 h-6" />
-                </div>
-                {card.badge && (
-                  <span className="bg-red-100 text-red-600 text-xs font-bold px-2 py-1 rounded-full">
-                    {card.badge}
-                  </span>
-                )}
-              </div>
-              <h3 className="font-bold text-lg mb-2 text-[#2C3E2D] group-hover:text-[#97A97C] transition-colors">
-                {card.title}
-              </h3>
-              <p className="text-gray-600 text-sm">
-                {card.description}
-              </p>
+            <Link key={card.title} href={card.href}>
+              <Card className="border-[#e8e4df] hover:shadow-md transition-all cursor-pointer h-full">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-sm text-[#5a5a5a] mb-1">{card.title}</p>
+                      <p className="text-3xl font-bold text-[#2c3e33]">{card.count}</p>
+                    </div>
+                    <div className={`w-12 h-12 ${card.bgColor} rounded-lg flex items-center justify-center`}>
+                      <card.icon className={`h-6 w-6 ${card.color}`} />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex items-center text-sm text-[#5c7c6b]">
+                    <span>Manage</span>
+                    <ArrowRight className="h-4 w-4 ml-1" />
+                  </div>
+                </CardContent>
+              </Card>
             </Link>
           ))}
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <Card className="border-[#e8e4df]">
+            <CardHeader>
+              <CardTitle className="text-lg">Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Link href="/admin/herbs/bulk">
+                <Button variant="outline" className="w-full justify-start">
+                  <Leaf className="h-4 w-4 mr-2" />
+                  Bulk Upload Herbs
+                </Button>
+              </Link>
+              <Link href="/admin/practitioners">
+                <Button variant="outline" className="w-full justify-start">
+                  <Users className="h-4 w-4 mr-2" />
+                  Review Practitioners
+                </Button>
+              </Link>
+              <Link href="/admin/settings">
+                <Button variant="outline" className="w-full justify-start">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Platform Settings
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          <Card className="border-[#e8e4df]">
+            <CardHeader>
+              <CardTitle className="text-lg">Platform Health</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-[#5a5a5a]">Active Practitioners</span>
+                  <span className="font-semibold text-[#2c3e33]">{stats.totalPractitioners}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-[#5a5a5a]">Pending Applications</span>
+                  <span className="font-semibold text-amber-600">{stats.pendingApplications}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-[#5a5a5a]">Total Consultations</span>
+                  <span className="font-semibold text-[#2c3e33]">{stats.totalConsultations}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-[#5a5a5a]">Herbs in Database</span>
+                  <span className="font-semibold text-green-600">{stats.totalHerbs}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

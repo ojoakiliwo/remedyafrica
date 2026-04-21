@@ -1,267 +1,273 @@
 'use client';
 
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/providers/AuthProvider';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Leaf, Menu, X, User, LayoutDashboard, LogOut, Shield } from 'lucide-react';
-import { useState } from 'react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { 
+  Leaf, 
+  Search, 
+  Menu, 
+  X, 
+  User, 
+  LogOut, 
+  Shield, 
+  MessageSquare, 
+  Video,
+  ChevronDown
+} from 'lucide-react';
 
-export function Navbar() {
-  const { user, profile, logout, isAdmin } = useAuth();
+export default function Navbar() {
+  const { user, userData, logout } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [quickSearch, setQuickSearch] = useState('');
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Error logging out:', error);
+  const isAdmin = userData?.role === 'admin';
+
+  const handleQuickSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (quickSearch.trim()) {
+      router.push(`/search?q=${encodeURIComponent(quickSearch.trim())}`);
+      setQuickSearch('');
+      setSearchOpen(false);
+    } else {
+      router.push('/search');
     }
   };
 
-  // Get display name from profile or email
-  const displayName = profile?.displayName || user?.email?.split('@')[0] || 'User';
-  const firstLetter = displayName.charAt(0).toUpperCase();
+  const navLinks = [
+    { href: '/', label: 'Home' },
+    { href: '/category/all', label: 'Categories' },
+    { href: '/practitioners', label: 'Practitioners' },
+    { href: '/forum', label: 'Forum' },
+  ];
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-[#97A97C]/20 bg-[#F5F5DC]/95 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo with actual image */}
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="relative w-8 h-8">
-              <img 
-                src="/logo.png" 
-                alt="RemedyAfrica" 
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.style.display = 'none';
-                  const parent = target.parentElement;
-                  if (parent) {
-                    const leafDiv = document.createElement('div');
-                    leafDiv.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#97A97C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>';
-                    parent.appendChild(leafDiv.firstChild!);
-                  }
-                }}
-              />
-            </div>
-            <span className="text-2xl font-bold text-[#2C3E2D]">RemedyAfrica</span>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link href="/" className="text-[#2C3E2D] hover:text-[#97A97C] transition-colors">
-              Home
-            </Link>
-            <Link href="/herbs" className="text-[#2C3E2D] hover:text-[#97A97C] transition-colors">
-              Herbs
-            </Link>
-            <Link href="/practitioners" className="text-[#2C3E2D] hover:text-[#97A97C] transition-colors">
-              Practitioners
-            </Link>
-            <Link href="/forum" className="text-[#2C3E2D] hover:text-[#97A97C] transition-colors">
-              Forum
-            </Link>
+    <nav className="sticky top-0 z-50 w-full border-b border-[#e8e4df] bg-[#faf9f7]/95 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#5c7c6b]">
+            <Leaf className="h-5 w-5 text-white" />
           </div>
+          <span className="text-xl font-bold tracking-tight text-[#2c3e33]">
+            Remedy<span className="text-[#b89f6b]">Africa</span>
+          </span>
+        </Link>
 
-          {/* Auth Buttons / Profile Dropdown */}
-          <div className="hidden md:flex items-center space-x-4">
-            {user ? (
-              <div className="relative">
-                <button
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="flex items-center space-x-2 focus:outline-none"
+        {/* Desktop Navigation */}
+        <div className="hidden items-center gap-1 md:flex">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                pathname === link.href
+                  ? 'bg-[#5c7c6b]/10 text-[#5c7c6b]'
+                  : 'text-[#5a5a5a] hover:bg-[#5c7c6b]/5 hover:text-[#2c3e33]'
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
+
+        {/* Right Side Actions */}
+        <div className="flex items-center gap-2">
+          {/* Desktop Search Toggle */}
+          <div className="hidden md:block">
+            {searchOpen ? (
+              <form onSubmit={handleQuickSearch} className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  placeholder="Search herbs, symptoms..."
+                  value={quickSearch}
+                  onChange={(e) => setQuickSearch(e.target.value)}
+                  className="h-9 w-64 border-[#d4cfc7] bg-white text-sm focus-visible:ring-[#5c7c6b]"
+                  autoFocus
+                />
+                <Button 
+                  type="submit" 
+                  size="sm" 
+                  className="h-9 bg-[#5c7c6b] hover:bg-[#4a6354]"
                 >
-                  {profile?.photoURL ? (
-                    <img 
-                      src={profile.photoURL} 
-                      alt="Profile" 
-                      className="w-8 h-8 rounded-full object-cover border-2 border-[#97A97C]"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 rounded-full bg-[#97A97C] flex items-center justify-center text-white font-bold border-2 border-[#97A97C]">
-                      {firstLetter}
-                    </div>
-                  )}
-                  <span className="text-[#2C3E2D] font-medium max-w-[100px] truncate">
-                    {displayName}
-                  </span>
-                  {isAdmin && (
-                    <Shield className="w-4 h-4 text-amber-600" />
-                  )}
-                </button>
-
-                {/* Dropdown Menu */}
-                {dropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-                    <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="text-sm font-medium text-[#2C3E2D] truncate">{displayName}</p>
-                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                      {isAdmin && (
-                        <p className="text-xs text-amber-600 font-medium mt-1">Administrator</p>
-                      )}
-                    </div>
-                    <Link 
-                      href="/profile" 
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
-                      onClick={() => setDropdownOpen(false)}
-                    >
-                      <User className="w-4 h-4 mr-2" />
-                      My Profile
-                    </Link>
-                    <Link 
-                      href="/dashboard" 
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center"
-                      onClick={() => setDropdownOpen(false)}
-                    >
-                      <LayoutDashboard className="w-4 h-4 mr-2" />
-                      Dashboard
-                    </Link>
-                    
-                    {/* Admin Link - Only show if admin */}
-                    {isAdmin && (
-                      <>
-                        <div className="border-t border-gray-100 my-1"></div>
-                        <Link 
-                          href="/admin" 
-                          className="block px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 flex items-center font-medium"
-                          onClick={() => setDropdownOpen(false)}
-                        >
-                          <Shield className="w-4 h-4 mr-2" />
-                          Admin Panel
-                        </Link>
-                        <Link 
-                          href="/admin/applications" 
-                          className="block px-4 py-2 text-sm text-amber-600 hover:bg-amber-50 flex items-center"
-                          onClick={() => setDropdownOpen(false)}
-                        >
-                          <span className="w-4 h-4 mr-2 text-xs flex items-center justify-center">•</span>
-                          Applications
-                        </Link>
-                      </>
-                    )}
-                    
-                    <div className="border-t border-gray-100 my-1"></div>
-                    <button
-                      onClick={() => {
-                        handleLogout();
-                        setDropdownOpen(false);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 flex items-center"
-                    >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Logout
-                    </button>
-                  </div>
-                )}
-              </div>
+                  <Search className="h-4 w-4" />
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-9 px-2"
+                  onClick={() => { setSearchOpen(false); setQuickSearch(''); }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </form>
             ) : (
-              <>
-                <Link href="/login">
-                  <Button variant="ghost" className="text-[#2C3E2D]">Login</Button>
-                </Link>
-                <Link href="/signup">
-                  <Button className="bg-[#97A97C] hover:bg-[#7A8A63] text-white">
-                    Sign Up
-                  </Button>
-                </Link>
-              </>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-[#5a5a5a] hover:bg-[#5c7c6b]/5 hover:text-[#5c7c6b]"
+                onClick={() => setSearchOpen(true)}
+              >
+                <Search className="h-5 w-5" />
+              </Button>
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden p-2 text-[#2C3E2D]"
+          {/* Mobile Search Link */}
+          <Link href="/search" className="md:hidden">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-[#5a5a5a] hover:bg-[#5c7c6b]/5 hover:text-[#5c7c6b]"
+            >
+              <Search className="h-5 w-5" />
+            </Button>
+          </Link>
+
+          {/* Auth Section */}
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-9 gap-2 pl-2 pr-3">
+                  <Avatar className="h-7 w-7 border border-[#e8e4df]">
+                    <AvatarFallback className="bg-[#5c7c6b]/10 text-xs font-medium text-[#5c7c6b]">
+                      {(userData?.displayName || user?.email || 'U').charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="hidden max-w-[100px] truncate text-sm font-medium text-[#2c3e33] sm:block">
+                    {userData?.displayName || user?.email?.split('@')[0] || 'User'}
+                  </span>
+                  <ChevronDown className="hidden h-4 w-4 text-[#999] sm:block" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 border-[#e8e4df] bg-white">
+                <div className="px-3 py-2">
+                  <p className="text-sm font-medium text-[#2c3e33]">{user.email}</p>
+                  {isAdmin && (
+                    <p className="mt-0.5 text-xs text-[#b89f6b] font-medium">Administrator</p>
+                  )}
+                </div>
+                <DropdownMenuSeparator className="bg-[#e8e4df]" />
+                
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/profile" className="flex items-center gap-2">
+                    <User className="h-4 w-4" /> Profile
+                  </Link>
+                </DropdownMenuItem>
+                
+                {isAdmin && (
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href="/admin/applications" className="flex items-center gap-2">
+                      <Shield className="h-4 w-4" /> Admin Panel
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/consultations" className="flex items-center gap-2">
+                    <Video className="h-4 w-4" /> My Consultations
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/forum" className="flex items-center gap-2">
+                    <MessageSquare className="h-4 w-4" /> Forum
+                  </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="bg-[#e8e4df]" />
+                
+                <DropdownMenuItem 
+                  onClick={logout} 
+                  className="cursor-pointer text-red-600 focus:text-red-600"
+                >
+                  <LogOut className="mr-2 h-4 w-4" /> Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link href="/login" className="hidden sm:block">
+                <Button variant="ghost" className="text-sm font-medium text-[#5a5a5a] hover:text-[#2c3e33]">
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/signup">
+                <Button className="bg-[#5c7c6b] text-sm font-medium hover:bg-[#4a6354]">
+                  Get Started
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          {/* Mobile Menu Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
-            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </Button>
         </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-[#97A97C]/20">
-            <div className="flex flex-col space-y-4">
-              <Link href="/" className="text-[#2C3E2D] hover:text-[#97A97C]" onClick={() => setMobileMenuOpen(false)}>
-                Home
-              </Link>
-              <Link href="/herbs" className="text-[#2C3E2D] hover:text-[#97A97C]" onClick={() => setMobileMenuOpen(false)}>
-                Herbs
-              </Link>
-              <Link href="/practitioners" className="text-[#2C3E2D] hover:text-[#97A97C]" onClick={() => setMobileMenuOpen(false)}>
-                Practitioners
-              </Link>
-              <Link href="/forum" className="text-[#2C3E2D] hover:text-[#97A97C]" onClick={() => setMobileMenuOpen(false)}>
-                Forum
-              </Link>
-              
-              {user ? (
-                <>
-                  <div className="flex items-center space-x-2 px-2 py-2 bg-gray-50 rounded">
-                    {profile?.photoURL ? (
-                      <img src={profile.photoURL} alt="Profile" className="w-8 h-8 rounded-full" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-[#97A97C] flex items-center justify-center text-white font-bold">
-                        {firstLetter}
-                      </div>
-                    )}
-                    <div>
-                      <p className="font-medium text-[#2C3E2D]">{displayName}</p>
-                      {isAdmin && (
-                        <p className="text-xs text-amber-600">Administrator</p>
-                      )}
-                    </div>
-                  </div>
-                  <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="text-[#2C3E2D] hover:text-[#97A97C] pl-4">
-                    My Profile
-                  </Link>
-                  <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="text-[#2C3E2D] hover:text-[#97A97C] pl-4">
-                    Dashboard
-                  </Link>
-                  
-                  {/* Admin Links in Mobile */}
-                  {isAdmin && (
-                    <>
-                      <div className="border-t border-gray-200 my-2"></div>
-                      <Link href="/admin" onClick={() => setMobileMenuOpen(false)} className="text-amber-700 font-medium pl-4 flex items-center">
-                        <Shield className="w-4 h-4 mr-2" />
-                        Admin Panel
-                      </Link>
-                      <Link href="/admin/applications" onClick={() => setMobileMenuOpen(false)} className="text-amber-600 text-sm pl-8">
-                        Review Applications
-                      </Link>
-                    </>
-                  )}
-                  
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="text-left text-red-600 pl-4 border-t border-gray-200 pt-2"
-                  >
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <div className="flex flex-col space-y-2 pt-4 border-t border-[#97A97C]/20">
-                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                    <Button variant="outline" className="w-full border-[#97A97C] text-[#97A97C]">
-                      Login
-                    </Button>
-                  </Link>
-                  <Link href="/signup" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full bg-[#97A97C] hover:bg-[#7A8A63] text-white">
-                      Sign Up
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="border-t border-[#e8e4df] bg-white px-4 py-4 md:hidden">
+          <form onSubmit={handleQuickSearch} className="mb-4 flex gap-2">
+            <Input
+              placeholder="Search herbs, symptoms..."
+              value={quickSearch}
+              onChange={(e) => setQuickSearch(e.target.value)}
+              className="flex-1 border-[#d4cfc7]"
+            />
+            <Button type="submit" className="bg-[#5c7c6b] hover:bg-[#4a6354]">
+              <Search className="h-4 w-4" />
+            </Button>
+          </form>
+          <div className="flex flex-col gap-1">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`rounded-md px-3 py-2.5 text-sm font-medium ${
+                  pathname === link.href
+                    ? 'bg-[#5c7c6b]/10 text-[#5c7c6b]'
+                    : 'text-[#5a5a5a] hover:bg-[#5c7c6b]/5'
+                }`}
+              >
+                {link.label}
+              </Link>
+            ))}
+            {!user && (
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="mt-2 rounded-md px-3 py-2.5 text-sm font-medium text-[#5a5a5a] hover:bg-[#5c7c6b]/5"
+              >
+                Sign In
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </nav>
   );
 }

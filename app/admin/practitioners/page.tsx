@@ -31,21 +31,22 @@ import {
 
 interface Practitioner {
   id: string;
-  fullName: string;
+  name: string;
   email: string;
+  phone: string;
+  location: string;
+  experience: number;
   specialty: string;
   bio: string;
-  verified: boolean;
-  available: boolean;
-  consultationFee?: number;
-  rating?: number;
-  reviewCount?: number;
-  joinedAt?: Date;
-  documents?: {
-    certificate?: string;
-    license?: string;
-    idDoc?: string;
-  };
+  photoURL: string;
+  certifications: string[];
+  isVerified: boolean;
+  isActive: boolean;
+  rating: number;
+  reviews: number;
+  consultationFee: number;
+  createdAt: Date;
+  applicationId: string;
 }
 
 export default function AdminPractitionersPage() {
@@ -58,7 +59,7 @@ export default function AdminPractitionersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
 
-  // Check admin status
+  // Check admin status — STRICT: only role === 'admin'
   useEffect(() => {
     const checkAdmin = async () => {
       if (!user) {
@@ -70,7 +71,8 @@ export default function AdminPractitionersPage() {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          const adminStatus = userData.role === 'admin' || userData.isAdmin === true;
+          // STRICT: Only role === 'admin' is admin. Practitioners are NOT admins.
+          const adminStatus = userData.role === 'admin';
           setIsAdmin(adminStatus);
           
           if (!adminStatus) {
@@ -98,7 +100,7 @@ export default function AdminPractitionersPage() {
     try {
       const q = query(
         collection(db, 'practitioners'),
-        orderBy('joinedAt', 'desc'),
+        orderBy('createdAt', 'desc'),
         limit(100)
       );
       
@@ -109,17 +111,22 @@ export default function AdminPractitionersPage() {
         const raw = docSnap.data();
         data.push({
           id: docSnap.id,
-          fullName: raw.displayName || raw.fullName || 'Unknown',
+          name: raw.name || 'Unknown',
           email: raw.email || '',
+          phone: raw.phone || '',
+          location: raw.location || '',
+          experience: raw.experience || 0,
           specialty: raw.specialty || 'General',
           bio: raw.bio || '',
-          verified: raw.verified === true,
-          available: raw.available !== false,
-          consultationFee: raw.consultationFee,
+          photoURL: raw.photoURL || '',
+          certifications: Array.isArray(raw.certifications) ? raw.certifications : [],
+          isVerified: raw.isVerified === true,
+          isActive: raw.isActive !== false,
           rating: raw.rating || 0,
-          reviewCount: raw.reviewCount || 0,
-          joinedAt: raw.joinedAt?.toDate(),
-          documents: raw.documents || {}
+          reviews: raw.reviews || 0,
+          consultationFee: raw.consultationFee || 0,
+          createdAt: raw.createdAt?.toDate() || new Date(),
+          applicationId: raw.applicationId || ''
         });
       }
       
@@ -135,7 +142,7 @@ export default function AdminPractitionersPage() {
   const handleVerify = async (practitionerId: string, verified: boolean) => {
     try {
       await updateDoc(doc(db, 'practitioners', practitionerId), {
-        verified,
+        isVerified: verified,
         verifiedAt: verified ? new Date() : null,
         verifiedBy: verified ? user?.uid : null
       });
@@ -148,38 +155,39 @@ export default function AdminPractitionersPage() {
     }
   };
 
-  const handleToggleAvailability = async (practitionerId: string, available: boolean) => {
+  const handleToggleActive = async (practitionerId: string, active: boolean) => {
     try {
       await updateDoc(doc(db, 'practitioners', practitionerId), {
-        available
+        isActive: active
       });
       
-      toast.success(`Practitioner ${available ? 'enabled' : 'disabled'}`);
+      toast.success(`Practitioner ${active ? 'activated' : 'deactivated'}`);
       fetchPractitioners();
     } catch (error) {
-      toast.error('Failed to update availability');
+      toast.error('Failed to update status');
     }
   };
 
   const filteredPractitioners = practitioners.filter(p => {
     const matchesSearch = 
-      p.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.specialty.toLowerCase().includes(searchQuery.toLowerCase());
+      p.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.location.toLowerCase().includes(searchQuery.toLowerCase());
     
     if (activeTab === 'all') return matchesSearch;
-    if (activeTab === 'verified') return matchesSearch && p.verified;
-    if (activeTab === 'pending') return matchesSearch && !p.verified;
-    if (activeTab === 'available') return matchesSearch && p.available;
+    if (activeTab === 'verified') return matchesSearch && p.isVerified;
+    if (activeTab === 'pending') return matchesSearch && !p.isVerified;
+    if (activeTab === 'active') return matchesSearch && p.isActive;
     
     return matchesSearch;
   });
 
   const stats = {
     total: practitioners.length,
-    verified: practitioners.filter(p => p.verified).length,
-    pending: practitioners.filter(p => !p.verified).length,
-    available: practitioners.filter(p => p.available).length
+    verified: practitioners.filter(p => p.isVerified).length,
+    pending: practitioners.filter(p => !p.isVerified).length,
+    active: practitioners.filter(p => p.isActive).length
   };
 
   if (loading) {
@@ -240,8 +248,8 @@ export default function AdminPractitionersPage() {
           </Card>
           <Card className="border-[#e8e4df]">
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-blue-600">{stats.available}</div>
-              <p className="text-sm text-[#5a5a5a]">Available Now</p>
+              <div className="text-2xl font-bold text-blue-600">{stats.active}</div>
+              <p className="text-sm text-[#5a5a5a]">Active Now</p>
             </CardContent>
           </Card>
         </div>
@@ -251,7 +259,7 @@ export default function AdminPractitionersPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#999]" />
             <Input
-              placeholder="Search practitioners..."
+              placeholder="Search practitioners by name, email, specialty, or location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -265,7 +273,7 @@ export default function AdminPractitionersPage() {
             <TabsTrigger value="all">All ({stats.total})</TabsTrigger>
             <TabsTrigger value="verified">Verified ({stats.verified})</TabsTrigger>
             <TabsTrigger value="pending">Pending ({stats.pending})</TabsTrigger>
-            <TabsTrigger value="available">Available ({stats.available})</TabsTrigger>
+            <TabsTrigger value="active">Active ({stats.active})</TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab} className="space-y-4">
@@ -273,7 +281,18 @@ export default function AdminPractitionersPage() {
               <div className="text-center py-12 bg-white rounded-lg border border-[#e8e4df]">
                 <User className="h-12 w-12 text-[#d4cfc7] mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-[#2c3e33]">No practitioners found</h3>
-                <p className="text-sm text-[#5a5a5a]">Try adjusting your search or filters</p>
+                <p className="text-sm text-[#5a5a5a]">
+                  {practitioners.length === 0 
+                    ? "No practitioners in the database yet. Approve applications from the Applications page."
+                    : "Try adjusting your search or filters"}
+                </p>
+                {practitioners.length === 0 && (
+                  <Link href="/admin/applications" className="mt-4 inline-block">
+                    <Button className="bg-[#5c7c6b] mt-4">
+                      Go to Applications
+                    </Button>
+                  </Link>
+                )}
               </div>
             ) : (
               filteredPractitioners.map((practitioner) => (
@@ -283,9 +302,9 @@ export default function AdminPractitionersPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2 flex-wrap">
                           <h3 className="text-lg font-semibold text-[#2c3e33]">
-                            {practitioner.fullName}
+                            {practitioner.name}
                           </h3>
-                          {practitioner.verified ? (
+                          {practitioner.isVerified ? (
                             <Badge className="bg-green-100 text-green-700">
                               <CheckCircle className="h-3 w-3 mr-1" />
                               Verified
@@ -293,16 +312,23 @@ export default function AdminPractitionersPage() {
                           ) : (
                             <Badge variant="secondary" className="bg-amber-100 text-amber-700">
                               <XCircle className="h-3 w-3 mr-1" />
-                              Pending
+                              Pending Verification
                             </Badge>
                           )}
-                          {practitioner.available && (
-                            <Badge className="bg-blue-100 text-blue-700">Available</Badge>
+                          {practitioner.isActive ? (
+                            <Badge className="bg-blue-100 text-blue-700">Active</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="bg-gray-100 text-gray-600">Inactive</Badge>
                           )}
                         </div>
                         
-                        <p className="text-sm text-[#5c7c6b] font-medium mb-2">
+                        <p className="text-sm text-[#5c7c6b] font-medium mb-1">
                           {practitioner.specialty}
+                        </p>
+                        
+                        <p className="text-sm text-[#5a5a5a] mb-2">
+                          <span className="font-medium">Location:</span> {practitioner.location} • 
+                          <span className="font-medium"> Experience:</span> {practitioner.experience} years
                         </p>
                         
                         <p className="text-sm text-[#5a5a5a] line-clamp-2 mb-3">
@@ -310,20 +336,29 @@ export default function AdminPractitionersPage() {
                         </p>
                         
                         <div className="flex items-center gap-4 text-sm text-[#5a5a5a] flex-wrap">
-                          {(practitioner.rating ?? 0) > 0 && (
+                          {practitioner.rating > 0 && (
                             <div className="flex items-center gap-1">
                               <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                              <span>{(practitioner.rating ?? 0).toFixed(1)}</span>
-                              <span>({practitioner.reviewCount || 0} reviews)</span>
+                              <span>{practitioner.rating.toFixed(1)}</span>
+                              <span>({practitioner.reviews} reviews)</span>
                             </div>
                           )}
-                          {practitioner.consultationFee && (
+                          {practitioner.consultationFee > 0 && (
                             <span>R{practitioner.consultationFee}/session</span>
                           )}
-                          {practitioner.joinedAt && (
-                            <span>Joined {practitioner.joinedAt.toLocaleDateString()}</span>
-                          )}
+                          <span>{practitioner.email}</span>
+                          <span>{practitioner.phone}</span>
                         </div>
+
+                        {practitioner.certifications.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-1">
+                            {practitioner.certifications.map((cert, idx) => (
+                              <span key={idx} className="text-xs bg-[#f0efe9] px-2 py-1 rounded-full">
+                                {cert}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       <DropdownMenu>
@@ -334,13 +369,13 @@ export default function AdminPractitionersPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => router.push(`/practitioners/${practitioner.id}`)}>
-                            View Profile
+                            View Public Profile
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleVerify(practitioner.id, !practitioner.verified)}>
-                            {practitioner.verified ? 'Unverify' : 'Verify'}
+                          <DropdownMenuItem onClick={() => handleVerify(practitioner.id, !practitioner.isVerified)}>
+                            {practitioner.isVerified ? 'Unverify' : 'Verify'}
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleToggleAvailability(practitioner.id, !practitioner.available)}>
-                            {practitioner.available ? 'Set Unavailable' : 'Set Available'}
+                          <DropdownMenuItem onClick={() => handleToggleActive(practitioner.id, !practitioner.isActive)}>
+                            {practitioner.isActive ? 'Deactivate' : 'Activate'}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
