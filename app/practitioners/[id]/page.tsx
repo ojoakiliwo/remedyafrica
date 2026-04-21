@@ -5,28 +5,31 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface Practitioner {
   id: string;
   name: string;
-  title: string;
+  title?: string;
   specialty: string;
   location: string;
   experience: number;
   rating: number;
   reviews: number;
-  imageUrl: string;
+  photoURL?: string;
+  imageUrl?: string;
   bio: string;
   consultationFee: number;
   isVerified: boolean;
-  languages: string[];
-  certifications: string[];
-  services: string[];
+  languages?: string[];
+  certifications?: string[];
+  services?: string[];
 }
 
 export default function PractitionerProfilePage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const [practitioner, setPractitioner] = useState<Practitioner | null>(null);
   const [loading, setLoading] = useState(true);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -39,7 +42,7 @@ export default function PractitionerProfilePage() {
   const [bookingLoading, setBookingLoading] = useState(false);
 
   useEffect(() => {
-    loadPractitioner();
+    if (params.id) loadPractitioner();
   }, [params.id]);
 
   const loadPractitioner = async () => {
@@ -47,7 +50,24 @@ export default function PractitionerProfilePage() {
       const docRef = doc(db, 'practitioners', params.id as string);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setPractitioner({ id: docSnap.id, ...docSnap.data() } as Practitioner);
+        const raw = docSnap.data();
+        setPractitioner({
+          id: docSnap.id,
+          name: raw.name || 'Unknown',
+          title: raw.title || raw.specialty || 'Practitioner',
+          specialty: raw.specialty || 'General',
+          location: raw.location || '',
+          experience: raw.experience || 0,
+          rating: raw.rating || 0,
+          reviews: raw.reviews || 0,
+          photoURL: raw.photoURL || raw.imageUrl || '',
+          bio: raw.bio || '',
+          consultationFee: raw.consultationFee || 0,
+          isVerified: raw.isVerified === true,
+          languages: Array.isArray(raw.languages) ? raw.languages : [],
+          certifications: Array.isArray(raw.certifications) ? raw.certifications : [],
+          services: Array.isArray(raw.services) ? raw.services : []
+        });
       }
     } catch (error) {
       console.error('Error loading practitioner:', error);
@@ -58,30 +78,30 @@ export default function PractitionerProfilePage() {
 
   const handleBookConsultation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!practitioner) return;
+    if (!practitioner || !user) {
+      router.push('/login');
+      return;
+    }
     
     setBookingLoading(true);
     try {
-      // Create consultation record
       const consultationRef = await addDoc(collection(db, 'consultations'), {
         practitionerId: practitioner.id,
         practitionerName: practitioner.name,
-        practitionerImage: practitioner.imageUrl,
-        patientId: 'current-user-id', // TODO: Get from auth
-        patientName: 'Current User', // TODO: Get from auth
+        practitionerImage: practitioner.photoURL || practitioner.imageUrl || '',
+        patientId: user.uid,
+        patientName: user.displayName || 'Patient',
+        patientEmail: user.email,
         date: bookingData.date,
         time: bookingData.time,
         type: bookingData.type,
         status: 'scheduled',
         notes: bookingData.notes,
         createdAt: serverTimestamp(),
-        roomUrl: null // Will be created when call starts
+        roomUrl: null
       });
       
-      // Close modal
       setShowBookingModal(false);
-      
-      // Redirect to consultation room
       router.push(`/consultation/${consultationRef.id}`);
     } catch (error) {
       console.error('Error booking:', error);
@@ -112,6 +132,8 @@ export default function PractitionerProfilePage() {
     );
   }
 
+  const displayImage = practitioner.photoURL || practitioner.imageUrl;
+
   return (
     <div className="min-h-screen bg-[#F5F5F0]">
       {/* Booking Modal */}
@@ -132,7 +154,7 @@ export default function PractitionerProfilePage() {
             <div className="mb-4 p-4 bg-gray-50 rounded">
               <p className="font-semibold">{practitioner.name}</p>
               <p className="text-sm text-gray-600">{practitioner.title}</p>
-              <p className="text-[#97A97C] font-bold mt-2">${practitioner.consultationFee}/session</p>
+              <p className="text-[#97A97C] font-bold mt-2">R{practitioner.consultationFee}/session</p>
             </div>
 
             <form onSubmit={handleBookConsultation} className="space-y-4">
@@ -192,7 +214,7 @@ export default function PractitionerProfilePage() {
                 disabled={bookingLoading}
                 className="w-full bg-[#97A97C] text-white py-3 rounded-lg font-bold hover:bg-[#7A8A63] disabled:opacity-50"
               >
-                {bookingLoading ? 'Booking...' : 'Confirm & Pay $' + practitioner.consultationFee}
+                {bookingLoading ? 'Booking...' : `Confirm & Pay R${practitioner.consultationFee}`}
               </button>
             </form>
           </div>
@@ -211,9 +233,9 @@ export default function PractitionerProfilePage() {
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           <div className="md:flex">
             <div className="md:w-1/3 bg-gray-200 h-64 md:h-auto relative">
-              {practitioner.imageUrl ? (
+              {displayImage ? (
                 <img 
-                  src={practitioner.imageUrl} 
+                  src={displayImage} 
                   alt={`Portrait of ${practitioner.name}`}
                   className="w-full h-full object-cover"
                 />
@@ -229,16 +251,16 @@ export default function PractitionerProfilePage() {
                 <div>
                   <h1 className="text-3xl font-bold text-[#2C3E2D] mb-1">{practitioner.name}</h1>
                   <p className="text-[#97A97C] text-lg mb-2">{practitioner.title}</p>
-                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
+                  <div className="flex items-center gap-4 text-sm text-gray-600 mb-4 flex-wrap">
                     <span>📍 {practitioner.location}</span>
-                    <span>⭐ {practitioner.rating} ({practitioner.reviews} reviews)</span>
+                    <span>⭐ {practitioner.rating || '0.0'} ({practitioner.reviews || 0} reviews)</span>
                     {practitioner.isVerified && (
                       <span className="text-blue-600 font-semibold">✓ Verified</span>
                     )}
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-3xl font-bold text-[#2C3E2D]">${practitioner.consultationFee}</p>
+                  <p className="text-3xl font-bold text-[#2C3E2D]">R{practitioner.consultationFee || 0}</p>
                   <p className="text-sm text-gray-500">per consultation</p>
                 </div>
               </div>
@@ -248,16 +270,16 @@ export default function PractitionerProfilePage() {
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-[#F5F5F0] p-4 rounded">
                   <p className="text-sm text-gray-600">Experience</p>
-                  <p className="font-bold text-[#2C3E2D]">{practitioner.experience} years</p>
+                  <p className="font-bold text-[#2C3E2D]">{practitioner.experience || 0} years</p>
                 </div>
                 <div className="bg-[#F5F5F0] p-4 rounded">
                   <p className="text-sm text-gray-600">Languages</p>
-                  <p className="font-bold text-[#2C3E2D]">{practitioner.languages?.join(', ')}</p>
+                  <p className="font-bold text-[#2C3E2D]">{(practitioner.languages || []).join(', ') || 'English'}</p>
                 </div>
               </div>
 
               <button 
-                onClick={() => setShowBookingModal(true)}
+                onClick={() => user ? setShowBookingModal(true) : router.push('/login')}
                 className="w-full md:w-auto bg-[#97A97C] text-white px-8 py-3 rounded-lg font-bold hover:bg-[#7A8A63] transition-colors"
               >
                 Book Consultation
@@ -265,17 +287,19 @@ export default function PractitionerProfilePage() {
             </div>
           </div>
 
-          <div className="p-8 border-t">
-            <h3 className="text-xl font-bold text-[#2C3E2D] mb-4">Services Offered</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {practitioner.services?.map((service, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <span className="text-[#97A97C]">✓</span>
-                  <span>{service}</span>
-                </div>
-              ))}
+          {practitioner.services && practitioner.services.length > 0 && (
+            <div className="p-8 border-t">
+              <h3 className="text-xl font-bold text-[#2C3E2D] mb-4">Services Offered</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {practitioner.services.map((service, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="text-[#97A97C]">✓</span>
+                    <span>{service}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="p-8 border-t bg-gray-50">
             <h3 className="text-xl font-bold text-[#2C3E2D] mb-4">Medicine Delivery</h3>
