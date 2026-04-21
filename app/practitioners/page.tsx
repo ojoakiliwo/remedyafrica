@@ -8,18 +8,19 @@ import { db } from '@/lib/firebase/client';
 interface Practitioner {
   id: string;
   name: string;
-  title: string;
+  title?: string;
   specialty: string;
   location: string;
   experience: number;
   rating: number;
   reviews: number;
-  imageUrl: string;
+  photoURL?: string;
+  imageUrl?: string;
   bio: string;
   consultationFee: number;
   isVerified: boolean;
-  languages: string[];
-  nextAvailable: string;
+  languages?: string[];
+  nextAvailable?: string;
 }
 
 export default function PractitionersPage() {
@@ -38,10 +39,25 @@ export default function PractitionersPage() {
         where('isActive', '==', true)
       );
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Practitioner[];
+      const data = snapshot.docs.map(doc => {
+        const raw = doc.data();
+        return {
+          id: doc.id,
+          name: raw.name || 'Unknown',
+          title: raw.title || raw.specialty || 'Practitioner',
+          specialty: raw.specialty || 'General',
+          location: raw.location || '',
+          experience: raw.experience || 0,
+          rating: raw.rating || 0,
+          reviews: raw.reviews || 0,
+          photoURL: raw.photoURL || raw.imageUrl || '',
+          bio: raw.bio || '',
+          consultationFee: raw.consultationFee || 0,
+          isVerified: raw.isVerified === true,
+          languages: Array.isArray(raw.languages) ? raw.languages : [],
+          nextAvailable: raw.nextAvailable || 'Contact for availability'
+        };
+      }) as Practitioner[];
       setPractitioners(data);
     } catch (error) {
       console.error('Error loading practitioners:', error);
@@ -52,7 +68,7 @@ export default function PractitionersPage() {
 
   const filteredPractitioners = filter === 'all' 
     ? practitioners 
-    : practitioners.filter(p => p.specialty.toLowerCase().includes(filter));
+    : practitioners.filter(p => p.specialty.toLowerCase().includes(filter.toLowerCase()));
 
   if (loading) {
     return (
@@ -101,9 +117,9 @@ export default function PractitionersPage() {
           {filteredPractitioners.map((practitioner) => (
             <div key={practitioner.id} className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all overflow-hidden">
               <div className="relative h-48 bg-gray-200">
-                {practitioner.imageUrl ? (
+                {(practitioner.photoURL || practitioner.imageUrl) ? (
                   <img 
-                    src={practitioner.imageUrl} 
+                    src={practitioner.photoURL || practitioner.imageUrl} 
                     alt={practitioner.name}
                     className="w-full h-full object-cover"
                   />
@@ -123,14 +139,14 @@ export default function PractitionersPage() {
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <h3 className="text-xl font-bold text-[#2C3E2D]">{practitioner.name}</h3>
-                    <p className="text-[#97A97C] text-sm">{practitioner.title}</p>
+                    <p className="text-[#97A97C] text-sm">{practitioner.title || practitioner.specialty}</p>
                   </div>
                   <div className="text-right">
                     <div className="flex items-center gap-1 text-yellow-500">
                       <span>★</span>
-                      <span className="text-gray-700 font-semibold">{practitioner.rating}</span>
+                      <span className="text-gray-700 font-semibold">{practitioner.rating || '0.0'}</span>
                     </div>
-                    <p className="text-xs text-gray-500">({practitioner.reviews} reviews)</p>
+                    <p className="text-xs text-gray-500">({practitioner.reviews || 0} reviews)</p>
                   </div>
                 </div>
 
@@ -138,13 +154,13 @@ export default function PractitionersPage() {
                 
                 <div className="space-y-2 mb-4 text-sm">
                   <div className="flex items-center gap-2 text-gray-600">
-                    <span>📍</span> {practitioner.location}
+                    <span>📍</span> {practitioner.location || 'Location not specified'}
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
-                    <span>🗣️</span> {practitioner.languages.join(', ')}
+                    <span>🗣️</span> {(practitioner.languages || []).join(', ') || 'English'}
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
-                    <span>⏰</span> Next available: {practitioner.nextAvailable}
+                    <span>⏰</span> {practitioner.nextAvailable || 'Contact for availability'}
                   </div>
                 </div>
 
@@ -152,7 +168,7 @@ export default function PractitionersPage() {
                   <div>
                     <p className="text-xs text-gray-500">Consultation</p>
                     <p className="text-lg font-bold text-[#2C3E2D]">
-                      ${practitioner.consultationFee}
+                      R{practitioner.consultationFee || 0}
                     </p>
                   </div>
                   <Link 
