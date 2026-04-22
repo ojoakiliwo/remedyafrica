@@ -26,9 +26,9 @@ export async function smartSearch(
 ): Promise<AISearchResult> {
   // First, check if we have direct herb matches
   const directMatches = availableHerbs.filter(herb => 
-    herb.name.toLowerCase().includes(query.toLowerCase()) ||
+    herb.name?.toLowerCase().includes(query.toLowerCase()) ||
     herb.medicinalUses?.some((use: any) => 
-      use.condition.toLowerCase().includes(query.toLowerCase())
+      use.condition?.toLowerCase().includes(query.toLowerCase())
     ) ||
     herb.tags?.some((tag: string) => 
       tag.toLowerCase().includes(query.toLowerCase())
@@ -85,11 +85,15 @@ export async function smartSearch(
 
   // Check if we have herbs for related conditions
   const relatedHerbs = availableHerbs.filter(herb => {
-    const herbText = `${herb.name} ${herb.description} ${herb.medicinalUses?.map((u: any) => u.condition).join(' ')}`.toLowerCase();
-    return ailmentData.symptoms?.some((symptom: string) => 
-      herbText.includes(symptom.toLowerCase())
-    ) || ailmentData.commonHerbalApproaches?.toLowerCase().split(' ').some((word: string) =>
-      herbText.includes(word.toLowerCase())
+    const herbText = `${herb.name || ''} ${herb.description || ''} ${(herb.medicinalUses || []).map((u: any) => u.condition || '').join(' ')}`.toLowerCase();
+    const symptoms = Array.isArray(ailmentData.symptoms) ? ailmentData.symptoms : [];
+    const approaches = ailmentData.commonHerbalApproaches?.toLowerCase() || '';
+    const approachWords = approaches ? approaches.split(' ') : [];
+    
+    return symptoms.some((symptom: string) => 
+      herbText.includes((symptom || '').toLowerCase())
+    ) || approachWords.some((word: string) =>
+      word.length > 2 && herbText.includes(word.toLowerCase())
     );
   });
 
@@ -97,10 +101,10 @@ export async function smartSearch(
     type: 'ailment-info',
     query,
     ailmentInfo: {
-      name: ailmentData.name,
-      description: ailmentData.description,
-      symptoms: ailmentData.symptoms,
-      conventionalTreatment: ailmentData.conventionalTreatment,
+      name: ailmentData.name || query,
+      description: ailmentData.description || 'No description available.',
+      symptoms: Array.isArray(ailmentData.symptoms) ? ailmentData.symptoms : [],
+      conventionalTreatment: ailmentData.conventionalTreatment || '',
       herbalOptionsAvailable: relatedHerbs.length > 0,
     },
     matchingHerbs: relatedHerbs.length > 0 ? relatedHerbs : undefined,
