@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/AuthProvider';
 import { db } from '@/lib/firebase/client';
-import { collection, onSnapshot, doc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, deleteDoc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -46,18 +47,59 @@ const CATEGORY_LABELS: Record<string, string> = {
   'respiratory': 'Respiratory Health',
   'womens-health': "Women's Health",
   'mens-health': "Men's Health",
-  'uncategorized': 'Uncategorized', // Added to match Bulk Upload default
+  'uncategorized': 'Uncategorized',
 };
 
 export default function ManageHerbsPage() {
-  const { isAdmin } = useAuth();
+  const router = useRouter();
+  const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+  
   const [herbs, setHerbs] = useState<Herb[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Check admin status — STRICT: only role === 'admin'
   useEffect(() => {
-    if (!isAdmin) return;
+    const checkAdmin = async () => {
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const adminStatus = userData.role === 'admin';
+          setIsAdmin(adminStatus);
+          
+          if (!adminStatus) {
+            toast.error('Access denied');
+            router.push('/');
+            return;
+          }
+        } else {
+          router.push('/');
+          return;
+        }
+      } catch (err) {
+        console.error('Error checking admin:', err);
+        router.push('/');
+        return;
+      } finally {
+        setCheckingAdmin(false);
+      }
+    };
+
+    checkAdmin();
+  }, [user, router]);
+
+  // Load herbs
+  useEffect(() => {
+    if (!isAdmin || checkingAdmin) return;
 
     const unsubscribe = onSnapshot(collection(db, 'herbs'), (snapshot) => {
       const herbsData = snapshot.docs.map(doc => ({
@@ -69,7 +111,7 @@ export default function ManageHerbsPage() {
     });
 
     return () => unsubscribe();
-  }, [isAdmin]);
+  }, [isAdmin, checkingAdmin]);
 
   const handleDelete = async (herbId: string, herbName: string) => {
     if (!confirm(`Are you sure you want to delete "${herbName}"?`)) return;
@@ -96,6 +138,14 @@ export default function ManageHerbsPage() {
       herb.searchKeywords?.some(keyword => keyword.toLowerCase().includes(term))
     );
   });
+
+  if (checkingAdmin) {
+    return (
+      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-[#97A97C] animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAdmin) {
     return (
