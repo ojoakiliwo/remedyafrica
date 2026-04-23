@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { db } from '@/lib/firebase/client';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -45,12 +45,30 @@ interface PlantHistory {
 }
 
 export default function DashboardPage() {
-  const { user, profile, isAdmin } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
   const [savedHerbs, setSavedHerbs] = useState<SavedHerb[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [plantHistory, setPlantHistory] = useState<PlantHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Check admin status manually
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) return;
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setIsAdmin(userData.role === 'admin');
+        }
+      } catch (err) {
+        console.error('Error checking admin:', err);
+      }
+    };
+    checkAdmin();
+  }, [user]);
 
   useEffect(() => {
     if (!user && !isLoading) {
