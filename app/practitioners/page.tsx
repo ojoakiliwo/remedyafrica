@@ -1,4 +1,5 @@
 'use client';
+// rebuild-2026-04-22-v3
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -80,7 +81,6 @@ export default function PractitionersPage() {
 
   return (
     <div className="min-h-screen bg-[#F5F5F0]">
-      {/* Hero */}
       <div className="bg-[#2C3E2D] text-white py-16 px-4">
         <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-4xl font-bold mb-4">Connect with Traditional Healers</h1>
@@ -95,7 +95,6 @@ export default function PractitionersPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-12">
-        {/* Filters */}
         <div className="flex flex-wrap gap-2 mb-8 justify-center">
           {['all', 'mental wellness', 'pain relief', 'digestive', 'skin', 'general'].map((cat) => (
             <button
@@ -112,7 +111,6 @@ export default function PractitionersPage() {
           ))}
         </div>
 
-        {/* Practitioners Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredPractitioners.map((practitioner) => (
             <div key={practitioner.id} className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all overflow-hidden">
@@ -189,7 +187,6 @@ export default function PractitionersPage() {
           </div>
         )}
 
-        {/* How it Works */}
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="bg-white p-6 rounded-lg shadow text-center">
             <div className="text-4xl mb-4">🔍</div>

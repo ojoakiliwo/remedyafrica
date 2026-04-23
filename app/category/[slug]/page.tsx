@@ -195,7 +195,7 @@ export default function CategoryAilmentsPage() {
                 
                 <div className="flex items-center justify-between text-sm border-t pt-3">
                   <span className="text-gray-500">
-                    {ailment.symptoms.slice(0, 2).join(', ')}...
+                  {(ailment.symptoms || []).slice(0, 2).join(', ')}...
                   </span>
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                     ailment.herbCount > 0 
