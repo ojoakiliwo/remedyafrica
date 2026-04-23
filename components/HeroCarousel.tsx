@@ -18,15 +18,40 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
+import { db } from '@/lib/firebase/client';
+import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isAdmin, logout } = useAuth();
+  const { user, logout } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Check admin status manually
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          setIsAdmin(userDoc.data().role === 'admin');
+        } else {
+          setIsAdmin(false);
+        }
+      } catch (err) {
+        console.error('Error checking admin:', err);
+        setIsAdmin(false);
+      }
+    };
+    checkAdmin();
+  }, [user]);
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -44,9 +69,6 @@ export default function Navbar() {
     router.push('/');
     setUserMenuOpen(false);
   };
-
-  // Don't show navbar on homepage hero section (optional - remove if you want it everywhere)
-  // if (pathname === '/') return null;
 
   const mainNavLinks = [
     { href: '/category/mental-wellness', label: 'Remedies', icon: Leaf },
