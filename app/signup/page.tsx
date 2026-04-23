@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/providers/AuthProvider';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,11 +11,10 @@ import { Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function SignUpPage() {
   const router = useRouter();
-  const { signUp } = useAuth();
+  const { signup } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     displayName: '',
     email: '',
@@ -40,8 +39,7 @@ export default function SignUpPage() {
     setLoading(true);
 
     try {
-      // If displayName is empty, signUp function will use email prefix
-      await signUp(formData.email, formData.password, formData.displayName);
+      await signup(formData.email, formData.password, formData.displayName);
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Signup error:', err);
@@ -55,9 +53,6 @@ export default function SignUpPage() {
     <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <img src="/logo.png" alt="RemedyAfrica" className="h-16 w-auto" onError={(e) => e.currentTarget.style.display = 'none'} />
-          </div>
           <h1 className="text-3xl font-bold text-[#2C3E2D] mb-2">Create Account</h1>
           <p className="text-gray-600">Join RemedyAfrica today</p>
         </div>
@@ -71,15 +66,15 @@ export default function SignUpPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label htmlFor="displayName">Full Name (Optional)</Label>
+            <Label htmlFor="displayName">Full Name</Label>
             <Input
               id="displayName"
               type="text"
+              required
               value={formData.displayName}
               onChange={(e) => setFormData({...formData, displayName: e.target.value})}
               placeholder="John Doe"
             />
-            <p className="text-xs text-gray-500 mt-1">If left empty, we'll use your email prefix</p>
           </div>
 
           <div>
@@ -123,29 +118,14 @@ export default function SignUpPage() {
 
           <div>
             <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                required
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
-                placeholder="••••••••"
-                className="pr-10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                tabIndex={-1}
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
-              </button>
-            </div>
+            <Input
+              id="confirmPassword"
+              type={showPassword ? "text" : "password"}
+              required
+              value={formData.confirmPassword}
+              onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+              placeholder="••••••••"
+            />
           </div>
 
           <Button
@@ -156,10 +136,10 @@ export default function SignUpPage() {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Creating Account...
+                Creating account...
               </>
             ) : (
-              'Sign Up'
+              'Create Account'
             )}
           </Button>
         </form>
