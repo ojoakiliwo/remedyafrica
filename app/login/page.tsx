@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useAuth } from '@/providers/AuthProvider';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,7 +11,7 @@ import { Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn } = useAuth();
+  const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [email, setEmail] = useState('');
@@ -24,7 +24,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await signIn(email, password);
+      await login(email, password);
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);
