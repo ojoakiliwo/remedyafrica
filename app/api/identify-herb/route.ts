@@ -2,10 +2,34 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { image } = await req.json();
+    // Support both FormData (from search page file input) and JSON (from direct API calls)
+    let image: string | null = null;
+    
+    const contentType = req.headers.get('content-type') || '';
+    
+    if (contentType.includes('multipart/form-data')) {
+      // FormData upload (from search page file input)
+      const formData = await req.formData();
+      const file = formData.get('image') as File | null;
+      if (file) {
+        const bytes = await file.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        image = buffer.toString('base64');
+      }
+    } else {
+      // JSON payload with base64 image (legacy / direct API calls)
+      const body = await req.json();
+      image = body.image || null;
+      if (image) {
+        image = image.replace(/^data:image\/\w+;base64,/, '');
+      }
+    }
     
     if (!image) {
-      return NextResponse.json({ error: 'No image provided' }, { status: 400 });
+      return NextResponse.json({ 
+        suggestions: [],
+        message: 'No image provided. Please upload a plant photo.'
+      }, { status: 400 });
     }
     
     // Get API key from environment
@@ -19,11 +43,8 @@ export async function POST(req: NextRequest) {
       }, { status: 503 });
     }
     
-    // Convert base64 to proper format for Plant.id
-    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-    
     // Validate image isn't too large (Plant.id has limits)
-    const buffer = Buffer.from(base64Data, 'base64');
+    const buffer = Buffer.from(image, 'base64');
     if (buffer.length > 4 * 1024 * 1024) { // 4MB limit
       return NextResponse.json({ 
         suggestions: [],
@@ -43,9 +64,9 @@ export async function POST(req: NextRequest) {
           'Api-Key': apiKey
         },
         body: JSON.stringify({
-          images: [base64Data],
+          images: [image],
           modifiers: ["crops_fast", "similar_images"],
-          plant_details: ["common_names", "url", "name_authority", "wiki_description", "taxonomy"]
+          plant_details: ["common_names", "url", "name_authority", "wiki_description", "taxonomy", "edible_parts"]
         }),
         signal: controller.signal
       });
@@ -72,9 +93,9 @@ export async function POST(req: NextRequest) {
         });
       }
       
-      // Format Plant.id results
+      // Format Plant.id results - compatible with both your old format AND the search page
       const suggestions = data.suggestions
-        .slice(0, 3) // Top 3 matches
+        .slice(0, 5) // Top 5 matches
         .map((suggestion: any, index: number) => {
           const plantName = suggestion.plant_name || 'Unknown';
           const probability = suggestion.probability || 0;
@@ -85,7 +106,8 @@ export async function POST(req: NextRequest) {
           const commonName = commonNames[0] || plantName;
           
           // Get family from taxonomy
-          const family = details.taxonomy?.family || 'Unknown';
+          const family = details.taxonomy?.family || null;
+          const genus = details.taxonomy?.genus || null;
           
           // Get wiki URL
           const wikiUrl = details.url?.wikipedia || `https://en.wikipedia.org/wiki/${plantName.replace(/\s+/g, '_')}`;
@@ -94,18 +116,36 @@ export async function POST(req: NextRequest) {
           const similarImages = suggestion.similar_images || [];
           const imageUrl = similarImages[0]?.url || null;
           
+          // Get wiki description
+          const wikiDescription = details.wiki_description?.value || null;
+          
+          // Get edible parts
+          const edibleParts = details.edible_parts || [];
+          
           return {
             id: index,
             name: plantName,
+            scientificName: commonName,
             commonName: commonName,
+            probability: Math.round(probability * 100),
             confidence: Math.round(probability * 100),
             family: family,
+            genus: genus,
+            commonNames: commonNames,
             wikiUrl: wikiUrl,
-            imageUrl: imageUrl
+            imageUrl: imageUrl,
+            similarImages: similarImages.map((img: any) => img.url_small || img.url).filter(Boolean),
+            wikiDescription: wikiDescription,
+            edibleParts: edibleParts,
+            description: wikiDescription,
           };
         });
 
-      return NextResponse.json({ suggestions });
+      return NextResponse.json({ 
+        success: true,
+        suggestions,
+        message: `Found ${suggestions.length} possible match${suggestions.length !== 1 ? 'es' : ''}`
+      });
       
     } catch (fetchError: any) {
       clearTimeout(timeoutId);
