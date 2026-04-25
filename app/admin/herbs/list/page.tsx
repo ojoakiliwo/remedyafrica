@@ -1,12 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/providers/AuthProvider';
+import { 
+  collection, 
+  onSnapshot, 
+  doc, 
+  deleteDoc, 
+  getDoc 
+} from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import { collection, onSnapshot, doc, deleteDoc, getDoc } from 'firebase/firestore';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   Leaf, 
   Plus, 
@@ -16,12 +20,15 @@ import {
   ArrowLeft,
   Eye,
   Loader2,
-  Upload
+  Upload,
+  AlertCircle
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
-// Updated interface to match the structure from Bulk Upload
 interface Herb {
   id: string;
   name: string;
@@ -36,6 +43,7 @@ interface Herb {
   images?: string[];
   status?: 'draft' | 'published';
   searchKeywords?: string[];
+  createdAt?: any;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -77,7 +85,7 @@ export default function ManageHerbsPage() {
           setIsAdmin(adminStatus);
           
           if (!adminStatus) {
-            toast.error('Access denied');
+            toast.error('Access denied. Admin only.');
             router.push('/');
             return;
           }
@@ -106,6 +114,15 @@ export default function ManageHerbsPage() {
         id: doc.id,
         ...doc.data()
       })) as Herb[];
+      
+      // Sort by createdAt desc, fallback to name
+      herbsData.sort((a, b) => {
+        if (a.createdAt && b.createdAt) {
+          return b.createdAt.toMillis?.() - a.createdAt.toMillis?.() || 0;
+        }
+        return a.name.localeCompare(b.name);
+      });
+      
       setHerbs(herbsData);
       setLoading(false);
     });
@@ -114,7 +131,7 @@ export default function ManageHerbsPage() {
   }, [isAdmin, checkingAdmin]);
 
   const handleDelete = async (herbId: string, herbName: string) => {
-    if (!confirm(`Are you sure you want to delete "${herbName}"?`)) return;
+    if (!confirm(`Are you sure you want to delete "${herbName}"? This cannot be undone.`)) return;
     
     setDeletingId(herbId);
     try {
@@ -128,13 +145,14 @@ export default function ManageHerbsPage() {
     }
   };
 
-  // Enhanced search to include the keywords we generated in Bulk Upload
   const filteredHerbs = herbs.filter(herb => {
-    const term = searchTerm.toLowerCase();
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return true;
     return (
       herb.name.toLowerCase().includes(term) ||
       herb.scientificName?.toLowerCase().includes(term) ||
       herb.category?.toLowerCase().includes(term) ||
+      herb.origin?.toLowerCase().includes(term) ||
       herb.searchKeywords?.some(keyword => keyword.toLowerCase().includes(term))
     );
   });
@@ -150,7 +168,13 @@ export default function ManageHerbsPage() {
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
-        <p className="text-red-600 font-semibold">Access denied. Admin only.</p>
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 font-semibold text-lg">Access denied. Admin only.</p>
+          <Button onClick={() => router.push('/')} className="mt-4 bg-[#97A97C]">
+            Go Home
+          </Button>
+        </div>
       </div>
     );
   }
@@ -171,6 +195,10 @@ export default function ManageHerbsPage() {
                 <Leaf className="w-6 h-6 text-[#97A97C]" />
                 Manage Herbs
               </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                {herbs.length} herb{herbs.length !== 1 ? 's' : ''} in database
+                {filteredHerbs.length !== herbs.length && ` • ${filteredHerbs.length} shown`}
+              </p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -194,7 +222,7 @@ export default function ManageHerbsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <Input
-              placeholder="Search by name, scientific name, or benefits..."
+              placeholder="Search by name, scientific name, origin, or benefits..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 focus-visible:ring-[#97A97C]"
@@ -210,8 +238,28 @@ export default function ManageHerbsPage() {
         ) : filteredHerbs.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center border-2 border-dashed border-gray-200">
             <Leaf className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-600">No herbs found</h3>
-            <p className="text-gray-500">Try adjusting your search or perform a bulk upload.</p>
+            <h3 className="text-lg font-semibold text-gray-600">
+              {searchTerm ? 'No herbs match your search' : 'No herbs found'}
+            </h3>
+            <p className="text-gray-500 mt-2">
+              {searchTerm ? 'Try a different search term' : 'Get started by adding your first herb'}
+            </p>
+            {!searchTerm && (
+              <div className="flex gap-3 justify-center mt-6">
+                <Link href="/admin/herbs/upload">
+                  <Button className="bg-[#97A97C] hover:bg-[#7A8A63]">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Herb
+                  </Button>
+                </Link>
+                <Link href="/admin/herbs/bulk">
+                  <Button variant="outline" className="border-[#97A97C] text-[#97A97C]">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Bulk Import
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">

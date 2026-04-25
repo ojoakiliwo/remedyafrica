@@ -12,13 +12,18 @@ import {
   History,
   Sparkles,
   ArrowRight,
-  Shield
+  Shield,
+  Loader2,
+  AlertCircle,
+  Crown
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, getDocs, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 interface SavedHerb {
   id: string;
@@ -34,6 +39,7 @@ interface Consultation {
   status: string;
   scheduledDate?: Date;
   createdAt: Date;
+  dailyRoomUrl?: string | null;
 }
 
 interface PlantHistory {
@@ -44,6 +50,12 @@ interface PlantHistory {
   imageUrl: string;
 }
 
+interface Subscription {
+  status: string;
+  plan?: string;
+  expiresAt?: Date;
+}
+
 export default function DashboardPage() {
   const { user, profile } = useAuth();
   const router = useRouter();
@@ -51,6 +63,7 @@ export default function DashboardPage() {
   const [savedHerbs, setSavedHerbs] = useState<SavedHerb[]>([]);
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [plantHistory, setPlantHistory] = useState<PlantHistory[]>([]);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Check admin status manually
@@ -71,65 +84,94 @@ export default function DashboardPage() {
   }, [user]);
 
   useEffect(() => {
-    if (!user && !isLoading) {
-      router.push('/login');
+    if (!user) {
+      if (!isLoading) router.push('/login');
       return;
     }
 
-    if (user) {
-      fetchUserData();
-    }
+    fetchUserData();
   }, [user, router]);
 
   const fetchUserData = async () => {
     if (!user) return;
     
     try {
-      const herbsQuery = query(
-        collection(db, 'my_herbs'),
-        where('userId', '==', user.uid),
-        orderBy('savedAt', 'desc'),
-        limit(5)
-      );
-      const herbsSnapshot = await getDocs(herbsQuery);
-      const herbsData = herbsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        savedAt: doc.data().savedAt?.toDate()
-      })) as SavedHerb[];
-      setSavedHerbs(herbsData);
+      // Fetch subscription
+      try {
+        const subDoc = await getDoc(doc(db, 'users', user.uid, 'subscription', 'current'));
+        if (subDoc.exists()) {
+          const data = subDoc.data();
+          setSubscription({
+            status: data.status,
+            plan: data.plan,
+            expiresAt: data.expiresAt?.toDate()
+          });
+        }
+      } catch (e) {
+        console.log('No subscription found');
+      }
 
-      const consultationsQuery = query(
-        collection(db, 'consultations'),
-        where('patientId', '==', user.uid),
-        orderBy('createdAt', 'desc'),
-        limit(5)
-      );
-      const consultationsSnapshot = await getDocs(consultationsQuery);
-      const consultationsData = consultationsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-        scheduledDate: doc.data().scheduledDate?.toDate()
-      })) as Consultation[];
-      setConsultations(consultationsData);
+      // Fetch saved herbs
+      try {
+        const herbsQuery = query(
+          collection(db, 'my_herbs'),
+          where('userId', '==', user.uid),
+          orderBy('savedAt', 'desc'),
+          limit(5)
+        );
+        const herbsSnapshot = await getDocs(herbsQuery);
+        const herbsData = herbsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          savedAt: doc.data().savedAt?.toDate()
+        })) as SavedHerb[];
+        setSavedHerbs(herbsData);
+      } catch (e) {
+        console.log('No saved herbs collection yet');
+      }
 
-      const historyQuery = query(
-        collection(db, 'user_plant_history'),
-        where('userId', '==', user.uid),
-        orderBy('identifiedAt', 'desc'),
-        limit(5)
-      );
-      const historySnapshot = await getDocs(historyQuery);
-      const historyData = historySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        identifiedAt: doc.data().identifiedAt?.toDate()
-      })) as PlantHistory[];
-      setPlantHistory(historyData);
+      // Fetch consultations
+      try {
+        const consultationsQuery = query(
+          collection(db, 'consultations'),
+          where('patientId', '==', user.uid),
+          orderBy('createdAt', 'desc'),
+          limit(5)
+        );
+        const consultationsSnapshot = await getDocs(consultationsQuery);
+        const consultationsData = consultationsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate(),
+          scheduledDate: doc.data().scheduledDate?.toDate()
+        })) as Consultation[];
+        setConsultations(consultationsData);
+      } catch (e) {
+        console.log('Error fetching consultations:', e);
+      }
+
+      // Fetch plant history
+      try {
+        const historyQuery = query(
+          collection(db, 'user_plant_history'),
+          where('userId', '==', user.uid),
+          orderBy('identifiedAt', 'desc'),
+          limit(5)
+        );
+        const historySnapshot = await getDocs(historyQuery);
+        const historyData = historySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          identifiedAt: doc.data().identifiedAt?.toDate()
+        })) as PlantHistory[];
+        setPlantHistory(historyData);
+      } catch (e) {
+        console.log('No plant history collection yet');
+      }
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      toast.error('Failed to load some dashboard data');
     } finally {
       setIsLoading(false);
     }
@@ -138,27 +180,55 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F5F5DC]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#97A97C]"></div>
+        <Loader2 className="w-12 h-12 text-[#97A97C] animate-spin" />
       </div>
     );
   }
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F5F5DC]">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-4">Please sign in</h1>
+          <Button onClick={() => router.push('/login')} className="bg-[#97A97C]">
+            Go to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
-  const displayName = profile?.displayName || user?.email?.split('@')[0] || 'User';
+  const displayName = profile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'User';
+  const isSubActive = subscription?.status === 'active' && subscription?.expiresAt && subscription.expiresAt > new Date();
 
   return (
     <div className="min-h-screen bg-[#F5F5DC]">
       <div className="bg-[#2C3E2D] text-[#F5F5DC] py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-[#97A97C] rounded-full">
-              <User className="w-8 h-8 text-[#2C3E2D]" />
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-[#97A97C] rounded-full">
+                <User className="w-8 h-8 text-[#2C3E2D]" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold">Welcome back, {displayName}</h1>
+                <p className="text-[#97A97C] mt-1">Manage your herbal journey and consultations</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold">Welcome back, {displayName}</h1>
-              <p className="text-[#97A97C] mt-1">Manage your herbal journey and consultations</p>
-            </div>
+            {isSubActive ? (
+              <Badge className="bg-amber-500 text-white px-3 py-1">
+                <Crown className="w-3 h-3 mr-1" />
+                {subscription.plan || 'Premium'} Active
+              </Badge>
+            ) : (
+              <Link href="/subscription">
+                <Button variant="outline" className="border-amber-400 text-amber-400 hover:bg-amber-400/10">
+                  <Crown className="w-4 h-4 mr-2" />
+                  Upgrade to Premium
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -378,7 +448,7 @@ export default function DashboardPage() {
                     Review Applications
                   </Button>
                 </Link>
-                <Link href="/admin/herbs">
+                <Link href="/admin/herbs/list">
                   <Button variant="outline" className="border-amber-600 text-amber-700">
                     Manage Herbs
                   </Button>

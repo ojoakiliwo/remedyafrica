@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { uploadHerbImage } from '@/lib/firebase/storage';
 import { 
   Upload, 
@@ -13,12 +15,19 @@ import {
   CheckCircle, 
   Loader2,
   Image as ImageIcon,
-  Leaf
+  Leaf,
+  ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
 
 export default function UploadHerbPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+  
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -45,8 +54,35 @@ export default function UploadHerbPage() {
     status: 'active' as 'active' | 'draft'
   });
 
+  // Admin check
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists() && userDoc.data().role === 'admin') {
+          setIsAdmin(true);
+        } else {
+          toast.error('Access denied. Admin only.');
+          router.push('/');
+          return;
+        }
+      } catch (err) {
+        console.error('Error checking admin:', err);
+        router.push('/');
+      } finally {
+        setCheckingAdmin(false);
+      }
+    };
+    checkAdmin();
+  }, [user, router]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError('');
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -90,6 +126,11 @@ export default function UploadHerbPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formData.name.trim() || !formData.scientificName.trim()) {
+      setError('Herb name and scientific name are required');
+      return;
+    }
+
     if (images.length === 0) {
       setError('Please upload at least one image');
       return;
@@ -100,16 +141,14 @@ export default function UploadHerbPage() {
     setUploadProgress(0);
 
     try {
-      // Parse arrays from comma-separated strings
       const benefitsArray = formData.benefits.split(',').map(b => b.trim()).filter(b => b);
       const usesArray = formData.uses.split(',').map(u => u.trim()).filter(u => u);
       const warningsArray = formData.warnings.split(',').map(w => w.trim()).filter(w => w);
       const ailmentsArray = formData.ailments.split(',').map(a => a.trim()).filter(a => a);
 
-      // Create herb document first to get ID
       const herbRef = await addDoc(collection(db, 'herbs'), {
-        name: formData.name,
-        scientificName: formData.scientificName,
+        name: formData.name.trim(),
+        scientificName: formData.scientificName.trim(),
         category: formData.category,
         description: formData.description,
         longDescription: formData.longDescription,
@@ -127,10 +166,17 @@ export default function UploadHerbPage() {
         views: 0,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        status: formData.status
+        status: formData.status,
+        searchKeywords: [
+          formData.name.toLowerCase(),
+          formData.scientificName.toLowerCase(),
+          formData.category,
+          ...benefitsArray.map(b => b.toLowerCase()),
+          ...ailmentsArray.map(a => a.toLowerCase()),
+          ...usesArray.map(u => u.toLowerCase())
+        ].filter(Boolean)
       });
 
-      // Upload images to Firebase Storage
       const imageUrls = [];
       for (let i = 0; i < images.length; i++) {
         const result = await uploadHerbImage(images[i], herbRef.id, i);
@@ -142,15 +188,12 @@ export default function UploadHerbPage() {
         setUploadProgress(((i + 1) / images.length) * 100);
       }
 
-      // Update with image URLs
-      const { updateDoc, doc } = await import('firebase/firestore');
       await updateDoc(doc(db, 'herbs', herbRef.id), {
         images: imageUrls
       });
 
       setSuccess(true);
       
-      // Reset form
       setFormData({
         name: '',
         scientificName: '',
@@ -178,6 +221,28 @@ export default function UploadHerbPage() {
     }
   };
 
+  if (checkingAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-[#97A97C] animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 font-semibold text-lg">Access denied. Admin only.</p>
+          <Button onClick={() => router.push('/')} className="mt-4 bg-[#97A97C]">
+            Go Home
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (success) {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
@@ -185,15 +250,17 @@ export default function UploadHerbPage() {
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-[#2C3E2D] mb-4">Upload Successful!</h2>
           <p className="text-gray-600 mb-6">The herb has been saved to Firebase with images.</p>
-          <div className="space-x-4">
-            <button 
+          <div className="flex gap-4 justify-center">
+            <Button 
               onClick={() => setSuccess(false)}
-              className="bg-[#97A97C] text-white px-6 py-2 rounded hover:bg-[#7A8A63]"
+              className="bg-[#97A97C] hover:bg-[#7A8A63] text-white"
             >
               Upload Another
-            </button>
-            <Link href="/admin" className="text-[#97A97C] hover:underline">
-              Back to Dashboard
+            </Button>
+            <Link href="/admin/herbs/list">
+              <Button variant="outline">
+                Back to List
+              </Button>
             </Link>
           </div>
         </div>
@@ -213,7 +280,12 @@ export default function UploadHerbPage() {
               <p className="text-gray-300 text-sm">Add to Firebase database with Storage images</p>
             </div>
           </div>
-          <Link href="/admin" className="text-sm hover:underline">← Back to Admin</Link>
+          <Link href="/admin/herbs/list">
+            <Button variant="outline" className="border-white/30 text-white hover:bg-white/10">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -270,7 +342,6 @@ export default function UploadHerbPage() {
               className="hidden"
               aria-label="Upload herb images"
               title="Select herb images to upload"
-              placeholder="Choose herb images"
             />
             
             <p className="text-sm text-gray-500">
@@ -292,7 +363,7 @@ export default function UploadHerbPage() {
                   required
                   value={formData.name}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded"
+                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                   placeholder="e.g., Ashwagandha"
                 />
               </div>
@@ -305,7 +376,7 @@ export default function UploadHerbPage() {
                   required
                   value={formData.scientificName}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded italic"
+                  className="w-full p-2 border border-gray-300 rounded italic focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                   placeholder="e.g., Withania somnifera"
                 />
               </div>
@@ -318,7 +389,7 @@ export default function UploadHerbPage() {
                 name="category"
                 value={formData.category}
                 onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded"
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                 title="Select herb category"
               >
                 <option value="mental-wellness">Mental Wellness</option>
@@ -327,6 +398,9 @@ export default function UploadHerbPage() {
                 <option value="immune-support">Immune Support</option>
                 <option value="skin-care">Skin Care</option>
                 <option value="respiratory">Respiratory Health</option>
+                <option value="womens-health">Women's Health</option>
+                <option value="mens-health">Men's Health</option>
+                <option value="uncategorized">Uncategorized</option>
               </select>
             </div>
 
@@ -338,7 +412,7 @@ export default function UploadHerbPage() {
                 required
                 value={formData.description}
                 onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded"
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                 rows={2}
                 placeholder="Brief description for cards"
               />
@@ -351,7 +425,7 @@ export default function UploadHerbPage() {
                 name="longDescription"
                 value={formData.longDescription}
                 onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded"
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                 rows={4}
                 placeholder="Detailed description"
               />
@@ -371,7 +445,7 @@ export default function UploadHerbPage() {
                   name="origin"
                   value={formData.origin}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded"
+                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                   placeholder="e.g., India"
                 />
               </div>
@@ -383,7 +457,7 @@ export default function UploadHerbPage() {
                   name="partsUsed"
                   value={formData.partsUsed}
                   onChange={handleInputChange}
-                  className="w-full p-2 border border-gray-300 rounded"
+                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                   placeholder="e.g., Root, leaves"
                 />
               </div>
@@ -396,7 +470,7 @@ export default function UploadHerbPage() {
                 name="preparation"
                 value={formData.preparation}
                 onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded"
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                 rows={3}
                 placeholder="How to prepare the herb"
               />
@@ -410,7 +484,7 @@ export default function UploadHerbPage() {
                 name="dosage"
                 value={formData.dosage}
                 onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded"
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                 placeholder="e.g., 1-2 cups daily, 500mg capsules"
               />
             </div>
@@ -423,7 +497,7 @@ export default function UploadHerbPage() {
                 name="benefits"
                 value={formData.benefits}
                 onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded"
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                 placeholder="e.g., Reduces stress, Better sleep, Mental clarity"
               />
             </div>
@@ -436,7 +510,7 @@ export default function UploadHerbPage() {
                 name="uses"
                 value={formData.uses}
                 onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded"
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                 placeholder="e.g., Anxiety, Insomnia, Stress"
               />
             </div>
@@ -452,7 +526,7 @@ export default function UploadHerbPage() {
                 name="ailments"
                 value={formData.ailments}
                 onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded"
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                 placeholder="e.g., Anxiety, Stress, Insomnia, Depression"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -468,7 +542,7 @@ export default function UploadHerbPage() {
                 name="warnings"
                 value={formData.warnings}
                 onChange={handleInputChange}
-                className="w-full p-2 border border-red-300 rounded bg-red-50"
+                className="w-full p-2 border border-red-300 rounded bg-red-50 focus:ring-2 focus:ring-red-300 focus:border-transparent outline-none"
                 placeholder="e.g., Avoid during pregnancy, May cause drowsiness"
               />
             </div>
@@ -480,7 +554,7 @@ export default function UploadHerbPage() {
                 name="status"
                 value={formData.status}
                 onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded"
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                 title="Select publication status"
               >
                 <option value="active">Active (published)</option>
@@ -511,7 +585,7 @@ export default function UploadHerbPage() {
             <Button 
               type="button" 
               variant="outline" 
-              onClick={() => window.location.href = '/admin'}
+              onClick={() => router.push('/admin/herbs/list')}
               disabled={loading}
               className="px-8"
             >

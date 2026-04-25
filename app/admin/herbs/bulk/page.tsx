@@ -1,14 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { db } from '@/lib/firebase/client';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Loader2, Upload, ArrowLeft, AlertCircle } from 'lucide-react';
+import { 
+  Loader2, 
+  Upload, 
+  ArrowLeft, 
+  AlertCircle, 
+  FileSpreadsheet,
+  CheckCircle
+} from 'lucide-react';
 import { toast } from 'sonner';
-import Papa from 'papaparse';
 
 interface ParsedHerb {
   name: string;
@@ -23,28 +31,109 @@ interface ParsedHerb {
   [key: string]: string;
 }
 
+const VALID_CATEGORIES = [
+  'mental-wellness', 'pain-relief', 'digestive-health', 
+  'immune-support', 'skin-care', 'respiratory', 
+  'womens-health', 'mens-health', 'uncategorized'
+];
+
 export default function BulkUploadPage() {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+  
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<ParsedHerb[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [success, setSuccess] = useState(false);
+  const [resultStats, setResultStats] = useState({ success: 0, errors: 0, total: 0 });
+
+  // Admin check
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists() && userDoc.data().role === 'admin') {
+          setIsAdmin(true);
+        } else {
+          toast.error('Access denied. Admin only.');
+          router.push('/');
+          return;
+        }
+      } catch (err) {
+        console.error('Error checking admin:', err);
+        router.push('/');
+      } finally {
+        setCheckingAdmin(false);
+      }
+    };
+    checkAdmin();
+  }, [user, router]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
+    if (!selectedFile.name.endsWith('.csv')) {
+      toast.error('Please upload a CSV file');
+      return;
+    }
+
     setFile(selectedFile);
+    setSuccess(false);
     
-    Papa.parse(selectedFile, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        setPreview(results.data.slice(0, 5) as ParsedHerb[]);
-      },
-      error: (error: any) => {
-        toast.error('Error parsing CSV: ' + error.message);
+    // Simple CSV preview without papaparse dependency
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split('\n').filter(line => line.trim());
+      if (lines.length < 2) {
+        toast.error('CSV appears to be empty or invalid');
+        return;
       }
-    });
+      
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+      const rows: ParsedHerb[] = [];
+      
+      for (let i = 1; i < Math.min(lines.length, 6); i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        const row: any = {};
+        headers.forEach((h, idx) => {
+          row[h] = values[idx] || '';
+        });
+        rows.push(row as ParsedHerb);
+      }
+      
+      setPreview(rows);
+    };
+    reader.readAsText(selectedFile);
+  };
+
+  const parseCSV = (text: string): ParsedHerb[] => {
+    const lines = text.split('\n').filter(line => line.trim());
+    if (lines.length < 2) return [];
+    
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    const rows: ParsedHerb[] = [];
+    
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      const row: any = {};
+      headers.forEach((h, idx) => {
+        row[h] = values[idx] || '';
+      });
+      if (row.name && row.scientificName) {
+        rows.push(row as ParsedHerb);
+      }
+    }
+    
+    return rows;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,67 +145,93 @@ export default function BulkUploadPage() {
     
     setLoading(true);
     setUploadProgress(0);
+    setSuccess(false);
     
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        const herbs = results.data as ParsedHerb[];
-        let successCount = 0;
-        let errorCount = 0;
-
-        for (let i = 0; i < herbs.length; i++) {
-          const herb = herbs[i];
-          
-          try {
-            // Skip empty rows
-            if (!herb.name || !herb.scientificName) {
-              errorCount++;
-              continue;
-            }
-
-            // Build herb object matching your Firestore structure
-            const herbData = {
-              name: herb.name.trim(),
-              scientificName: herb.scientificName.trim(),
-              category: herb.category?.trim() || 'uncategorized',
-              description: herb.description?.trim() || '',
-              preparation: herb.preparation?.trim() || '',
-              warnings: herb.warnings?.trim() || '',
-              benefits: herb.benefits?.trim() || '',
-              origin: herb.origin?.trim() || '',
-              partsUsed: herb.partsUsed?.trim() || '',
-              status: 'published',
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-              searchKeywords: [
-                herb.name.toLowerCase(),
-                herb.scientificName.toLowerCase(),
-                herb.category?.toLowerCase(),
-                ...(herb.benefits?.toLowerCase().split(',').map((s: string) => s.trim()) || [])
-              ].filter(Boolean),
-            };
-
-            await addDoc(collection(db, 'herbs'), herbData);
-            successCount++;
-            setUploadProgress(Math.round(((i + 1) / herbs.length) * 100));
-          } catch (error) {
-            console.error('Error uploading herb:', herb.name, error);
-            errorCount++;
-          }
-        }
-
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      const herbs = parseCSV(text);
+      
+      if (herbs.length === 0) {
+        toast.error('No valid herb data found in CSV');
         setLoading(false);
-        toast.success(`Upload complete! ${successCount} herbs added, ${errorCount} errors.`);
-        setFile(null);
-        setPreview([]);
-      },
-      error: (error: any) => {
-        setLoading(false);
-        toast.error('Failed to parse CSV: ' + error.message);
+        return;
       }
-    });
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (let i = 0; i < herbs.length; i++) {
+        const herb = herbs[i];
+        
+        try {
+          const category = herb.category?.trim().toLowerCase() || 'uncategorized';
+          const validCategory = VALID_CATEGORIES.includes(category) ? category : 'uncategorized';
+
+          const herbData = {
+            name: herb.name.trim(),
+            scientificName: herb.scientificName.trim(),
+            category: validCategory,
+            description: herb.description?.trim() || '',
+            preparation: herb.preparation?.trim() || '',
+            warnings: herb.warnings?.trim() || '',
+            benefits: herb.benefits?.trim() || '',
+            origin: herb.origin?.trim() || '',
+            partsUsed: herb.partsUsed?.trim() || '',
+            status: 'published',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            searchKeywords: [
+              herb.name.toLowerCase(),
+              herb.scientificName.toLowerCase(),
+              validCategory,
+              ...(herb.benefits?.toLowerCase().split(',').map((s: string) => s.trim()) || []),
+              ...(herb.origin?.toLowerCase().split(',').map((s: string) => s.trim()) || [])
+            ].filter(Boolean),
+          };
+
+          await addDoc(collection(db, 'herbs'), herbData);
+          successCount++;
+        } catch (error) {
+          console.error('Error uploading herb:', herb.name, error);
+          errorCount++;
+        }
+        
+        setUploadProgress(Math.round(((i + 1) / herbs.length) * 100));
+      }
+
+      setResultStats({ success: successCount, errors: errorCount, total: herbs.length });
+      setLoading(false);
+      setSuccess(true);
+      setFile(null);
+      setPreview([]);
+      toast.success(`Upload complete! ${successCount} added, ${errorCount} errors.`);
+    };
+    
+    reader.readAsText(file);
   };
+
+  if (checkingAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-[#97A97C] animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 font-semibold text-lg">Access denied. Admin only.</p>
+          <Button onClick={() => router.push('/')} className="mt-4 bg-[#97A97C]">
+            Go Home
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -137,17 +252,26 @@ export default function BulkUploadPage() {
           <code className="block bg-white p-2 rounded text-xs text-gray-700">
             name,scientificName,category,description,preparation,warnings,benefits,origin,partsUsed
           </code>
-          <a 
-            href="/templates/herb-template.csv" 
-            download
-            className="text-blue-600 hover:underline text-sm mt-2 inline-block"
-          >
-            Download Template CSV →
-          </a>
+          <p className="text-xs text-blue-600 mt-2">
+            Valid categories: {VALID_CATEGORIES.join(', ')}
+          </p>
         </div>
 
         {/* Upload Form */}
         <div className="bg-white p-8 rounded-lg shadow">
+          {success && (
+            <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <h3 className="font-bold text-green-800">Upload Complete</h3>
+              </div>
+              <p className="text-sm text-green-700">
+                {resultStats.success} of {resultStats.total} herbs uploaded successfully.
+                {resultStats.errors > 0 && ` ${resultStats.errors} rows had errors.`}
+              </p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             
             {/* File Upload */}
@@ -162,7 +286,7 @@ export default function BulkUploadPage() {
                   id="csv-upload"
                 />
                 <label htmlFor="csv-upload" className="cursor-pointer">
-                  <div className="text-4xl mb-2">📄</div>
+                  <FileSpreadsheet className="w-12 h-12 mx-auto mb-2 text-gray-400" />
                   <p className="text-gray-600">
                     {file ? file.name : 'Click to upload CSV file'}
                   </p>
@@ -174,7 +298,7 @@ export default function BulkUploadPage() {
             {/* Preview */}
             {preview.length > 0 && (
               <div>
-                <h3 className="font-bold text-[#2C3E2D] mb-2">Preview (First 5 rows)</h3>
+                <h3 className="font-bold text-[#2C3E2D] mb-2">Preview (First {preview.length} rows)</h3>
                 <div className="overflow-x-auto border rounded-lg">
                   <table className="w-full text-sm">
                     <thead className="bg-gray-100">
@@ -195,9 +319,6 @@ export default function BulkUploadPage() {
                     </tbody>
                   </table>
                 </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Showing {preview.length} of parsed rows. Ready to upload to Firestore.
-                </p>
               </div>
             )}
 
@@ -209,10 +330,9 @@ export default function BulkUploadPage() {
                   <span>{uploadProgress}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
-                  {/* Fixed dynamic width using CSS variable to satisfy no-inline-styles rule */}
                   <div 
-                    className="bg-[#B8860B] h-2 rounded-full transition-all w-[var(--progress-width)]" 
-                    style={{ '--progress-width': `${uploadProgress}%` } as React.CSSProperties}
+                    className="bg-[#B8860B] h-2 rounded-full transition-all" 
+                    style={{ width: `${uploadProgress}%` }}
                   ></div>
                 </div>
               </div>
@@ -238,7 +358,7 @@ export default function BulkUploadPage() {
                 )}
               </Button>
               <Link href="/admin/herbs/list">
-                <Button variant="outline">Cancel</Button>
+                <Button variant="outline" type="button">Cancel</Button>
               </Link>
             </div>
           </form>
