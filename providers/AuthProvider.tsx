@@ -16,6 +16,7 @@ export interface UserProfile {
   uid: string;
   email: string;
   displayName?: string;
+  name?: string;
   photoURL?: string;
   role?: 'user' | 'admin' | 'practitioner';
   subscriptionTier?: 'free' | 'premium' | null;
@@ -101,12 +102,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     if (displayName && userCredential.user) {
       await updateProfile(userCredential.user, { displayName });
+      
+      // Reload the user so displayName is immediately available in auth state
+      await userCredential.user.reload();
+      setUser({ ...userCredential.user });
     }
     
     const newUser: UserProfile = {
       uid: userCredential.user.uid,
       email: userCredential.user.email || '',
       displayName: displayName || userCredential.user.displayName || '',
+      name: displayName || userCredential.user.displayName || '',
       role: 'user',
       subscriptionTier: 'free',
       createdAt: serverTimestamp(),
