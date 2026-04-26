@@ -3,13 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { db } from '@/lib/firebase/client';
-import { doc, getDoc } from 'firebase/firestore';
+import { getSubscriptionStatus } from '@/lib/payments';
 import { 
   SUBSCRIPTION_PLANS, 
-  PaymentGateway, 
-  suggestGateway,
-  getSubscriptionStatus 
+  PaymentGateway
 } from '@/lib/payments';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,6 +37,7 @@ export default function SubscriptionPage() {
 
   const canceled = searchParams.get('canceled') === 'true';
   const verified = searchParams.get('verified') === 'true';
+  const preselectedPlan = searchParams.get('plan');
 
   useEffect(() => {
     if (canceled) {
@@ -56,14 +54,19 @@ export default function SubscriptionPage() {
         setCheckingSub(false);
         return;
       }
-      const sub = await getSubscriptionStatus(user.uid);
-      setCurrentSub(sub);
-      setCheckingSub(false);
+      try {
+        const sub = await getSubscriptionStatus(user.uid);
+        setCurrentSub(sub);
+      } catch (err) {
+        console.error('Error loading sub:', err);
+      } finally {
+        setCheckingSub(false);
+      }
     };
     loadSub();
   }, [user]);
 
-  // Auto-suggest gateway based on browser locale (rough country detection)
+  // Auto-suggest gateway based on timezone
   useEffect(() => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const africanTimezones = ['Africa/Lagos', 'Africa/Accra', 'Africa/Nairobi', 'Africa/Johannesburg', 'Africa/Abidjan'];
@@ -75,9 +78,16 @@ export default function SubscriptionPage() {
   }, []);
 
   const handleSubscribe = async (planId: string) => {
+    console.log('[Subscribe] Clicked plan:', planId);
+    
     if (!user) {
       toast.error('Please sign in first');
       router.push('/login?redirect=/subscription');
+      return;
+    }
+
+    if (!user.email) {
+      toast.error('Your account is missing an email. Please update your profile.');
       return;
     }
 
@@ -88,27 +98,37 @@ export default function SubscriptionPage() {
       const plan = SUBSCRIPTION_PLANS.find(p => p.id === planId);
       if (!plan) throw new Error('Plan not found');
 
+      const payload = {
+        email: user.email,
+        userId: user.uid,
+        planId,
+        gateway: selectedGateway,
+        callbackUrl: `${window.location.origin}/subscription`
+      };
+
+      console.log('[Subscribe] Initiating payment:', payload);
+
       const response = await fetch('/api/payments/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: user.email,
-          userId: user.uid,
-          planId,
-          gateway: selectedGateway,
-          callbackUrl: `${window.location.origin}/subscription`
-        })
+        body: JSON.stringify(payload)
       });
 
       const data = await response.json();
+      console.log('[Subscribe] Response:', data);
 
       if (!data.success) {
         throw new Error(data.error || 'Payment initiation failed');
       }
 
+      if (!data.authorizationUrl) {
+        throw new Error('No payment URL returned from gateway');
+      }
+
       // Redirect to payment gateway
       window.location.href = data.authorizationUrl;
     } catch (error: any) {
+      console.error('[Subscribe] Error:', error);
       toast.error(error.message || 'Failed to initiate payment');
       setProcessing(false);
       setSelectedPlan(null);
@@ -144,6 +164,7 @@ export default function SubscriptionPage() {
   }
 
   const isActive = currentSub?.status === 'active';
+  const activePlanId = currentSub?.plan;
 
   return (
     <div className="min-h-screen bg-[#F5F5DC]">
@@ -162,7 +183,7 @@ export default function SubscriptionPage() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-12">
-        {/* Current Subscription */}
+        {/* Current Subscription Banner */}
         {isActive && (
           <Card className="mb-8 border-green-200 bg-green-50">
             <CardContent className="p-6">
@@ -173,7 +194,7 @@ export default function SubscriptionPage() {
                     You have an active {currentSub.planName} subscription
                   </h3>
                   <p className="text-sm text-green-700">
-                    Paid via {currentSub.gateway} • Renews automatically
+                    Paid via {currentSub.gateway} • Renews {currentSub.expiresAt?.toDate?.().toLocaleDateString?.() || 'automatically'}
                   </p>
                 </div>
               </div>
@@ -185,6 +206,7 @@ export default function SubscriptionPage() {
         <div className="flex justify-center mb-10">
           <div className="bg-white rounded-lg p-1 shadow-sm border inline-flex">
             <button
+              type="button"
               onClick={() => setSelectedGateway('paystack')}
               className={`px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
                 selectedGateway === 'paystack'
@@ -197,6 +219,7 @@ export default function SubscriptionPage() {
               <Badge variant="outline" className="text-[10px] ml-1">Africa</Badge>
             </button>
             <button
+              type="button"
               onClick={() => setSelectedGateway('flutterwave')}
               className={`px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
                 selectedGateway === 'flutterwave'
@@ -217,6 +240,8 @@ export default function SubscriptionPage() {
             const price = selectedGateway === 'paystack' ? plan.priceNGN : plan.priceUSD;
             const currency = selectedGateway === 'paystack' ? '₦' : '$';
             const isSelected = selectedPlan === plan.id;
+            const isCurrentPlan = activePlanId === plan.id;
+            const isButtonDisabled = processing || (isActive && isCurrentPlan);
 
             return (
               <Card 
@@ -259,8 +284,9 @@ export default function SubscriptionPage() {
                   </ul>
 
                   <Button
+                    type="button"
                     onClick={() => handleSubscribe(plan.id)}
-                    disabled={processing || isActive}
+                    disabled={isButtonDisabled}
                     className={`w-full h-12 text-base ${
                       plan.popular
                         ? 'bg-[#97A97C] hover:bg-[#7A8A63] text-white'
@@ -272,7 +298,7 @@ export default function SubscriptionPage() {
                         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                         Processing...
                       </>
-                    ) : isActive && currentSub?.plan === plan.id ? (
+                    ) : isActive && isCurrentPlan ? (
                       <>
                         <Check className="w-5 h-5 mr-2" />
                         Current Plan
@@ -280,7 +306,7 @@ export default function SubscriptionPage() {
                     ) : (
                       <>
                         <Crown className="w-5 h-5 mr-2" />
-                        Subscribe Now
+                        {isActive ? 'Switch to ' + plan.name : 'Subscribe Now'}
                       </>
                     )}
                   </Button>
