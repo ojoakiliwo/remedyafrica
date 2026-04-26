@@ -105,7 +105,7 @@ async function initiatePaystack(
       },
       body: JSON.stringify({
         email,
-        amount: plan.priceNGN * 100,
+        amount: plan.priceNGN * 100, // kobo
         reference: txRef,
         callback_url: callback,
         metadata: {
@@ -113,6 +113,7 @@ async function initiatePaystack(
           planId: plan.id,
           planName: plan.name,
           gateway: 'paystack',
+          interval: 'quarterly',
           cancel_action: `${process.env.NEXT_PUBLIC_APP_URL || 'https://your-app.vercel.app'}/subscription?canceled=true`
         }
       })
@@ -192,15 +193,16 @@ async function initiateFlutterwave(
           name: email.split('@')[0]
         },
         customizations: {
-          title: 'RemedyAfrica Subscription',
-          description: `${plan.name} Plan - ${plan.description}`,
+          title: 'RemedyAfrica — 3 Month Subscription',
+          description: `${plan.name} Plan — ${plan.description}`,
           logo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://your-app.vercel.app'}/logo.png`
         },
         meta: {
           userId,
           planId: plan.id,
           planName: plan.name,
-          gateway: 'flutterwave'
+          gateway: 'flutterwave',
+          interval: 'quarterly'
         }
       })
     });

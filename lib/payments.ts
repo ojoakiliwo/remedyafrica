@@ -20,9 +20,9 @@ export interface PaymentPlan {
   id: string;
   name: string;
   description: string;
-  priceNGN: number; // For Paystack (Nigerian/local)
-  priceUSD: number; // For Flutterwave (International)
-  interval: 'monthly' | 'yearly';
+  priceNGN: number;
+  priceUSD: number;
+  interval: 'quarterly'; // 3 months
   features: string[];
   popular?: boolean;
 }
@@ -68,36 +68,39 @@ export interface SubscriptionRecord {
   flutterwaveData?: any;
 }
 
-/* ─────────────── Plans ─────────────── */
+/* ─────────────── Plans — Quarterly (3 months) ─────────────── */
 
 export const SUBSCRIPTION_PLANS: PaymentPlan[] = [
   {
     id: 'basic',
     name: 'Basic',
     description: 'Essential access to herbal remedies',
-    priceNGN: 5000,
-    priceUSD: 5,
-    interval: 'monthly',
+    priceNGN: 12000,    // ₦4,000/month equivalent
+    priceUSD: 12,         // $4/month equivalent
+    interval: 'quarterly',
     features: [
-      'Browse all herbs',
-      'AI symptom search',
-      'Save up to 10 herbs',
-      'Community forum access'
+      'Browse all herbs and remedies',
+      'AI-powered symptom search',
+      'Save up to 10 favorite herbs',
+      'Community forum access',
+      'Basic plant identification (5/month)'
     ]
   },
   {
     id: 'premium',
     name: 'Premium',
     description: 'Full access + practitioner consultations',
-    priceNGN: 15000,
-    priceUSD: 15,
-    interval: 'monthly',
+    priceNGN: 36000,      // ₦12,000/month equivalent
+    priceUSD: 36,          // $12/month equivalent
+    interval: 'quarterly',
     features: [
       'Everything in Basic',
       'Unlimited herb saves',
-      '2 practitioner consultations/month',
-      'Plant identification (20/month)',
-      'Priority support'
+      '6 practitioner consultations (2/month)',
+      'Plant identification (60 total)',
+      'Personalized wellness protocols',
+      'Priority support',
+      'Direct chat with practitioners'
     ],
     popular: true
   },
@@ -105,15 +108,17 @@ export const SUBSCRIPTION_PLANS: PaymentPlan[] = [
     id: 'healer',
     name: 'Healer',
     description: 'Unlimited access for serious wellness',
-    priceNGN: 40000,
-    priceUSD: 40,
-    interval: 'monthly',
+    priceNGN: 96000,      // ₦32,000/month equivalent
+    priceUSD: 96,          // $32/month equivalent
+    interval: 'quarterly',
     features: [
       'Everything in Premium',
       'Unlimited consultations',
-      'Unlimited plant IDs',
-      'Personal wellness report',
-      'Early access to new features'
+      'Unlimited plant identifications',
+      'Quarterly wellness report',
+      'Family sharing (up to 3 members)',
+      'Early access to new features',
+      'Exclusive practitioner webinars'
     ]
   }
 ];
@@ -156,8 +161,9 @@ export async function createSubscriptionRecord(
   reference: string,
   status: 'pending' | 'active' | 'failed'
 ) {
+  // 3 months from now
   const expiresAt = new Date();
-  expiresAt.setMonth(expiresAt.getMonth() + (plan.interval === 'yearly' ? 12 : 1));
+  expiresAt.setMonth(expiresAt.getMonth() + 3);
 
   await setDoc(doc(db, 'users', userId, 'subscription', 'current'), {
     plan: plan.id,

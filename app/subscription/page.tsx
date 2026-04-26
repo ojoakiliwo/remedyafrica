@@ -20,7 +20,14 @@ import {
   Crown, 
   Shield,
   ArrowLeft,
-  AlertCircle
+  ArrowRight,
+  Heart,
+  Users,
+  Sparkles,
+  Leaf,
+  MessageSquare,
+  Calendar,
+  X
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -34,17 +41,17 @@ export default function SubscriptionPage() {
   const [processing, setProcessing] = useState(false);
   const [currentSub, setCurrentSub] = useState<any>(null);
   const [checkingSub, setCheckingSub] = useState(true);
+  const [showPractitionerSection, setShowPractitionerSection] = useState(false);
 
   const canceled = searchParams.get('canceled') === 'true';
   const verified = searchParams.get('verified') === 'true';
-  const preselectedPlan = searchParams.get('plan');
 
   useEffect(() => {
     if (canceled) {
       toast.error('Payment was canceled. You can try again.');
     }
     if (verified) {
-      toast.success('Payment successful! Your subscription is now active.');
+      toast.success('Payment successful! Your subscription is now active for 3 months.');
     }
   }, [canceled, verified]);
 
@@ -114,6 +121,14 @@ export default function SubscriptionPage() {
         body: JSON.stringify(payload)
       });
 
+      // Check if response is actually JSON before parsing
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error('[Subscribe] Non-JSON response:', text.slice(0, 500));
+        throw new Error('Server returned an error. Please try again.');
+      }
+
       const data = await response.json();
       console.log('[Subscribe] Response:', data);
 
@@ -137,28 +152,8 @@ export default function SubscriptionPage() {
 
   if (authLoading || checkingSub) {
     return (
-      <div className="min-h-screen bg-[#F5F5DC] flex items-center justify-center">
+      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
         <Loader2 className="w-12 h-12 text-[#97A97C] animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-[#F5F5DC] flex items-center justify-center">
-        <Card className="max-w-md w-full mx-4">
-          <CardContent className="p-8 text-center">
-            <Shield className="w-16 h-16 text-[#97A97C] mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-[#2C3E2D] mb-2">Subscribe to RemedyAfrica</h1>
-            <p className="text-gray-600 mb-6">Sign in to choose a plan and unlock premium features.</p>
-            <Button 
-              onClick={() => router.push('/login?redirect=/subscription')}
-              className="w-full bg-[#97A97C] hover:bg-[#7A8A63]"
-            >
-              Sign In to Continue
-            </Button>
-          </CardContent>
-        </Card>
       </div>
     );
   }
@@ -167,23 +162,24 @@ export default function SubscriptionPage() {
   const activePlanId = currentSub?.plan;
 
   return (
-    <div className="min-h-screen bg-[#F5F5DC]">
-      {/* Header */}
-      <div className="bg-[#2C3E2D] text-[#F5F5DC] py-12">
-        <div className="max-w-6xl mx-auto px-4">
-          <Link href="/" className="inline-flex items-center text-[#97A97C] hover:text-white mb-4 transition-colors">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Home
-          </Link>
-          <h1 className="text-4xl font-bold mb-3">Choose Your Plan</h1>
-          <p className="text-[#97A97C] text-lg">
-            Unlock premium herbal remedies and practitioner consultations
+    <div className="min-h-screen bg-[#F5F5F0]">
+      {/* ─── Hero ─── */}
+      <div className="bg-[#2C3E2D] text-white py-16 px-4">
+        <div className="max-w-6xl mx-auto text-center">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Choose Your Path to Wellness</h1>
+          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
+            Access traditional African healing wisdom. Connect with verified practitioners. 
+            Join a community on the journey to natural wellness.
+          </p>
+          <p className="text-[#97A97C] mt-3 font-medium">
+            <Calendar className="w-4 h-4 inline mr-1" />
+            All plans bill every 3 months — enough time to heal
           </p>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-12">
-        {/* Current Subscription Banner */}
+        {/* ─── Current Subscription Banner ─── */}
         {isActive && (
           <Card className="mb-8 border-green-200 bg-green-50">
             <CardContent className="p-6">
@@ -194,15 +190,20 @@ export default function SubscriptionPage() {
                     You have an active {currentSub.planName} subscription
                   </h3>
                   <p className="text-sm text-green-700">
-                    Paid via {currentSub.gateway} • Renews {currentSub.expiresAt?.toDate?.().toLocaleDateString?.() || 'automatically'}
+                    Paid via {currentSub.gateway} • Valid until {currentSub.expiresAt?.toDate?.().toLocaleDateString?.() || '3 months from start'}
                   </p>
                 </div>
+                <Link href="/subscription/manage" className="ml-auto">
+                  <Button variant="outline" size="sm" className="border-green-600 text-green-700">
+                    Manage
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Gateway Selector */}
+        {/* ─── Gateway Selector ─── */}
         <div className="flex justify-center mb-10">
           <div className="bg-white rounded-lg p-1 shadow-sm border inline-flex">
             <button
@@ -216,7 +217,7 @@ export default function SubscriptionPage() {
             >
               <CreditCard className="w-4 h-4" />
               Paystack (NGN)
-              <Badge variant="outline" className="text-[10px] ml-1">Africa</Badge>
+              <Badge variant="outline" className="text-[10px] ml-1 bg-white/20">Africa</Badge>
             </button>
             <button
               type="button"
@@ -229,13 +230,13 @@ export default function SubscriptionPage() {
             >
               <Globe className="w-4 h-4" />
               Flutterwave (USD)
-              <Badge variant="outline" className="text-[10px] ml-1">Global</Badge>
+              <Badge variant="outline" className="text-[10px] ml-1 bg-white/20">Global</Badge>
             </button>
           </div>
         </div>
 
-        {/* Plans */}
-        <div className="grid md:grid-cols-3 gap-8">
+        {/* ─── Plans ─── */}
+        <div className="grid md:grid-cols-3 gap-8 mb-16">
           {SUBSCRIPTION_PLANS.map((plan) => {
             const price = selectedGateway === 'paystack' ? plan.priceNGN : plan.priceUSD;
             const currency = selectedGateway === 'paystack' ? '₦' : '$';
@@ -247,7 +248,7 @@ export default function SubscriptionPage() {
               <Card 
                 key={plan.id}
                 className={`relative transition-all hover:shadow-xl ${
-                  plan.popular ? 'border-[#97A97C] border-2 shadow-lg scale-105' : 'border-gray-200'
+                  plan.popular ? 'border-[#97A97C] border-2 shadow-lg md:scale-105' : 'border-gray-200'
                 } ${isSelected ? 'ring-2 ring-[#97A97C]' : ''}`}
               >
                 {plan.popular && (
@@ -267,12 +268,14 @@ export default function SubscriptionPage() {
                 </CardHeader>
 
                 <CardContent className="text-center pb-6">
-                  <div className="mb-6">
+                  <div className="mb-2">
                     <span className="text-4xl font-bold text-[#2C3E2D]">
                       {currency}{price.toLocaleString()}
                     </span>
-                    <span className="text-gray-500">/{plan.interval}</span>
                   </div>
+                  <p className="text-sm text-gray-500 mb-6">
+                    Every 3 months
+                  </p>
 
                   <ul className="space-y-3 text-left mb-8">
                     {plan.features.map((feature, idx) => (
@@ -283,63 +286,126 @@ export default function SubscriptionPage() {
                     ))}
                   </ul>
 
-                  <Button
-                    type="button"
-                    onClick={() => handleSubscribe(plan.id)}
-                    disabled={isButtonDisabled}
-                    className={`w-full h-12 text-base ${
-                      plan.popular
-                        ? 'bg-[#97A97C] hover:bg-[#7A8A63] text-white'
-                        : 'bg-[#2C3E2D] hover:bg-[#3d5238] text-white'
-                    }`}
-                  >
-                    {processing && isSelected ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : isActive && isCurrentPlan ? (
-                      <>
-                        <Check className="w-5 h-5 mr-2" />
-                        Current Plan
-                      </>
-                    ) : (
-                      <>
-                        <Crown className="w-5 h-5 mr-2" />
-                        {isActive ? 'Switch to ' + plan.name : 'Subscribe Now'}
-                      </>
-                    )}
-                  </Button>
+                  {!user ? (
+                    <Button
+                      type="button"
+                      onClick={() => router.push('/login?redirect=/subscription')}
+                      className={`w-full h-12 text-base ${
+                        plan.popular
+                          ? 'bg-[#97A97C] hover:bg-[#7A8A63] text-white'
+                          : 'bg-[#2C3E2D] hover:bg-[#3d5238] text-white'
+                      }`}
+                    >
+                      Sign In to Subscribe
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      onClick={() => handleSubscribe(plan.id)}
+                      disabled={isButtonDisabled}
+                      className={`w-full h-12 text-base ${
+                        plan.popular
+                          ? 'bg-[#97A97C] hover:bg-[#7A8A63] text-white'
+                          : 'bg-[#2C3E2D] hover:bg-[#3d5238] text-white'
+                      }`}
+                    >
+                      {processing && isSelected ? (
+                        <>
+                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : isActive && isCurrentPlan ? (
+                        <>
+                          <Check className="w-5 h-5 mr-2" />
+                          Current Plan
+                        </>
+                      ) : isActive ? (
+                        <>
+                          <ArrowRight className="w-5 h-5 mr-2" />
+                          Switch to {plan.name}
+                        </>
+                      ) : (
+                        <>
+                          <Crown className="w-5 h-5 mr-2" />
+                          Subscribe Now
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             );
           })}
         </div>
 
-        {/* Trust badges */}
-        <div className="mt-12 flex flex-wrap justify-center gap-6 text-sm text-gray-500">
-          <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-[#97A97C]" />
-            Secure SSL Encryption
-          </div>
-          <div className="flex items-center gap-2">
-            <CreditCard className="w-4 h-4 text-[#97A97C]" />
-            Visa, Mastercard, Amex
-          </div>
-          <div className="flex items-center gap-2">
-            <Globe className="w-4 h-4 text-[#97A97C]" />
-            150+ Countries Supported
+        {/* ─── For Practitioners ─── */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 mb-16">
+          <div className="md:flex items-center gap-12">
+            <div className="md:w-1/2 mb-8 md:mb-0">
+              <h2 className="text-3xl font-bold text-[#2C3E2D] mb-4">
+                Are You a Traditional Healer?
+              </h2>
+              <p className="text-gray-700 mb-6 leading-relaxed">
+                Join our network of verified African traditional medicine practitioners. 
+                Offer consultations, share your wisdom, and reach patients across the continent and diaspora.
+              </p>
+              <ul className="space-y-3 mb-6">
+                {[
+                  'Set your own consultation fees',
+                  'We handle scheduling and payments (15% platform fee)',
+                  'Sell your herbal preparations directly to patients',
+                  'Build your reputation with reviews'
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3">
+                    <Check className="w-4 h-4 text-[#97A97C]" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link 
+                href="/practitioners/apply"
+                className="inline-block bg-[#2C3E2D] text-white px-8 py-3 rounded-lg font-bold hover:bg-[#3d523e] transition-colors"
+              >
+                Apply as Practitioner
+              </Link>
+            </div>
+            <div className="md:w-1/2">
+              <div className="bg-[#F5F5F0] p-6 rounded-lg">
+                <h3 className="font-bold text-[#2C3E2D] mb-4">How Practitioner Payments Work</h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center pb-2 border-b">
+                    <span className="text-gray-600">Patient pays</span>
+                    <span className="font-bold">$25.00</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b">
+                    <span className="text-gray-600">Platform fee (15%)</span>
+                    <span className="text-red-600">-$3.75</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-gray-600 font-semibold">You receive</span>
+                    <span className="text-[#97A97C] font-bold text-lg">$21.25</span>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-4">
+                  *Medicine sales: You keep 85% of product sales. We handle payment processing.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* FAQ */}
-        <div className="mt-16 max-w-2xl mx-auto">
-          <h2 className="text-2xl font-bold text-[#2C3E2D] text-center mb-8">Common Questions</h2>
+        {/* ─── FAQ ─── */}
+        <div className="max-w-3xl mx-auto mb-16">
+          <h2 className="text-3xl font-bold text-center text-[#2C3E2D] mb-8">Common Questions</h2>
           <div className="space-y-4">
             {[
               {
-                q: 'Can I switch plans later?',
-                a: 'Yes, you can upgrade or downgrade your plan at any time. Changes take effect on your next billing cycle.'
+                q: 'Why 3 months?',
+                a: 'Traditional healing takes time. A 3-month subscription gives you enough time to work with a practitioner, follow a protocol, and see real results before deciding to renew.'
+              },
+              {
+                q: 'Can I switch plans?',
+                a: 'Yes. You can upgrade anytime — the new plan takes effect immediately. Downgrades apply at your next renewal.'
               },
               {
                 q: 'Is my payment information secure?',
@@ -351,15 +417,34 @@ export default function SubscriptionPage() {
               },
               {
                 q: 'How do I cancel?',
-                a: 'You can cancel anytime from your dashboard. You will continue to have access until the end of your current billing period.'
+                a: 'You can cancel anytime from your subscription management page. You will continue to have access until the end of your current 3-month period.'
+              },
+              {
+                q: 'Are the practitioners medically certified?',
+                a: 'Our practitioners are verified traditional healers with documented experience. "Verified" means we have checked their credentials and background. They are not necessarily Western medical doctors unless specified.'
               }
             ].map((faq, idx) => (
-              <div key={idx} className="bg-white rounded-lg p-4 border border-gray-100">
-                <h3 className="font-semibold text-[#2C3E2D] mb-1">{faq.q}</h3>
-                <p className="text-sm text-gray-600">{faq.a}</p>
+              <div key={idx} className="bg-white rounded-lg shadow p-6">
+                <h3 className="font-bold text-[#2C3E2D] mb-2">{faq.q}</h3>
+                <p className="text-gray-600">{faq.a}</p>
               </div>
             ))}
           </div>
+        </div>
+
+        {/* ─── Trust Badges ─── */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          {[
+            { icon: <Shield className="w-8 h-8 text-[#97A97C] mx-auto mb-2" />, label: 'Secure Payments' },
+            { icon: <Check className="w-8 h-8 text-[#97A97C] mx-auto mb-2" />, label: 'Verified Healers' },
+            { icon: <MessageSquare className="w-8 h-8 text-[#97A97C] mx-auto mb-2" />, label: '24/7 Support' },
+            { icon: <Globe className="w-8 h-8 text-[#97A97C] mx-auto mb-2" />, label: 'African Owned' }
+          ].map((badge, i) => (
+            <div key={i}>
+              {badge.icon}
+              <p className="text-sm font-semibold text-[#2C3E2D]">{badge.label}</p>
+            </div>
+          ))}
         </div>
       </div>
     </div>

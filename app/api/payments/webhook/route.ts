@@ -7,25 +7,12 @@ import { doc, getDoc, setDoc, serverTimestamp, updateDoc, collection, query, whe
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * Combined webhook handler for Paystack and Flutterwave.
- * 
- * Paystack events handled:
- * - charge.success: Initial payment or manual renewal
- * - subscription.disable: Admin/practitioner cancelled
- * - invoice.update: Auto-renewal success/failure
- * 
- * Flutterwave events handled:
- * - charge.completed: Payment completed
- * - subscription.cancelled: Subscription cancelled
- */
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
   const paystackSig = request.headers.get('x-paystack-signature');
   const flutterwaveHash = request.headers.get('verif-hash');
 
   try {
-    // Determine gateway by headers
     if (paystackSig) {
       return handlePaystackWebhook(rawBody, paystackSig);
     } else if (flutterwaveHash) {
@@ -48,7 +35,6 @@ async function handlePaystackWebhook(rawBody: string, signature: string) {
     return NextResponse.json({ error: 'Not configured' }, { status: 500 });
   }
 
-  // Verify signature
   const hash = createHmac('sha512', secret).update(rawBody).digest('hex');
   if (hash !== signature) {
     console.warn('[Paystack Webhook] Invalid signature');
@@ -89,19 +75,18 @@ async function handlePaystackChargeSuccess(data: any) {
     return;
   }
 
-  // Check if this user already has an active subscription for this plan
   const subRef = doc(db, 'users', userId, 'subscription', 'current');
   const subSnap = await getDoc(subRef);
 
   if (subSnap.exists() && subSnap.data().status === 'active' && subSnap.data().plan === planId) {
-    // This is a renewal — extend expiry
+    // Renewal — extend by 3 months
     const currentExpiry = subSnap.data().expiresAt?.toDate?.() || new Date();
     const newExpiry = new Date(currentExpiry);
-    newExpiry.setMonth(newExpiry.getMonth() + 1);
+    newExpiry.setMonth(newExpiry.getMonth() + 3);
 
     await updateDoc(subRef, {
       status: 'active',
-      expiresAt: serverTimestamp(),
+      expiresAt: newExpiry,
       lastRenewedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       'paystackData.lastCharge': {
@@ -112,16 +97,11 @@ async function handlePaystackChargeSuccess(data: any) {
       }
     });
 
-    // Also update the expiresAt properly using a client-side date
-    await updateDoc(subRef, {
-      expiresAt: newExpiry
-    });
-
-    console.log(`[Paystack] Renewed subscription for ${userId}`);
+    console.log(`[Paystack] Renewed quarterly subscription for ${userId}`);
   } else {
-    // Initial payment (fallback if verify endpoint missed it)
+    // Initial
     const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + 1);
+    expiresAt.setMonth(expiresAt.getMonth() + 3);
 
     await setDoc(subRef, {
       plan: planId,
@@ -131,7 +111,7 @@ async function handlePaystackChargeSuccess(data: any) {
       reference: data.reference,
       amount: data.amount / 100,
       currency: data.currency,
-      interval: 'monthly',
+      interval: 'quarterly',
       startedAt: serverTimestamp(),
       expiresAt: expiresAt,
       updatedAt: serverTimestamp(),
@@ -142,10 +122,9 @@ async function handlePaystackChargeSuccess(data: any) {
       }
     });
 
-    console.log(`[Paystack] Created subscription for ${userId}`);
+    console.log(`[Paystack] Created quarterly subscription for ${userId}`);
   }
 
-  // Log payment
   await setDoc(
     doc(db, 'payments', data.reference),
     {
@@ -169,7 +148,6 @@ async function handlePaystackSubscriptionCreated(data: any) {
   const { customer, plan, subscription_code, email_token } = data;
   if (!customer?.customer_code) return;
 
-  // Find user by email
   const usersQuery = query(collection(db, 'users'), where('email', '==', customer.email));
   const usersSnap = await getDocs(usersQuery);
   if (usersSnap.empty) {
@@ -191,15 +169,6 @@ async function handlePaystackSubscriptionCreated(data: any) {
 }
 
 async function handlePaystackSubscriptionDisabled(data: any) {
-  const { subscription_code } = data;
-  
-  // Find user by subscription code
-  const usersRef = collection(db, 'users');
-  // We need to search in subcollections — Firestore doesn't support collection group queries easily without index
-  // Instead, we'll query the payments collection or maintain a mapping
-  // For simplicity, we'll scan recent subscriptions (in production, use a dedicated mapping collection)
-  
-  // Alternative: the data object from Paystack includes customer email
   const customerEmail = data.customer?.email;
   if (!customerEmail) return;
 
@@ -217,17 +186,11 @@ async function handlePaystackSubscriptionDisabled(data: any) {
     updatedAt: serverTimestamp()
   });
 
-  console.log(`[Paystack] Subscription disabled for ${userId}`);
+  console.log(`[Paystack] Quarterly subscription disabled for ${userId}`);
 }
 
 async function handlePaystackInvoiceUpdate(data: any) {
-  // Invoice update indicates auto-renewal attempt
   if (data.status === 'success') {
-    const subscriptionCode = data.subscription?.subscription_code;
-    if (!subscriptionCode) return;
-
-    // Find user by subscription code — we'll query payments or use a mapping
-    // For now, use customer email
     const customerEmail = data.customer?.email;
     if (!customerEmail) return;
 
@@ -242,7 +205,7 @@ async function handlePaystackInvoiceUpdate(data: any) {
     if (subSnap.exists()) {
       const currentExpiry = subSnap.data().expiresAt?.toDate?.() || new Date();
       const newExpiry = new Date(currentExpiry);
-      newExpiry.setMonth(newExpiry.getMonth() + 1);
+      newExpiry.setMonth(newExpiry.getMonth() + 3);
 
       await updateDoc(subRef, {
         status: 'active',
@@ -257,10 +220,9 @@ async function handlePaystackInvoiceUpdate(data: any) {
         }
       });
 
-      console.log(`[Paystack] Auto-renewal successful for ${userId}`);
+      console.log(`[Paystack] Quarterly auto-renewal successful for ${userId}`);
     }
   } else if (data.status === 'failure') {
-    // Payment failed — mark for retry or notify user
     const customerEmail = data.customer?.email;
     if (!customerEmail) return;
 
@@ -280,7 +242,7 @@ async function handlePaystackInvoiceUpdate(data: any) {
       }
     });
 
-    console.log(`[Paystack] Auto-renewal failed for ${userId}`);
+    console.log(`[Paystack] Quarterly auto-renewal failed for ${userId}`);
   }
 }
 
@@ -331,10 +293,10 @@ async function handleFlutterwaveChargeCompleted(data: any) {
   const subSnap = await getDoc(subRef);
 
   if (subSnap.exists() && subSnap.data().status === 'active' && subSnap.data().plan === planId) {
-    // Renewal
+    // Renewal — extend by 3 months
     const currentExpiry = subSnap.data().expiresAt?.toDate?.() || new Date();
     const newExpiry = new Date(currentExpiry);
-    newExpiry.setMonth(newExpiry.getMonth() + 1);
+    newExpiry.setMonth(newExpiry.getMonth() + 3);
 
     await updateDoc(subRef, {
       status: 'active',
@@ -348,11 +310,11 @@ async function handleFlutterwaveChargeCompleted(data: any) {
       }
     });
 
-    console.log(`[Flutterwave] Renewed subscription for ${userId}`);
+    console.log(`[Flutterwave] Renewed quarterly subscription for ${userId}`);
   } else {
     // Initial
     const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + 1);
+    expiresAt.setMonth(expiresAt.getMonth() + 3);
 
     await setDoc(subRef, {
       plan: planId,
@@ -363,17 +325,17 @@ async function handleFlutterwaveChargeCompleted(data: any) {
       transactionId: data.id,
       amount: data.amount,
       currency: data.currency,
-      interval: 'monthly',
+      interval: 'quarterly',
       startedAt: serverTimestamp(),
       expiresAt: expiresAt,
       updatedAt: serverTimestamp(),
       flutterwaveData: {
-        paymentType: data.payment_type,
-        processorResponse: data.processor_response
+        paymentType: data.data?.payment_type,
+        processorResponse: data.data?.processor_response
       }
     });
 
-    console.log(`[Flutterwave] Created subscription for ${userId}`);
+    console.log(`[Flutterwave] Created quarterly subscription for ${userId}`);
   }
 
   await setDoc(
@@ -414,5 +376,5 @@ async function handleFlutterwaveSubscriptionCancelled(data: any) {
     updatedAt: serverTimestamp()
   });
 
-  console.log(`[Flutterwave] Subscription cancelled for ${userId}`);
+  console.log(`[Flutterwave] Quarterly subscription cancelled for ${userId}`);
 }
