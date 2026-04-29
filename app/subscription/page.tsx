@@ -6,8 +6,10 @@ import { useAuth } from '@/hooks/useAuth';
 import { getSubscriptionStatus } from '@/lib/payments';
 import { 
   SUBSCRIPTION_PLANS, 
-  PaymentGateway
+  PaymentGateway,
+  getPlanPriceNGN
 } from '@/lib/payments';
+import { getExchangeRate } from '@/lib/exchange-rate';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,14 +22,10 @@ import {
   Crown, 
   Shield,
   ArrowLeft,
-  ArrowRight,
-  Heart,
-  Users,
-  Sparkles,
-  Leaf,
+  TrendingUp,
   MessageSquare,
   Calendar,
-  X
+  RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -41,19 +39,44 @@ export default function SubscriptionPage() {
   const [processing, setProcessing] = useState(false);
   const [currentSub, setCurrentSub] = useState<any>(null);
   const [checkingSub, setCheckingSub] = useState(true);
-  const [showPractitionerSection, setShowPractitionerSection] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState<number>(1600);
+  const [loadingRate, setLoadingRate] = useState(true);
+  const [ngnPrices, setNgnPrices] = useState<Record<string, number>>({});
 
   const canceled = searchParams.get('canceled') === 'true';
   const verified = searchParams.get('verified') === 'true';
 
   useEffect(() => {
-    if (canceled) {
-      toast.error('Payment was canceled. You can try again.');
-    }
-    if (verified) {
-      toast.success('Payment successful! Your subscription is now active for 3 months.');
-    }
+    if (canceled) toast.error('Payment was canceled. You can try again.');
+    if (verified) toast.success('Payment successful! Your 3-month subscription is now active.');
   }, [canceled, verified]);
+
+  // Load exchange rate and calculate NGN prices
+  useEffect(() => {
+    const loadRates = async () => {
+      try {
+        const rate = await getExchangeRate();
+        setExchangeRate(rate);
+        
+        const prices: Record<string, number> = {};
+        for (const plan of SUBSCRIPTION_PLANS) {
+          prices[plan.id] = Math.round(plan.priceUSD * rate);
+        }
+        setNgnPrices(prices);
+      } catch (err) {
+        console.error('Failed to load exchange rate:', err);
+        // Fallback: use hardcoded calculations
+        const prices: Record<string, number> = {};
+        for (const plan of SUBSCRIPTION_PLANS) {
+          prices[plan.id] = Math.round(plan.priceUSD * 1600);
+        }
+        setNgnPrices(prices);
+      } finally {
+        setLoadingRate(false);
+      }
+    };
+    loadRates();
+  }, []);
 
   useEffect(() => {
     const loadSub = async () => {
@@ -73,7 +96,6 @@ export default function SubscriptionPage() {
     loadSub();
   }, [user]);
 
-  // Auto-suggest gateway based on timezone
   useEffect(() => {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const africanTimezones = ['Africa/Lagos', 'Africa/Accra', 'Africa/Nairobi', 'Africa/Johannesburg', 'Africa/Abidjan'];
@@ -85,8 +107,6 @@ export default function SubscriptionPage() {
   }, []);
 
   const handleSubscribe = async (planId: string) => {
-    console.log('[Subscribe] Clicked plan:', planId);
-    
     if (!user) {
       toast.error('Please sign in first');
       router.push('/login?redirect=/subscription');
@@ -94,7 +114,7 @@ export default function SubscriptionPage() {
     }
 
     if (!user.email) {
-      toast.error('Your account is missing an email. Please update your profile.');
+      toast.error('Your account is missing an email.');
       return;
     }
 
@@ -113,34 +133,28 @@ export default function SubscriptionPage() {
         callbackUrl: `${window.location.origin}/subscription`
       };
 
-      console.log('[Subscribe] Initiating payment:', payload);
-
       const response = await fetch('/api/payments/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
-      // Check if response is actually JSON before parsing
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('[Subscribe] Non-JSON response:', text.slice(0, 500));
-        throw new Error('Server returned an error. Please try again.');
+      const text = await response.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Server error (${response.status}): ${text.slice(0, 200)}`);
       }
-
-      const data = await response.json();
-      console.log('[Subscribe] Response:', data);
 
       if (!data.success) {
         throw new Error(data.error || 'Payment initiation failed');
       }
 
       if (!data.authorizationUrl) {
-        throw new Error('No payment URL returned from gateway');
+        throw new Error('No payment URL returned');
       }
 
-      // Redirect to payment gateway
       window.location.href = data.authorizationUrl;
     } catch (error: any) {
       console.error('[Subscribe] Error:', error);
@@ -150,7 +164,7 @@ export default function SubscriptionPage() {
     }
   };
 
-  if (authLoading || checkingSub) {
+  if (authLoading || checkingSub || loadingRate) {
     return (
       <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
         <Loader2 className="w-12 h-12 text-[#97A97C] animate-spin" />
@@ -161,9 +175,19 @@ export default function SubscriptionPage() {
   const isActive = currentSub?.status === 'active';
   const activePlanId = currentSub?.plan;
 
+  const getPrice = (planId: string): number => {
+    const plan = SUBSCRIPTION_PLANS.find(p => p.id === planId)!;
+    if (selectedGateway === 'paystack') {
+      return ngnPrices[planId] || Math.round(plan.priceUSD * exchangeRate);
+    }
+    return plan.priceUSD;
+  };
+
+  const getCurrency = () => selectedGateway === 'paystack' ? '₦' : '$';
+
   return (
     <div className="min-h-screen bg-[#F5F5F0]">
-      {/* ─── Hero ─── */}
+      {/* Hero */}
       <div className="bg-[#2C3E2D] text-white py-16 px-4">
         <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Choose Your Path to Wellness</h1>
@@ -173,13 +197,21 @@ export default function SubscriptionPage() {
           </p>
           <p className="text-[#97A97C] mt-3 font-medium">
             <Calendar className="w-4 h-4 inline mr-1" />
-            All plans bill every 3 months — enough time to heal
+            All plans cover 3 months — consultations INCLUDED, no extra fees
           </p>
         </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-12">
-        {/* ─── Current Subscription Banner ─── */}
+        {/* Exchange Rate Badge */}
+        <div className="flex justify-center mb-6">
+          <Badge variant="outline" className="text-xs text-gray-500 bg-white">
+            <RefreshCw className="w-3 h-3 mr-1" />
+            Live rate: $1 = ₦{exchangeRate.toLocaleString()}
+          </Badge>
+        </div>
+
+        {/* Current Subscription */}
         {isActive && (
           <Card className="mb-8 border-green-200 bg-green-50">
             <CardContent className="p-6">
@@ -187,10 +219,10 @@ export default function SubscriptionPage() {
                 <Check className="w-6 h-6 text-green-600" />
                 <div>
                   <h3 className="font-bold text-green-900">
-                    You have an active {currentSub.planName} subscription
+                    Active {currentSub.planName} — {currentSub.consultationsPerMonth >= 999 ? 'Unlimited' : currentSub.consultationsPerMonth} consultations/month
                   </h3>
                   <p className="text-sm text-green-700">
-                    Paid via {currentSub.gateway} • Valid until {currentSub.expiresAt?.toDate?.().toLocaleDateString?.() || '3 months from start'}
+                    Valid until {currentSub.expiresAt?.toDate?.().toLocaleDateString?.() || '3 months from start'}
                   </p>
                 </div>
                 <Link href="/subscription/manage" className="ml-auto">
@@ -203,7 +235,7 @@ export default function SubscriptionPage() {
           </Card>
         )}
 
-        {/* ─── Gateway Selector ─── */}
+        {/* Gateway Selector */}
         <div className="flex justify-center mb-10">
           <div className="bg-white rounded-lg p-1 shadow-sm border inline-flex">
             <button
@@ -235,14 +267,17 @@ export default function SubscriptionPage() {
           </div>
         </div>
 
-        {/* ─── Plans ─── */}
+        {/* Plans */}
         <div className="grid md:grid-cols-3 gap-8 mb-16">
           {SUBSCRIPTION_PLANS.map((plan) => {
-            const price = selectedGateway === 'paystack' ? plan.priceNGN : plan.priceUSD;
-            const currency = selectedGateway === 'paystack' ? '₦' : '$';
+            const price = getPrice(plan.id);
+            const currency = getCurrency();
             const isSelected = selectedPlan === plan.id;
             const isCurrentPlan = activePlanId === plan.id;
             const isButtonDisabled = processing || (isActive && isCurrentPlan);
+            const monthlyEquiv = selectedGateway === 'paystack' 
+              ? Math.round(price / 3).toLocaleString()
+              : (price / 3).toFixed(2);
 
             return (
               <Card 
@@ -268,14 +303,25 @@ export default function SubscriptionPage() {
                 </CardHeader>
 
                 <CardContent className="text-center pb-6">
-                  <div className="mb-2">
+                  <div className="mb-1">
                     <span className="text-4xl font-bold text-[#2C3E2D]">
                       {currency}{price.toLocaleString()}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500 mb-6">
-                    Every 3 months
+                  <p className="text-sm text-gray-500 mb-1">Every 3 months</p>
+                  <p className="text-xs text-[#97A97C] mb-2">
+                    ~{currency}{monthlyEquiv}/month
                   </p>
+                  
+                  {/* Consultation badge */}
+                  <div className="mb-4">
+                    <Badge className="bg-blue-50 text-blue-700 border-blue-200">
+                      {plan.consultationsPerMonth >= 999 
+                        ? 'Unlimited consultations' 
+                        : `${plan.consultationsPerMonth} consultations/month INCLUDED`
+                      }
+                    </Badge>
+                  </div>
 
                   <ul className="space-y-3 text-left mb-8">
                     {plan.features.map((feature, idx) => (
@@ -321,7 +367,7 @@ export default function SubscriptionPage() {
                         </>
                       ) : isActive ? (
                         <>
-                          <ArrowRight className="w-5 h-5 mr-2" />
+                          <TrendingUp className="w-5 h-5 mr-2" />
                           Switch to {plan.name}
                         </>
                       ) : (
@@ -338,7 +384,7 @@ export default function SubscriptionPage() {
           })}
         </div>
 
-        {/* ─── For Practitioners ─── */}
+        {/* For Practitioners */}
         <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 mb-16">
           <div className="md:flex items-center gap-12">
             <div className="md:w-1/2 mb-8 md:mb-0">
@@ -347,13 +393,14 @@ export default function SubscriptionPage() {
               </h2>
               <p className="text-gray-700 mb-6 leading-relaxed">
                 Join our network of verified African traditional medicine practitioners. 
-                Offer consultations, share your wisdom, and reach patients across the continent and diaspora.
+                Get paid monthly based on how many subscribers you serve. Sell your herbal products directly.
               </p>
               <ul className="space-y-3 mb-6">
                 {[
-                  'Set your own consultation fees',
-                  'We handle scheduling and payments (15% platform fee)',
-                  'Sell your herbal preparations directly to patients',
+                  'Paid monthly based on subscriber consultations served',
+                  'Sell your personal herbal products to users',
+                  'No per-consultation fees — subscribers access you directly',
+                  'We handle scheduling and payments',
                   'Build your reputation with reviews'
                 ].map((item, i) => (
                   <li key={i} className="flex items-center gap-3">
@@ -371,57 +418,57 @@ export default function SubscriptionPage() {
             </div>
             <div className="md:w-1/2">
               <div className="bg-[#F5F5F0] p-6 rounded-lg">
-                <h3 className="font-bold text-[#2C3E2D] mb-4">How Practitioner Payments Work</h3>
+                <h3 className="font-bold text-[#2C3E2D] mb-4">How Practitioner Earnings Work</h3>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center pb-2 border-b">
-                    <span className="text-gray-600">Patient pays</span>
-                    <span className="font-bold">$25.00</span>
+                    <span className="text-gray-600">Subscribers you served this month</span>
+                    <span className="font-bold">42 users</span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b">
-                    <span className="text-gray-600">Platform fee (15%)</span>
-                    <span className="text-red-600">-$3.75</span>
+                    <span className="text-gray-600">Base pay per subscriber</span>
+                    <span className="font-bold">$2.00</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b">
+                    <span className="text-gray-600">Product sales (85% to you)</span>
+                    <span className="font-bold text-[#97A97C]">+$127.50</span>
                   </div>
                   <div className="flex justify-between items-center pt-2">
-                    <span className="text-gray-600 font-semibold">You receive</span>
-                    <span className="text-[#97A97C] font-bold text-lg">$21.25</span>
+                    <span className="text-gray-600 font-semibold">Your monthly payout</span>
+                    <span className="text-[#97A97C] font-bold text-lg">$211.50</span>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-4">
-                  *Medicine sales: You keep 85% of product sales. We handle payment processing.
+                  *Actual earnings vary based on subscriber volume and product sales.
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* ─── FAQ ─── */}
+        {/* FAQ */}
         <div className="max-w-3xl mx-auto mb-16">
           <h2 className="text-3xl font-bold text-center text-[#2C3E2D] mb-8">Common Questions</h2>
           <div className="space-y-4">
             {[
               {
                 q: 'Why 3 months?',
-                a: 'Traditional healing takes time. A 3-month subscription gives you enough time to work with a practitioner, follow a protocol, and see real results before deciding to renew.'
+                a: 'Traditional healing takes time. A 3-month subscription gives you enough time to work with a practitioner, follow a protocol, and see real results.'
+              },
+              {
+                q: 'Are consultations really included?',
+                a: 'Yes! Your subscription includes consultations with practitioners. Basic has none, Premium has 2/month, Healer has unlimited. No hidden fees.'
               },
               {
                 q: 'Can I switch plans?',
-                a: 'Yes. You can upgrade anytime — the new plan takes effect immediately. Downgrades apply at your next renewal.'
+                a: 'Yes. Upgrade anytime — takes effect immediately. Downgrades apply at your next renewal.'
               },
               {
-                q: 'Is my payment information secure?',
-                a: 'Absolutely. We never store your card details. All payments are processed securely through Paystack and Flutterwave with PCI-DSS compliance.'
+                q: 'How do practitioners get paid?',
+                a: 'Practitioners receive monthly payouts based on how many subscribers they served, plus 85% of any herbal products they sell through the platform.'
               },
               {
                 q: 'Can I pay from outside Africa?',
-                a: 'Yes! Select "Flutterwave (USD)" to pay with any international Visa, Mastercard, or American Express card from anywhere in the world.'
-              },
-              {
-                q: 'How do I cancel?',
-                a: 'You can cancel anytime from your subscription management page. You will continue to have access until the end of your current 3-month period.'
-              },
-              {
-                q: 'Are the practitioners medically certified?',
-                a: 'Our practitioners are verified traditional healers with documented experience. "Verified" means we have checked their credentials and background. They are not necessarily Western medical doctors unless specified.'
+                a: 'Yes! Select "Flutterwave (USD)" to pay with any international card. The NGN amount is calculated at the live exchange rate.'
               }
             ].map((faq, idx) => (
               <div key={idx} className="bg-white rounded-lg shadow p-6">
@@ -432,7 +479,7 @@ export default function SubscriptionPage() {
           </div>
         </div>
 
-        {/* ─── Trust Badges ─── */}
+        {/* Trust Badges */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {[
             { icon: <Shield className="w-8 h-8 text-[#97A97C] mx-auto mb-2" />, label: 'Secure Payments' },

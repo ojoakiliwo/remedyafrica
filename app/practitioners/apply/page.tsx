@@ -1,171 +1,184 @@
+// app/practitioners/apply/page.tsx
+
 'use client';
 
 import { useState, useRef } from 'react';
-import Link from 'next/link';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase/client';
-import { useAuth } from '@/providers/AuthProvider';
-import { AlertCircle, Loader2, CheckCircle, Camera, X, User } from 'lucide-react';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { uploadHerbImage } from '@/lib/firebase/storage';
+import { useAuth } from '@/hooks/useAuth';
+import { 
+  Upload, 
+  X, 
+  Check, 
+  Loader2,
+  FileText,
+  Shield,
+  AlertCircle,
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Award,
+  BookOpen
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase/client';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
-export default function PractitionerApplicationPage() {
-  const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export default function PractitionerApplyPage() {
+  const router = useRouter();
   const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   
-  // Profile picture state
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    location: '',
+    specialty: '',
+    experience: '',
+    bio: '',
+    certifications: '',
+    agreeToTerms: false,
+    agreeToBackgroundCheck: false,
+    governmentIdType: 'national_id' as 'national_id' | 'passport' | 'drivers_license' | 'voters_card',
+    governmentIdNumber: ''
+  });
+
+  const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [idDocument, setIdDocument] = useState<File | null>(null);
+  const [idPreview, setIdPreview] = useState<string | null>(null);
+  
+  const photoRef = useRef<HTMLInputElement>(null);
+  const idRef = useRef<HTMLInputElement>(null);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+    }));
+  };
 
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    console.log('Photo selected:', file?.name, file?.size);
-    
     if (!file) return;
-
-    // Validate file
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file (JPG, PNG)');
-      toast.error('Please select an image file');
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setError('Image must be less than 2MB');
-      toast.error('Image too large. Max 2MB');
-      return;
-    }
-
-    setPhotoFile(file);
-    setError(null);
-    toast.success('Photo selected! Click Submit to upload.');
     
-    // Show preview
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be under 5MB');
+      return;
+    }
+    
+    setPhoto(file);
     const reader = new FileReader();
-    reader.onloadend = () => {
-      console.log('Preview loaded');
-      setPhotoPreview(reader.result as string);
-    };
-    reader.onerror = () => {
-      console.error('FileReader error');
-      toast.error('Failed to load preview');
-    };
+    reader.onloadend = () => setPhotoPreview(reader.result as string);
     reader.readAsDataURL(file);
   };
 
-  const removePhoto = () => {
-    setPhotoFile(null);
-    setPhotoPreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-    toast.info('Photo removed');
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    console.log('Form submit started');
-    setLoading(true);
-    setError(null);
+  const handleIdSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     
-    // Check if user is logged in
-    if (!user) {
-      setError('Please sign in before submitting your application');
-      toast.error('Please sign in first');
-      setLoading(false);
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image of your ID');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('ID image must be under 5MB');
       return;
     }
     
-    const formData = new FormData(e.currentTarget);
-    console.log('Form data collected');
-    console.log('Photo file exists:', !!photoFile);
+    setIdDocument(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setIdPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
+    if (!formData.agreeToTerms) {
+      toast.error('You must agree to the Terms of Service');
+      return;
+    }
+    
+    if (!formData.agreeToBackgroundCheck) {
+      toast.error('You must consent to background verification');
+      return;
+    }
+    
+    if (!photo) {
+      toast.error('Please upload a profile photo');
+      return;
+    }
+    
+    if (!idDocument) {
+      toast.error('Please upload your government-issued ID');
+      return;
+    }
+    
+    if (!formData.governmentIdNumber.trim()) {
+      toast.error('Please enter your ID number');
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      let photoURL = '';
+      // Upload photo
+      const photoResult = await uploadHerbImage(photo, `practitioner-photos/${Date.now()}`, 0);
       
-      // Upload photo if selected
-      if (photoFile) {
-        console.log('Starting photo upload...');
-        setUploadingPhoto(true);
-        
-        const fileName = `${Date.now()}_${photoFile.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-        const storagePath = `practitioner-photos/${user.uid}/${fileName}`;
-        console.log('Storage path:', storagePath);
-        
-        const storageRef = ref(storage, storagePath);
-        
-        console.log('Uploading bytes...');
-        const uploadResult = await uploadBytes(storageRef, photoFile);
-        console.log('Upload successful:', uploadResult.metadata.name);
-        
-        console.log('Getting download URL...');
-        photoURL = await getDownloadURL(storageRef);
-        console.log('Download URL obtained:', photoURL.substring(0, 50) + '...');
-        
-        setUploadingPhoto(false);
-        toast.success('Photo uploaded!');
-      } else {
-        console.log('No photo to upload');
-      }
-      
-      console.log('Saving to Firestore...');
-      const docData = {
-        fullName: formData.get('fullName'),
-        email: formData.get('email'),
-        phone: formData.get('phone'),
-        location: formData.get('location'),
-        experience: Number(formData.get('experience')),
-        specialty: formData.get('specialty'),
-        certifications: formData.get('certifications'),
-        bio: formData.get('bio'),
-        whyJoin: formData.get('whyJoin'),
-        photoURL: photoURL || '',
-        userId: user.uid,
+      // Upload ID document
+      const idResult = await uploadHerbImage(idDocument, `practitioner-ids/${Date.now()}`, 0);
+
+      await addDoc(collection(db, 'practitioner_applications'), {
+        ...formData,
+        userId: user?.uid || null,
+        applicantEmail: user?.email || formData.email,
+        photoURL: photoResult.url,
+        photoPath: photoResult.path,
+        governmentIdURL: idResult.url,
+        governmentIdPath: idResult.path,
         status: 'pending',
-        submittedAt: serverTimestamp()
-      };
-      
-      console.log('Document data:', { ...docData, photoURL: photoURL ? '[PRESENT]' : '[EMPTY]' });
-      
-      const docRef = await addDoc(collection(db, 'practitioner_applications'), docData);
-      console.log('Document written with ID:', docRef.id);
-      
-      toast.success('Application submitted successfully!');
+        submittedAt: serverTimestamp(),
+        reviewedAt: null,
+        reviewedBy: null,
+        notes: null
+      });
+
       setSubmitted(true);
-      window.scrollTo(0, 0);
-    } catch (err: any) {
-      console.error('Full error:', err);
-      console.error('Error code:', err.code);
-      console.error('Error message:', err.message);
-      
-      const errorMsg = err.message || 'Error submitting application. Please try again.';
-      setError(errorMsg);
-      toast.error(errorMsg);
+      toast.success('Application submitted! We will review within 5 business days.');
+    } catch (error: any) {
+      console.error('Submit error:', error);
+      toast.error('Failed to submit: ' + error.message);
     } finally {
       setLoading(false);
-      setUploadingPhoto(false);
-      console.log('Submit finished');
     }
   };
 
   if (submitted) {
     return (
       <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-green-600" />
+            <Check className="w-8 h-8 text-green-600" />
           </div>
-          <h1 className="text-2xl font-bold text-[#2C3E2D] mb-4">Application Received!</h1>
+          <h2 className="text-2xl font-bold text-[#2C3E2D] mb-2">Application Submitted!</h2>
           <p className="text-gray-600 mb-6">
-            Thank you for your interest. Our team will review your credentials and respond within 5-7 business days.
+            Your application is under review. We will verify your credentials and government ID within 5 business days.
           </p>
-          <Link href="/" className="text-[#97A97C] hover:underline font-medium">
-            Return to Home
+          <Link href="/">
+            <Button className="bg-[#97A97C] hover:bg-[#7A8A63]">
+              Return to Home
+            </Button>
           </Link>
         </div>
       </div>
@@ -173,261 +186,364 @@ export default function PractitionerApplicationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] py-12 px-4">
-      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
-        <Link href="/pricing" className="text-[#97A97C] hover:underline mb-4 inline-block">
-          ← Back to Pricing
-        </Link>
-        
-        <h1 className="text-3xl font-bold text-[#2C3E2D] mb-2">Apply as a Practitioner</h1>
-        <p className="text-gray-600 mb-8">Join our network of traditional healers. All fields are required.</p>
+    <div className="min-h-screen bg-[#F5F5F0]">
+      {/* Header */}
+      <div className="bg-[#2C3E2D] text-white py-12 px-4">
+        <div className="max-w-3xl mx-auto">
+          <Link href="/" className="text-[#97A97C] hover:text-white text-sm mb-4 inline-block">
+            ← Back to Home
+          </Link>
+          <h1 className="text-3xl font-bold">Apply as a Practitioner</h1>
+          <p className="text-gray-300 mt-2">
+            Join our network of verified traditional healers. Get paid monthly based on subscribers you serve.
+          </p>
+        </div>
+      </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-red-800 font-medium">Submission Error</p>
-              <p className="text-red-700 text-sm">{error}</p>
-              {!user && (
-                <Link href="/login" className="text-red-600 underline text-sm mt-2 inline-block">
-                  Go to Login
-                </Link>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Auth Warning */}
-        {!user && !error && (
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-orange-800 font-medium">Authentication Required</p>
-              <p className="text-orange-700 text-sm">Please sign in before submitting your application.</p>
-            </div>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6" id="application-form">
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        <form onSubmit={handleSubmit} className="space-y-8">
           
-          {/* Profile Photo Upload */}
-          <div className="bg-gray-50 p-6 rounded-lg border-2 border-dashed border-gray-300 hover:border-[#97A97C] transition-colors">
-            <h2 className="text-lg font-semibold text-[#2C3E2D] mb-4 flex items-center gap-2">
-              <Camera className="w-5 h-5 text-[#97A97C]" />
-              Profile Photo
+          {/* Personal Information */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-xl font-bold text-[#2C3E2D] mb-4 flex items-center gap-2">
+              <User className="w-5 h-5 text-[#97A97C]" />
+              Personal Information
             </h2>
             
-            <div className="flex flex-col items-center gap-4">
-              {/* Preview Area */}
-              <div className="relative">
-                {photoPreview ? (
-                  <>
-                    <img 
-                      src={photoPreview} 
-                      alt="Profile preview" 
-                      className="w-32 h-32 rounded-full object-cover border-4 border-[#97A97C]"
-                    />
-                    <button
-                      type="button"
-                      onClick={removePhoto}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 shadow-lg"
-                      title="Remove photo"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </>
-                ) : (
-                  <div className="w-32 h-32 rounded-full bg-[#97A97C]/10 flex items-center justify-center border-4 border-dashed border-[#97A97C]">
-                    <User className="w-12 h-12 text-[#97A97C]" />
-                  </div>
-                )}
-              </div>
-              
-              {/* Upload Controls */}
-              <div className="text-center">
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block font-medium text-[#2C3E2D] mb-1">Full Name *</label>
                 <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handlePhotoSelect}
-                  className="hidden"
-                  id="photo-upload"
+                  type="text"
+                  name="fullName"
+                  required
+                  value={formData.fullName}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                  placeholder="Dr. Amina Okafor"
                 />
-                <label 
-                  htmlFor="photo-upload"
-                  className="cursor-pointer bg-[#97A97C] text-white px-4 py-2 rounded-lg hover:bg-[#7A8A63] transition-colors inline-flex items-center gap-2"
-                >
-                  <Camera className="w-4 h-4" />
-                  {photoPreview ? 'Change Photo' : 'Upload Photo'}
-                </label>
-                <p className="text-sm text-gray-500 mt-2">
-                  Optional but recommended. Max 2MB, JPG/PNG.
-                </p>
-                {photoFile && (
-                  <p className="text-xs text-green-600 mt-1">
-                    ✓ {photoFile.name} selected
-                  </p>
-                )}
+              </div>
+              <div>
+                <label className="block font-medium text-[#2C3E2D] mb-1">Email *</label>
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                  placeholder="amina@example.com"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-[#2C3E2D] mb-1">Phone *</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  required
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                  placeholder="+234 800 000 0000"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-[#2C3E2D] mb-1">Location *</label>
+                <input
+                  type="text"
+                  name="location"
+                  required
+                  value={formData.location}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                  placeholder="Lagos, Nigeria"
+                />
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="fullName" className="block font-semibold text-[#2C3E2D] mb-2">Full Name *</label>
-              <input 
-                id="fullName"
-                name="fullName"
-                type="text" 
-                required
-                disabled={loading}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] focus:border-transparent disabled:opacity-50"
-                placeholder="Your legal name"
+          {/* Professional Information */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-xl font-bold text-[#2C3E2D] mb-4 flex items-center gap-2">
+              <Award className="w-5 h-5 text-[#97A97C]" />
+              Professional Information
+            </h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block font-medium text-[#2C3E2D] mb-1">Specialty *</label>
+                <input
+                  type="text"
+                  name="specialty"
+                  required
+                  value={formData.specialty}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                  placeholder="Herbal Medicine, Bone Setting, Midwifery..."
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-[#2C3E2D] mb-1">Years of Experience *</label>
+                <input
+                  type="number"
+                  name="experience"
+                  required
+                  min="1"
+                  value={formData.experience}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                  placeholder="10"
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-[#2C3E2D] mb-1">Bio *</label>
+                <textarea
+                  name="bio"
+                  required
+                  rows={4}
+                  value={formData.bio}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                  placeholder="Tell us about your healing practice, training, and approach..."
+                />
+              </div>
+              <div>
+                <label className="block font-medium text-[#2C3E2D] mb-1">Certifications & Training</label>
+                <textarea
+                  name="certifications"
+                  rows={2}
+                  value={formData.certifications}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                  placeholder="Traditional healing school, apprenticeship, certifications..."
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Profile Photo */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h2 className="text-xl font-bold text-[#2C3E2D] mb-4 flex items-center gap-2">
+              <Upload className="w-5 h-5 text-[#97A97C]" />
+              Profile Photo *
+            </h2>
+            
+            <div className="flex items-center gap-4">
+              {photoPreview ? (
+                <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-[#97A97C]">
+                  <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => { setPhoto(null); setPhotoPreview(null); }}
+                    className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1"
+                    aria-label="Remove profile photo"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => photoRef.current?.click()}
+                  className="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-[#97A97C]"
+                >
+                  <Upload className="w-6 h-6 text-gray-400" />
+                  <span className="text-xs text-gray-500 mt-1">Add Photo</span>
+                </button>
+              )}
+              <input
+                ref={photoRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoSelect}
+                className="hidden"
+                aria-label="Upload profile photo"
               />
-            </div>
-            <div>
-              <label htmlFor="email" className="block font-semibold text-[#2C3E2D] mb-2">Email *</label>
-              <input 
-                id="email"
-                name="email"
-                type="email" 
-                required
-                disabled={loading}
-                defaultValue={user?.email || ''}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] focus:border-transparent disabled:opacity-50"
-                placeholder="you@example.com"
-              />
+              <p className="text-sm text-gray-500">Professional headshot. Max 5MB.</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="phone" className="block font-semibold text-[#2C3E2D] mb-2">Phone Number *</label>
-              <input 
-                id="phone"
-                name="phone"
-                type="tel" 
-                required
-                disabled={loading}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] focus:border-transparent disabled:opacity-50"
-                placeholder="+234 800 000 0000"
-              />
-            </div>
-            <div>
-              <label htmlFor="location" className="block font-semibold text-[#2C3E2D] mb-2">Location (City, Country) *</label>
-              <input 
-                id="location"
-                name="location"
-                type="text" 
-                required
-                disabled={loading}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] focus:border-transparent disabled:opacity-50"
-                placeholder="Lagos, Nigeria"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="experience" className="block font-semibold text-[#2C3E2D] mb-2">Years of Experience *</label>
-              <input 
-                id="experience"
-                name="experience"
-                type="number" 
-                required
-                min="1"
-                disabled={loading}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] focus:border-transparent disabled:opacity-50"
-              />
-            </div>
-            <div>
-              <label htmlFor="specialty" className="block font-semibold text-[#2C3E2D] mb-2">Primary Specialty *</label>
-              <select 
-                id="specialty"
-                name="specialty"
-                required
-                disabled={loading}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] focus:border-transparent disabled:opacity-50"
-              >
-                <option value="">Select specialty...</option>
-                <option value="mental-wellness">Mental Wellness</option>
-                <option value="pain-relief">Pain Relief</option>
-                <option value="digestive-health">Digestive Health</option>
-                <option value="immune-support">Immune Support</option>
-                <option value="skin-care">Skin Care</option>
-                <option value="women-health">Women's Health</option>
-                <option value="children-health">Children's Health</option>
-                <option value="general">General Practice</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor="certifications" className="block font-semibold text-[#2C3E2D] mb-2">Certifications & Training *</label>
-            <textarea 
-              id="certifications"
-              name="certifications"
-              required
-              rows={3}
-              disabled={loading}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] focus:border-transparent disabled:opacity-50"
-              placeholder="List your certifications, apprenticeships, or traditional training..."
-            />
-          </div>
-
-          <div>
-            <label htmlFor="bio" className="block font-semibold text-[#2C3E2D] mb-2">Professional Bio *</label>
-            <textarea 
-              id="bio"
-              name="bio"
-              required
-              rows={4}
-              disabled={loading}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] focus:border-transparent disabled:opacity-50"
-              placeholder="Tell us about your healing practice, philosophy, and experience..."
-            />
-          </div>
-
-          <div>
-            <label htmlFor="whyJoin" className="block font-semibold text-[#2C3E2D] mb-2">Why do you want to join RemedyAfrica? *</label>
-            <textarea 
-              id="whyJoin"
-              name="whyJoin"
-              required
-              rows={3}
-              disabled={loading}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] focus:border-transparent disabled:opacity-50"
-              placeholder="Explain your motivation for joining our platform..."
-            />
-          </div>
-
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <p className="text-sm text-blue-800">
-              <strong>Note:</strong> We verify all practitioners. You may be asked to provide:
+          {/* Government ID Verification */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border-2 border-amber-100">
+            <h2 className="text-xl font-bold text-[#2C3E2D] mb-4 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-amber-600" />
+              Identity Verification *
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              We require government-issued ID to verify your identity and protect our community. 
+              Your ID is stored securely and only used for verification purposes.
             </p>
-            <ul className="text-sm text-blue-700 list-disc list-inside mt-2">
-              <li>Photo ID</li>
-              <li>Proof of training/certification</li>
-              <li>References from 2 patients</li>
-              <li>Video interview</li>
-            </ul>
+            
+            <div className="grid md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label htmlFor="governmentIdType" className="block font-medium text-[#2C3E2D] mb-1">ID Type *</label>
+                <select
+                  id="governmentIdType"
+                  name="governmentIdType"
+                  value={formData.governmentIdType}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                >
+                  <option value="national_id">National ID Card</option>
+                  <option value="passport">International Passport</option>
+                  <option value="drivers_license">Driver's License</option>
+                  <option value="voters_card">Voter's Card</option>
+                </select>
+              </div>
+              <div>
+                <label className="block font-medium text-[#2C3E2D] mb-1">ID Number *</label>
+                <input
+                  type="text"
+                  name="governmentIdNumber"
+                  required
+                  value={formData.governmentIdNumber}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                  placeholder="Enter your ID number"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {idPreview ? (
+                <div className="relative w-40 h-28 rounded-lg overflow-hidden border-2 border-[#97A97C]">
+                  <img src={idPreview} alt="ID" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => { setIdDocument(null); setIdPreview(null); }}
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                    aria-label="Remove ID document"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => idRef.current?.click()}
+                  className="w-40 h-28 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-[#97A97C]"
+                >
+                  <Upload className="w-6 h-6 text-gray-400" />
+                  <span className="text-xs text-gray-500 mt-1">Upload ID</span>
+                </button>
+              )}
+              <input
+                ref={idRef}
+                type="file"
+                accept="image/*"
+                onChange={handleIdSelect}
+                className="hidden"
+                aria-label="Upload government ID document"
+              />
+              <div className="text-sm text-gray-500">
+                <p>Clear photo of your ID</p>
+                <p>Front side only</p>
+                <p>Max 5MB</p>
+              </div>
+            </div>
           </div>
 
-          <button 
-            type="submit" 
-            disabled={loading || uploadingPhoto}
-            className="w-full bg-[#97A97C] text-white py-4 rounded-lg font-bold hover:bg-[#7A8A63] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-          >
-            {loading || uploadingPhoto ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                {uploadingPhoto ? 'Uploading Photo...' : 'Submitting...'}
-              </>
-            ) : (
-              'Submit Application'
-            )}
-          </button>
+          {/* Legal Agreement */}
+          <div className="bg-white rounded-xl shadow-sm p-6 border-2 border-blue-100">
+            <h2 className="text-xl font-bold text-[#2C3E2D] mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-blue-600" />
+              Legal Agreement
+            </h2>
+            
+            <div className="space-y-4 max-h-64 overflow-y-auto bg-gray-50 p-4 rounded-lg text-sm text-gray-700 mb-4">
+              <h3 className="font-bold text-[#2C3E2D]">Terms of Service for Practitioners</h3>
+              
+              <p><strong>1. Verification & Compliance</strong></p>
+              <p>You confirm that all information provided is accurate. You consent to background verification including identity confirmation through government-issued ID. Providing false information will result in immediate termination and potential legal action.</p>
+              
+              <p><strong>2. Scope of Practice</strong></p>
+              <p>You agree to practice within your training and expertise. You will not claim to provide services beyond your qualifications. You understand that RemedyAfrica is a platform connecting traditional healers with seekers and does not provide medical advice.</p>
+              
+              <p><strong>3. Patient Safety</strong></p>
+              <p>You agree to:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Refer users to licensed medical professionals when appropriate</li>
+                <li>Not discourage users from seeking conventional medical care</li>
+                <li>Maintain confidentiality of all user interactions</li>
+                <li>Report any adverse reactions to herbal preparations</li>
+              </ul>
+              
+              <p><strong>4. Product Sales</strong></p>
+              <p>You may sell herbal preparations through the platform. You confirm that all products are prepared safely and labeled accurately. RemedyAfrica takes 15% commission on product sales. You are responsible for product quality and shipping.</p>
+              
+              <p><strong>5. Payment Structure</strong></p>
+              <p>You will be paid monthly based on the number of subscribers who consulted with you. The base rate is determined by your tier and subscriber volume. Payments are processed within 5 business days of month-end.</p>
+              
+              <p><strong>6. Platform Rules</strong></p>
+              <p>You agree not to:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Solicit users for off-platform payments</li>
+                <li>Share user contact information</li>
+                <li>Make guarantees of cure or specific outcomes</li>
+                <li>Discriminate against any user</li>
+              </ul>
+              
+              <p><strong>7. Termination</strong></p>
+              <p>Either party may terminate with 30 days notice. RemedyAfrica may terminate immediately for violations of these terms, patient safety concerns, or fraudulent activity.</p>
+              
+              <p><strong>8. Liability</strong></p>
+              <p>You acknowledge that you are an independent practitioner, not an employee of RemedyAfrica. You carry full liability for your practice and advice. RemedyAfrica provides the platform only and is not liable for practitioner actions.</p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="agreeToTerms"
+                  checked={formData.agreeToTerms}
+                  onChange={handleInputChange}
+                  className="mt-1 w-5 h-5 text-[#97A97C] rounded focus:ring-[#97A97C]"
+                />
+                <span className="text-sm text-gray-700">
+                  I have read and agree to the <strong>Terms of Service</strong> above. I understand that providing false information or violating these terms may result in account termination and legal consequences.
+                </span>
+              </label>
+              
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="agreeToBackgroundCheck"
+                  checked={formData.agreeToBackgroundCheck}
+                  onChange={handleInputChange}
+                  className="mt-1 w-5 h-5 text-[#97A97C] rounded focus:ring-[#97A97C]"
+                />
+                <span className="text-sm text-gray-700">
+                  I consent to <strong>background verification</strong> including identity confirmation through my government-issued ID. I understand this is required for community safety.
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Submit */}
+          <div className="flex gap-4">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-[#97A97C] hover:bg-[#7A8A63] h-14 text-lg"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Shield className="w-5 h-5 mr-2" />
+                  Submit Application
+                </>
+              )}
+            </Button>
+            <Link href="/">
+              <Button type="button" variant="outline" className="h-14 px-8">
+                Cancel
+              </Button>
+            </Link>
+          </div>
         </form>
       </div>
     </div>

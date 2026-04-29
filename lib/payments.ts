@@ -13,6 +13,7 @@ import {
   orderBy,
   limit
 } from 'firebase/firestore';
+import { getExchangeRate, convertUSDtoNGN } from './exchange-rate';
 
 /* ─────────────── Types ─────────────── */
 
@@ -20,30 +21,16 @@ export interface PaymentPlan {
   id: string;
   name: string;
   description: string;
-  priceNGN: number;
-  priceUSD: number;
-  interval: 'quarterly'; // 3 months
+  priceUSD: number; // Base price in USD — NGN calculated live
+  interval: 'quarterly';
   features: string[];
   popular?: boolean;
+  consultationsPerMonth: number;
+  plantIdsPerMonth: number;
+  familyMembers?: number;
 }
 
 export type PaymentGateway = 'paystack' | 'flutterwave';
-
-export interface InitiatePaymentParams {
-  userId: string;
-  email: string;
-  planId: string;
-  gateway: PaymentGateway;
-  callbackUrl: string;
-}
-
-export interface PaymentResponse {
-  success: boolean;
-  authorizationUrl?: string;
-  reference?: string;
-  txRef?: string;
-  error?: string;
-}
 
 export interface SubscriptionRecord {
   plan: string;
@@ -68,16 +55,23 @@ export interface SubscriptionRecord {
   flutterwaveData?: any;
 }
 
-/* ─────────────── Plans — Quarterly (3 months) ─────────────── */
+/* ─────────────── Plans — Quarterly (3 months) ───────────────
+ * 
+ * NO per-consultation fees. Consultations are INCLUDED in subscription.
+ * Practitioners are paid monthly based on number of users they served.
+ * 
+ * Base prices in USD. NGN calculated at live exchange rate.
+ */
 
 export const SUBSCRIPTION_PLANS: PaymentPlan[] = [
   {
     id: 'basic',
     name: 'Basic',
-    description: 'Essential access to herbal remedies',
-    priceNGN: 12000,    // ₦4,000/month equivalent
-    priceUSD: 12,         // $4/month equivalent
+    description: 'Start your healing journey',
+    priceUSD: 9,
     interval: 'quarterly',
+    consultationsPerMonth: 0,
+    plantIdsPerMonth: 5,
     features: [
       'Browse all herbs and remedies',
       'AI-powered symptom search',
@@ -89,31 +83,34 @@ export const SUBSCRIPTION_PLANS: PaymentPlan[] = [
   {
     id: 'premium',
     name: 'Premium',
-    description: 'Full access + practitioner consultations',
-    priceNGN: 36000,      // ₦12,000/month equivalent
-    priceUSD: 36,          // $12/month equivalent
+    description: 'Full access + practitioner support',
+    priceUSD: 24,
     interval: 'quarterly',
+    consultationsPerMonth: 2,
+    plantIdsPerMonth: 20,
+    popular: true,
     features: [
       'Everything in Basic',
       'Unlimited herb saves',
-      '6 practitioner consultations (2/month)',
-      'Plant identification (60 total)',
+      '2 practitioner consultations/month (INCLUDED)',
+      'Plant identification (20/month)',
       'Personalized wellness protocols',
       'Priority support',
       'Direct chat with practitioners'
-    ],
-    popular: true
+    ]
   },
   {
     id: 'healer',
     name: 'Healer',
-    description: 'Unlimited access for serious wellness',
-    priceNGN: 96000,      // ₦32,000/month equivalent
-    priceUSD: 96,          // $32/month equivalent
+    description: 'Unlimited access for families',
+    priceUSD: 54,
     interval: 'quarterly',
+    consultationsPerMonth: 999, // unlimited
+    plantIdsPerMonth: 999, // unlimited
+    familyMembers: 3,
     features: [
       'Everything in Premium',
-      'Unlimited consultations',
+      'Unlimited consultations (INCLUDED)',
       'Unlimited plant identifications',
       'Quarterly wellness report',
       'Family sharing (up to 3 members)',
@@ -123,20 +120,14 @@ export const SUBSCRIPTION_PLANS: PaymentPlan[] = [
   }
 ];
 
-/* ─────────────── Helpers ─────────────── */
+/* ─────────────── Dynamic Pricing ─────────────── */
 
-export function suggestGateway(countryCode?: string): PaymentGateway {
-  const africanCountries = [
-    'NG', 'GH', 'KE', 'ZA', 'CI', 'UG', 'TZ', 'RW', 'SN', 'CM',
-    'ET', 'EG', 'MA', 'DZ', 'TN', 'LY', 'SD', 'SS', 'ML', 'BF',
-    'NE', 'TD', 'CF', 'CD', 'CG', 'GA', 'GQ', 'ST', 'AO', 'ZM',
-    'ZW', 'MW', 'MZ', 'MG', 'MU', 'SC', 'KM', 'DJ', 'ER', 'SO',
-    'BJ', 'TG', 'SL', 'LR', 'GW', 'GM', 'CV', 'BI', 'RW', 'UG'
-  ];
-  if (countryCode && africanCountries.includes(countryCode.toUpperCase())) {
-    return 'paystack';
-  }
-  return 'flutterwave';
+export async function getPlanPriceNGN(planId: string): Promise<number> {
+  const plan = SUBSCRIPTION_PLANS.find(p => p.id === planId);
+  if (!plan) throw new Error('Plan not found');
+  
+  const rate = await getExchangeRate();
+  return convertUSDtoNGN(plan.priceUSD, rate);
 }
 
 export function getPlanById(planId: string): PaymentPlan | undefined {
@@ -152,6 +143,20 @@ export function getNextPlan(currentPlanId: string): PaymentPlan | null {
   return null;
 }
 
+export function suggestGateway(countryCode?: string): PaymentGateway {
+  const africanCountries = [
+    'NG', 'GH', 'KE', 'ZA', 'CI', 'UG', 'TZ', 'RW', 'SN', 'CM',
+    'ET', 'EG', 'MA', 'DZ', 'TN', 'LY', 'SD', 'SS', 'ML', 'BF',
+    'NE', 'TD', 'CF', 'CD', 'CG', 'GA', 'GQ', 'ST', 'AO', 'ZM',
+    'ZW', 'MW', 'MZ', 'MG', 'MU', 'SC', 'KM', 'DJ', 'ER', 'SO',
+    'BJ', 'TG', 'SL', 'LR', 'GW', 'GM', 'CV', 'BI', 'RW', 'UG'
+  ];
+  if (countryCode && africanCountries.includes(countryCode.toUpperCase())) {
+    return 'paystack';
+  }
+  return 'flutterwave';
+}
+
 /* ─────────────── Firestore Operations ─────────────── */
 
 export async function createSubscriptionRecord(
@@ -159,9 +164,9 @@ export async function createSubscriptionRecord(
   plan: PaymentPlan,
   gateway: PaymentGateway,
   reference: string,
-  status: 'pending' | 'active' | 'failed'
+  status: 'pending' | 'active' | 'failed',
+  ngnAmount: number
 ) {
-  // 3 months from now
   const expiresAt = new Date();
   expiresAt.setMonth(expiresAt.getMonth() + 3);
 
@@ -171,22 +176,25 @@ export async function createSubscriptionRecord(
     status,
     gateway,
     reference,
-    amount: gateway === 'paystack' ? plan.priceNGN : plan.priceUSD,
+    amount: gateway === 'paystack' ? ngnAmount : plan.priceUSD,
     currency: gateway === 'paystack' ? 'NGN' : 'USD',
     interval: plan.interval,
+    consultationsPerMonth: plan.consultationsPerMonth,
+    plantIdsPerMonth: plan.plantIdsPerMonth,
+    consultationsUsedThisMonth: 0,
+    plantIdsUsedThisMonth: 0,
     startedAt: serverTimestamp(),
     expiresAt: expiresAt,
     updatedAt: serverTimestamp()
   });
 
-  // Also log to payments collection
   await setDoc(doc(db, 'payments', reference), {
     userId,
     planId: plan.id,
     planName: plan.name,
     gateway,
     reference,
-    amount: gateway === 'paystack' ? plan.priceNGN : plan.priceUSD,
+    amount: gateway === 'paystack' ? ngnAmount : plan.priceUSD,
     currency: gateway === 'paystack' ? 'NGN' : 'USD',
     status,
     createdAt: serverTimestamp(),
@@ -216,8 +224,6 @@ export async function getPaymentHistory(userId: string, limitCount: number = 10)
   }));
 }
 
-/* ─────────────── Client-side Actions ─────────────── */
-
 export async function cancelSubscription(
   userId: string
 ): Promise<{ success: boolean; message?: string; error?: string }> {
@@ -233,4 +239,58 @@ export async function cancelSubscription(
   } catch (error: any) {
     return { success: false, error: error.message };
   }
+}
+
+/* ─────────────── Consultation Tracking ─────────────── */
+
+export async function canUserConsult(userId: string): Promise<{ allowed: boolean; remaining: number; error?: string }> {
+  const sub = await getSubscriptionStatus(userId);
+  if (!sub || sub.status !== 'active') {
+    return { allowed: false, remaining: 0, error: 'No active subscription' };
+  }
+  
+  const plan = getPlanById(sub.plan);
+  if (!plan) {
+    return { allowed: false, remaining: 0, error: 'Invalid plan' };
+  }
+  
+  // Unlimited
+  if (plan.consultationsPerMonth >= 999) {
+    return { allowed: true, remaining: 999 };
+  }
+  
+  const used = sub.consultationsUsedThisMonth || 0;
+  const remaining = plan.consultationsPerMonth - used;
+  
+  if (remaining <= 0) {
+    return { allowed: false, remaining: 0, error: 'Monthly consultation limit reached' };
+  }
+  
+  return { allowed: true, remaining };
+}
+
+export async function incrementConsultationUsage(userId: string): Promise<void> {
+  const subRef = doc(db, 'users', userId, 'subscription', 'current');
+  await setDoc(subRef, {
+    consultationsUsedThisMonth: (await getDoc(subRef)).data()?.consultationsUsedThisMonth + 1 || 1,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+}
+
+export async function resetMonthlyUsage(): Promise<void> {
+  // Call this via a scheduled function (Vercel Cron or Firebase Scheduled Function)
+  const subsQuery = query(collection(db, 'users'), where('subscription.status', '==', 'active'));
+  const snapshot = await getDocs(subsQuery);
+  
+  const batch = db.batch();
+  snapshot.docs.forEach(docSnap => {
+    const subRef = doc(db, 'users', docSnap.id, 'subscription', 'current');
+    batch.update(subRef, {
+      consultationsUsedThisMonth: 0,
+      plantIdsUsedThisMonth: 0,
+      updatedAt: serverTimestamp()
+    });
+  });
+  
+  await batch.commit();
 }

@@ -1,146 +1,157 @@
+// providers/AuthProvider.tsx
+
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { 
-  onAuthStateChanged, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut, 
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  updateProfile,
+  sendEmailVerification,
+  reload,
   User as FirebaseUser,
-  updateProfile
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase/client';
 
 export interface UserProfile {
   uid: string;
-  email: string;
-  displayName?: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  role?: string;
+  emailVerified?: boolean;
   name?: string;
-  photoURL?: string;
-  role?: 'user' | 'admin' | 'practitioner';
-  subscriptionTier?: 'free' | 'premium' | null;
-  phoneNumber?: string;
-  location?: string;
-  bio?: string;
   createdAt?: any;
-  updatedAt?: any;
 }
 
-export interface AuthContextType {
+interface AuthContextType {
   user: FirebaseUser | null;
   userData: UserProfile | null;
-  profile: UserProfile | null;
   loading: boolean;
+  isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, displayName?: string) => Promise<void>;
+  signup: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
-  refreshUserData: () => Promise<void>;
+  resendVerification: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userData, setUserData] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const fetchUserData = useCallback(async (uid: string) => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', uid));
-      if (userDoc.exists()) {
-        setUserData({ uid, ...userDoc.data() } as UserProfile);
-      } else {
-        const basicProfile: UserProfile = {
-          uid,
-          email: user?.email || '',
-          displayName: user?.displayName || '',
-          role: 'user',
-          subscriptionTier: 'free',
-          createdAt: serverTimestamp(),
-        };
-        await setDoc(doc(db, 'users', uid), basicProfile);
-        setUserData(basicProfile);
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      setUserData(null);
-    }
-  }, [user]);
-
-  const refreshUserData = useCallback(async () => {
-    if (user?.uid) {
-      await fetchUserData(user.uid);
-    }
-  }, [user, fetchUserData]);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
-      
+
       if (firebaseUser) {
-        await fetchUserData(firebaseUser.uid);
+        try {
+          // Fetch additional user data from Firestore
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            const profile: UserProfile = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName || data.name || data.displayName || null,
+              photoURL: firebaseUser.photoURL,
+              role: data.role || 'user',
+              emailVerified: firebaseUser.emailVerified,
+              name: data.name || data.displayName || null,
+              createdAt: data.createdAt,
+            };
+            setUserData(profile);
+            setIsAdmin(data.role === 'admin');
+          } else {
+            setUserData({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+              emailVerified: firebaseUser.emailVerified,
+            });
+            setIsAdmin(false);
+          }
+        } catch (err) {
+          console.error('Error fetching user data:', err);
+          setUserData(null);
+          setIsAdmin(false);
+        }
       } else {
         setUserData(null);
+        setIsAdmin(false);
       }
-      
+
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [fetchUserData]);
-
-  const login = useCallback(async (email: string, password: string) => {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    if (userCredential.user) {
-      await fetchUserData(userCredential.user.uid);
-    }
-  }, [fetchUserData]);
-
-  const signup = useCallback(async (email: string, password: string, displayName?: string) => {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    
-    if (displayName && userCredential.user) {
-      await updateProfile(userCredential.user, { displayName });
-      
-      // Reload the user so displayName is immediately available in auth state
-      await userCredential.user.reload();
-      setUser({ ...userCredential.user });
-    }
-    
-    const newUser: UserProfile = {
-      uid: userCredential.user.uid,
-      email: userCredential.user.email || '',
-      displayName: displayName || userCredential.user.displayName || '',
-      name: displayName || userCredential.user.displayName || '',
-      role: 'user',
-      subscriptionTier: 'free',
-      createdAt: serverTimestamp(),
-    };
-    
-    await setDoc(doc(db, 'users', userCredential.user.uid), newUser);
-    setUserData(newUser);
   }, []);
 
-  const logout = useCallback(async () => {
+  const login = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const signup = async (email: string, password: string, displayName: string) => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    
+    // Update profile with display name
+    await updateProfile(userCredential.user, { displayName });
+    
+    // Send email verification
+    await sendEmailVerification(userCredential.user, {
+      url: typeof window !== 'undefined' ? `${window.location.origin}/verify-email` : undefined,
+    });
+    
+    // Reload to get updated profile
+    await userCredential.user.reload();
+    setUser({ ...userCredential.user });
+    
+    // Create user document in Firestore
+    await setDoc(doc(db, 'users', userCredential.user.uid), {
+      email,
+      displayName,
+      name: displayName,
+      role: 'user',
+      emailVerified: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  };
+
+  const logout = async () => {
     await signOut(auth);
     setUser(null);
     setUserData(null);
-  }, []);
+    setIsAdmin(false);
+  };
 
-  const value: AuthContextType = {
-    user,
-    userData,
-    profile: userData,
-    loading,
-    login,
-    signup,
-    logout,
-    refreshUserData,
+  const resendVerification = async () => {
+    if (!auth.currentUser) throw new Error('No user logged in');
+    await sendEmailVerification(auth.currentUser, {
+      url: typeof window !== 'undefined' ? `${window.location.origin}/verify-email` : undefined,
+    });
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        user,
+        userData,
+        loading,
+        isAdmin,
+        login,
+        signup,
+        logout,
+        resendVerification,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
