@@ -23,7 +23,7 @@ interface Topic {
 }
 
 export default function ForumPage() {
-  const { user, profile } = useAuth();
+  const { user, userData } = useAuth();
   const router = useRouter();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +70,7 @@ export default function ForumPage() {
         title: newTopic.title.trim(),
         content: newTopic.content.trim(),
         preview: newTopic.content.substring(0, 100) + (newTopic.content.length > 100 ? '...' : ''),
-        author: profile?.displayName || user.email?.split('@')[0] || 'User',
+        author: userData?.displayName || user.email?.split('@')[0] || 'User',
         authorId: user.uid,
         category: newTopic.category,
         replies: 0,
