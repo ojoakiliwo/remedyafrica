@@ -25,7 +25,7 @@ export default function ForgotPasswordPage() {
     setLoading(true);
     try {
       await sendPasswordResetEmail(auth, email.trim(), {
-        url: typeof window !== 'undefined' ? `${window.location.origin}/login` : undefined,
+        url: typeof window !== 'undefined' ? `${window.location.origin}/login` : '',
       });
       setSent(true);
       toast.success('Password reset email sent! Check your inbox.');
