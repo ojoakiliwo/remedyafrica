@@ -57,7 +57,7 @@ interface Subscription {
 }
 
 export default function DashboardPage() {
-  const { user, profile } = useAuth();
+  const { user, userData } = useAuth();
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
   const [savedHerbs, setSavedHerbs] = useState<SavedHerb[]>([]);
@@ -199,7 +199,7 @@ export default function DashboardPage() {
     );
   }
 
-  const displayName = profile?.displayName || user?.displayName || user?.email?.split('@')[0] || 'User';
+  const displayName = userData?.displayName || user?.displayName || user?.email?.split('@')[0] || 'User';
   const isSubActive = subscription?.status === 'active' && subscription?.expiresAt && subscription.expiresAt > new Date();
 
   return (
