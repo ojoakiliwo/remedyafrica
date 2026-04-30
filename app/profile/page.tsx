@@ -15,7 +15,7 @@ import { Loader2, User, Lock, Camera, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ProfilePage() {
-  const { user, profile } = useAuth();
+  const { user, userData } = useAuth();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mounted, setMounted] = useState(false);
@@ -28,15 +28,13 @@ export default function ProfilePage() {
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [message, setMessage] = useState('');
 
-  // FIX: Set mounted after hydration, update displayName from profile
   useEffect(() => {
     setMounted(true);
-    if (profile?.displayName) {
-      setDisplayName(profile.displayName);
+    if (userData?.displayName) {
+      setDisplayName(userData.displayName);
     }
-  }, [profile]);
+  }, [userData]);
 
-  // FIX: Prevent hydration mismatch and early return issues
   if (!mounted) {
     return <div className="min-h-screen bg-[#F5F5F0]" />;
   }
@@ -110,7 +108,6 @@ export default function ProfilePage() {
       try {
         await updateProfile(user, { photoURL });
         await updateDoc(doc(db, 'users', user.uid), { photoURL });
-        // FIX: Check if window exists before reloading
         if (typeof window !== 'undefined') {
           window.location.reload();
         }
@@ -139,7 +136,6 @@ export default function ProfilePage() {
         )}
 
         <div className="grid md:grid-cols-2 gap-6">
-          {/* Profile Info Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -151,11 +147,11 @@ export default function ProfilePage() {
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4">
                 <div className="relative">
-                  {profile?.photoURL ? (
-                    <img src={profile.photoURL} alt="Profile" className="w-20 h-20 rounded-full object-cover" />
+                  {userData?.photoURL ? (
+                    <img src={userData.photoURL} alt="Profile" className="w-20 h-20 rounded-full object-cover" />
                   ) : (
                     <div className="w-20 h-20 rounded-full bg-[#97A97C] flex items-center justify-center text-white text-2xl font-bold">
-                      {(profile?.displayName || user?.email?.[0] || 'U').toUpperCase()}
+                      {(userData?.displayName || user?.email?.[0] || 'U').toUpperCase()}
                     </div>
                   )}
                   <button 
@@ -176,7 +172,7 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div>
-                  <p className="font-medium text-[#2C3E2D]">{profile?.displayName}</p>
+                  <p className="font-medium text-[#2C3E2D]">{userData?.displayName}</p>
                   <p className="text-sm text-gray-500">{user.email}</p>
                 </div>
               </div>
@@ -202,7 +198,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Password Change Card */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
