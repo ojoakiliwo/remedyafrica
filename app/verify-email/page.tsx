@@ -16,7 +16,6 @@ export default function VerifyEmailPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'idle'>('idle');
   const [resending, setResending] = useState(false);
 
-  // Handle ?mode=verifyEmail&oobCode=xxx links from Firebase
   useEffect(() => {
     const url = new URL(window.location.href);
     const mode = url.searchParams.get('mode');
@@ -28,7 +27,6 @@ export default function VerifyEmailPage() {
         .then(() => {
           setStatus('success');
           toast.success('Email verified successfully!');
-          // Reload user to update emailVerified status
           if (auth.currentUser) {
             reload(auth.currentUser);
           }

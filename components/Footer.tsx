@@ -1,61 +1,40 @@
-'use client';
+// components/Footer.tsx
 
 import Link from 'next/link';
-import { Leaf, Instagram, Twitter, Mail, MapPin } from 'lucide-react';
 
-export function Footer() {
+export default function Footer() {
   return (
-    <footer className="bg-[#2C3E2D] text-[#F5F5DC] mt-20">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2">
-              <Leaf className="h-6 w-6 text-[#97A97C]" />
-              <span className="text-xl font-bold">RemedyAfrica</span>
-            </div>
-            <p className="text-sm text-[#F5F5DC]/70 max-w-xs">
-              Preserving and sharing ancient African herbal wisdom for modern wellness.
-            </p>
-          </div>
-          
+    <footer className="bg-[#2C3E2D] text-white py-8 px-4 mt-auto">
+      <div className="max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-4 gap-8 mb-8">
           <div>
-            <h4 className="font-semibold mb-4 text-[#97A97C]">Explore</h4>
-            <ul className="space-y-2 text-sm">
-              <li><Link href="/" className="hover:text-[#97A97C] transition-colors">Home</Link></li>
-              <li><Link href="/subscription" className="hover:text-[#97A97C] transition-colors">Pricing</Link></li>
+            <h3 className="text-[#97A97C] font-bold text-lg mb-2">RemedyAfrica</h3>
+            <p className="text-gray-400 text-sm">Natural healing, rooted in African tradition.</p>
+          </div>
+          <div>
+            <h4 className="font-medium mb-2">Platform</h4>
+            <ul className="space-y-1 text-sm text-gray-400">
+              <li><Link href="/search" className="hover:text-[#97A97C]">Search Remedies</Link></li>
+              <li><Link href="/practitioners" className="hover:text-[#97A97C]">Find Practitioners</Link></li>
+              <li><Link href="/subscription" className="hover:text-[#97A97C]">Pricing</Link></li>
             </ul>
           </div>
-          
           <div>
-            <h4 className="font-semibold mb-4 text-[#97A97C]">Legal</h4>
-            <ul className="space-y-2 text-sm">
-              <li><Link href="/privacy" className="hover:text-[#97A97C] transition-colors">Privacy Policy</Link></li>
-              <li><Link href="/terms" className="hover:text-[#97A97C] transition-colors">Terms of Service</Link></li>
+            <h4 className="font-medium mb-2">Company</h4>
+            <ul className="space-y-1 text-sm text-gray-400">
+              <li><Link href="/contact" className="hover:text-[#97A97C]">Contact</Link></li>
+              <li><Link href="/terms" className="hover:text-[#97A97C]">Terms of Service</Link></li>
+              <li><Link href="/privacy" className="hover:text-[#97A97C]">Privacy Policy</Link></li>
             </ul>
           </div>
-          
           <div>
-            <h4 className="font-semibold mb-4 text-[#97A97C]">Connect</h4>
-            <div className="flex space-x-4">
-              <a href="#" aria-label="Follow us on Instagram" className="hover:text-[#97A97C] transition-colors">
-                <Instagram className="h-5 w-5" />
-              </a>
-              <a href="#" aria-label="Follow us on Twitter" className="hover:text-[#97A97C] transition-colors">
-                <Twitter className="h-5 w-5" />
-              </a>
-              <a href="#" aria-label="Email us" className="hover:text-[#97A97C] transition-colors">
-                <Mail className="h-5 w-5" />
-              </a>
-            </div>
-            <div className="mt-4 flex items-start space-x-2 text-sm text-[#F5F5DC]/70">
-              <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <span>Lagos, Nigeria</span>
-            </div>
+            <h4 className="font-medium mb-2">Connect</h4>
+            <p className="text-sm text-gray-400">hello@remedyafrica.com</p>
+            <p className="text-sm text-gray-400">Lagos, Nigeria</p>
           </div>
         </div>
-        
-        <div className="border-t border-[#F5F5DC]/10 mt-8 pt-8 text-center text-sm text-[#F5F5DC]/50">
-          <p>&copy; {new Date().getFullYear()} RemedyAfrica. All rights reserved.</p>
+        <div className="border-t border-gray-700 pt-4 text-center text-sm text-gray-500">
+          © 2026 RemedyAfrica. All rights reserved.
         </div>
       </div>
     </footer>

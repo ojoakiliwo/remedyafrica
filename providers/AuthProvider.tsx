@@ -27,7 +27,7 @@ export interface UserProfile {
   createdAt?: any;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: FirebaseUser | null;
   userData: UserProfile | null;
   loading: boolean;
@@ -52,7 +52,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (firebaseUser) {
         try {
-          // Fetch additional user data from Firestore
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
@@ -101,19 +100,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signup = async (email: string, password: string, displayName: string) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     
-    // Update profile with display name
     await updateProfile(userCredential.user, { displayName });
     
-    // Send email verification
     await sendEmailVerification(userCredential.user, {
-      url: typeof window !== 'undefined' ? `${window.location.origin}/verify-email` : undefined,
+      url: typeof window !== 'undefined' ? `${window.location.origin}/verify-email` : '',
     });
     
-    // Reload to get updated profile
     await userCredential.user.reload();
     setUser({ ...userCredential.user });
     
-    // Create user document in Firestore
     await setDoc(doc(db, 'users', userCredential.user.uid), {
       email,
       displayName,
@@ -135,7 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const resendVerification = async () => {
     if (!auth.currentUser) throw new Error('No user logged in');
     await sendEmailVerification(auth.currentUser, {
-      url: typeof window !== 'undefined' ? `${window.location.origin}/verify-email` : undefined,
+      url: typeof window !== 'undefined' ? `${window.location.origin}/verify-email` : '',
     });
   };
 

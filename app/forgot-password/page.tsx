@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { auth } from '@/lib/firebase/client';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
-import { Mail, ArrowLeft, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Mail, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ForgotPasswordPage() {

@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, Literata } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/app/providers";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -43,7 +45,11 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <Providers>
-          {children}
+          <Navbar />
+          <main className="min-h-screen">
+            {children}
+          </main>
+          <Footer />
         </Providers>
       </body>
     </html>
