@@ -11,7 +11,8 @@ import {
   where,
   getDocs,
   orderBy,
-  limit
+  limit,
+  writeBatch
 } from 'firebase/firestore';
 import { getExchangeRate, convertUSDtoNGN } from './exchange-rate';
 
@@ -56,10 +57,10 @@ export interface SubscriptionRecord {
 }
 
 /* ─────────────── Plans — Quarterly (3 months) ───────────────
- * 
+ *
  * NO per-consultation fees. Consultations are INCLUDED in subscription.
  * Practitioners are paid monthly based on number of users they served.
- * 
+ *
  * Base prices in USD. NGN calculated at live exchange rate.
  */
 
@@ -125,7 +126,7 @@ export const SUBSCRIPTION_PLANS: PaymentPlan[] = [
 export async function getPlanPriceNGN(planId: string): Promise<number> {
   const plan = SUBSCRIPTION_PLANS.find(p => p.id === planId);
   if (!plan) throw new Error('Plan not found');
-  
+
   const rate = await getExchangeRate();
   return convertUSDtoNGN(plan.priceUSD, rate);
 }
@@ -248,24 +249,24 @@ export async function canUserConsult(userId: string): Promise<{ allowed: boolean
   if (!sub || sub.status !== 'active') {
     return { allowed: false, remaining: 0, error: 'No active subscription' };
   }
-  
+
   const plan = getPlanById(sub.plan);
   if (!plan) {
     return { allowed: false, remaining: 0, error: 'Invalid plan' };
   }
-  
+
   // Unlimited
   if (plan.consultationsPerMonth >= 999) {
     return { allowed: true, remaining: 999 };
   }
-  
+
   const used = sub.consultationsUsedThisMonth || 0;
   const remaining = plan.consultationsPerMonth - used;
-  
+
   if (remaining <= 0) {
     return { allowed: false, remaining: 0, error: 'Monthly consultation limit reached' };
   }
-  
+
   return { allowed: true, remaining };
 }
 
@@ -281,8 +282,8 @@ export async function resetMonthlyUsage(): Promise<void> {
   // Call this via a scheduled function (Vercel Cron or Firebase Scheduled Function)
   const subsQuery = query(collection(db, 'users'), where('subscription.status', '==', 'active'));
   const snapshot = await getDocs(subsQuery);
-  
-  const batch = db.batch();
+
+  const batch = writeBatch(db);
   snapshot.docs.forEach(docSnap => {
     const subRef = doc(db, 'users', docSnap.id, 'subscription', 'current');
     batch.update(subRef, {
@@ -291,6 +292,6 @@ export async function resetMonthlyUsage(): Promise<void> {
       updatedAt: serverTimestamp()
     });
   });
-  
+
   await batch.commit();
 }
