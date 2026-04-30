@@ -10,6 +10,7 @@ import {
   cancelSubscription, 
   getPlanById, 
   getNextPlan,
+  getPlanPriceNGN,
   SUBSCRIPTION_PLANS,
   SubscriptionRecord 
 } from '@/lib/payments';
@@ -52,6 +53,7 @@ export default function ManageSubscriptionPage() {
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [planPrices, setPlanPrices] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (authLoading) return;
@@ -74,6 +76,19 @@ export default function ManageSubscriptionPage() {
 
       setSubscription(subData as SubscriptionRecord | null);
       setHistory(historyData);
+
+      // Fetch NGN prices for all plans
+      const prices: Record<string, number> = {};
+      await Promise.all(
+        SUBSCRIPTION_PLANS.map(async (plan) => {
+          try {
+            prices[plan.id] = await getPlanPriceNGN(plan.id);
+          } catch (e) {
+            prices[plan.id] = plan.priceUSD * 1500; // fallback
+          }
+        })
+      );
+      setPlanPrices(prices);
     } catch (err) {
       console.error('Error loading subscription data:', err);
       toast.error('Failed to load subscription details');
@@ -384,6 +399,7 @@ export default function ManageSubscriptionPage() {
             <div className="grid md:grid-cols-3 gap-4">
               {SUBSCRIPTION_PLANS.map((plan) => {
                 const isCurrent = subscription?.plan === plan.id;
+                const ngnPrice = planPrices[plan.id] || plan.priceUSD * 1500;
                 return (
                   <div 
                     key={plan.id} 
@@ -397,8 +413,8 @@ export default function ManageSubscriptionPage() {
                     </div>
                     <p className="text-xs text-gray-500 mb-3">{plan.description}</p>
                     <p className="text-lg font-bold text-[#2C3E2D] mb-2">
-                      ₦{plan.priceNGN.toLocaleString()}
-                      <span className="text-xs font-normal text-gray-500">/mo</span>
+                      ₦{Math.round(ngnPrice).toLocaleString()}
+                      <span className="text-xs font-normal text-gray-500">/3mo</span>
                     </p>
                     <ul className="space-y-1 mb-3">
                       {plan.features.slice(0, 3).map((f, i) => (
