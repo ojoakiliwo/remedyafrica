@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { collection, query, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/providers/AuthProvider';
+import { useSubscription } from '@/providers/SubscriptionProvider';
 import { useRouter } from 'next/navigation';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, Lock, Crown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface Topic {
   id: string;
@@ -24,6 +26,7 @@ interface Topic {
 
 export default function ForumPage() {
   const { user, userData } = useAuth();
+  const { tier, isPremiumPro } = useSubscription();
   const router = useRouter();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,8 +36,12 @@ export default function ForumPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    loadTopics();
-  }, []);
+    if (isPremiumPro) {
+      loadTopics();
+    } else {
+      setLoading(false);
+    }
+  }, [isPremiumPro]);
 
   const loadTopics = async () => {
     try {
@@ -96,6 +103,37 @@ export default function ForumPage() {
   const filteredTopics = activeCategory === 'all' 
     ? topics 
     : topics.filter(t => t.category === activeCategory);
+
+  // PAYWALL for non-Premium Pro users
+  if (!isPremiumPro) {
+    return (
+      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center px-4 py-20">
+        <div className="max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock className="w-10 h-10 text-amber-600" />
+          </div>
+          <h2 className="text-3xl font-bold text-[#2C3E2D] mb-3">Premium Pro Access Required</h2>
+          <p className="text-gray-600 mb-2">
+            The Community Forum is exclusively available for <strong>Premium Pro</strong> subscribers.
+          </p>
+          <p className="text-sm text-gray-500 mb-8">
+            Your current plan: <span className="font-semibold capitalize">{tier}</span>
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/subscription">
+              <Button className="bg-[#97A97C] hover:bg-[#7A8A63] text-white px-8">
+                <Crown className="w-4 h-4 mr-2" />
+                Upgrade to Premium Pro
+              </Button>
+            </Link>
+          </div>
+          <p className="text-xs text-gray-400 mt-6">
+            Premium Pro includes: Forum access, unlimited consultations, priority booking, and exclusive herb guides.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

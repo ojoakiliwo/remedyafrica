@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscription } from '@/providers/SubscriptionProvider';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -24,11 +25,14 @@ import {
   Shield, 
   MessageSquare, 
   Video,
-  ChevronDown
+  ChevronDown,
+  Crown,
+  Lock
 } from 'lucide-react';
 
 export default function Navbar() {
   const { user, userData, logout } = useAuth();
+  const { tier, isPremiumPro } = useSubscription();
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -48,12 +52,15 @@ export default function Navbar() {
     }
   };
 
-  const navLinks = [
+  const baseNavLinks = [
     { href: '/', label: 'Home' },
     { href: '/category/', label: 'Categories' },
     { href: '/practitioners', label: 'Practitioners' },
-    { href: '/forum', label: 'Forum' },
   ];
+
+  const navLinks = isPremiumPro 
+    ? [...baseNavLinks, { href: '/forum', label: 'Forum' }]
+    : baseNavLinks;
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-[#e8e4df] bg-[#faf9f7]/95 backdrop-blur-md">
@@ -83,6 +90,15 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          {!isPremiumPro && user && (
+            <Link
+              href="/subscription"
+              className="rounded-md px-3 py-2 text-sm font-medium text-amber-600 hover:bg-amber-50 flex items-center gap-1"
+            >
+              <Lock className="h-3 w-3" />
+              Forum
+            </Link>
+          )}
         </div>
 
         {/* Right Side Actions */}
@@ -139,6 +155,14 @@ export default function Navbar() {
             </Button>
           </Link>
 
+          {/* Subscription Badge */}
+          {user && tier !== 'free' && (
+            <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-200">
+              <Crown className="h-3 w-3 text-amber-600" />
+              <span className="text-xs font-medium text-amber-700 capitalize">{tier}</span>
+            </div>
+          )}
+
           {/* Auth Section */}
           {user ? (
             <DropdownMenu>
@@ -158,6 +182,10 @@ export default function Navbar() {
               <DropdownMenuContent align="end" className="w-56 border-[#e8e4df] bg-white">
                 <div className="px-3 py-2">
                   <p className="text-sm font-medium text-[#2c3e33]">{user.email}</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    <Crown className="h-3 w-3 text-amber-500" />
+                    <p className="text-xs text-amber-600 font-medium capitalize">{tier} Plan</p>
+                  </div>
                   {isAdmin && (
                     <p className="mt-0.5 text-xs text-[#b89f6b] font-medium">Administrator</p>
                   )}
@@ -167,6 +195,12 @@ export default function Navbar() {
                 <DropdownMenuItem asChild className="cursor-pointer">
                   <Link href="/profile" className="flex items-center gap-2">
                     <User className="h-4 w-4" /> Profile
+                  </Link>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/subscription" className="flex items-center gap-2">
+                    <Crown className="h-4 w-4 text-amber-500" /> Subscription
                   </Link>
                 </DropdownMenuItem>
                 
@@ -184,11 +218,13 @@ export default function Navbar() {
                   </Link>
                 </DropdownMenuItem>
 
-                <DropdownMenuItem asChild className="cursor-pointer">
-                  <Link href="/forum" className="flex items-center gap-2">
-                    <MessageSquare className="h-4 w-4" /> Forum
-                  </Link>
-                </DropdownMenuItem>
+                {isPremiumPro && (
+                  <DropdownMenuItem asChild className="cursor-pointer">
+                    <Link href="/forum" className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" /> Forum
+                    </Link>
+                  </DropdownMenuItem>
+                )}
 
                 <DropdownMenuSeparator className="bg-[#e8e4df]" />
                 
@@ -256,6 +292,15 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+            {!isPremiumPro && user && (
+              <Link
+                href="/subscription"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-md px-3 py-2.5 text-sm font-medium text-amber-600 hover:bg-amber-50 flex items-center gap-2"
+              >
+                <Lock className="h-4 w-4" /> Unlock Forum
+              </Link>
+            )}
             {!user && (
               <Link
                 href="/login"
