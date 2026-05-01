@@ -35,13 +35,16 @@ export default function ForumPage() {
   const [newTopic, setNewTopic] = useState({ title: '', content: '', category: 'Q&A' });
   const [submitting, setSubmitting] = useState(false);
 
+  const isAdmin = userData?.role === 'admin';
+  const canAccessForum = isPremiumPro || isAdmin;
+
   useEffect(() => {
-    if (isPremiumPro) {
+    if (canAccessForum) {
       loadTopics();
     } else {
       setLoading(false);
     }
-  }, [isPremiumPro]);
+  }, [canAccessForum]);
 
   const loadTopics = async () => {
     try {
@@ -104,8 +107,8 @@ export default function ForumPage() {
     ? topics 
     : topics.filter(t => t.category === activeCategory);
 
-  // PAYWALL for non-Premium Pro users
-  if (!isPremiumPro) {
+  // PAYWALL for non-Premium Pro and non-admin users
+  if (!canAccessForum) {
     return (
       <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center px-4 py-20">
         <div className="max-w-md w-full text-center">
