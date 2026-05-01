@@ -25,7 +25,7 @@ export interface UserProfile {
   updatedAt?: any;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: FirebaseUser | null;
   profile: UserProfile | null;
   userData: UserProfile | null;
