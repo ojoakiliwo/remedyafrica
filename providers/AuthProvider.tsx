@@ -1,5 +1,3 @@
-// providers/AuthProvider.tsx
-
 'use client';
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
@@ -7,10 +5,8 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signOut,
   updateProfile,
-  sendEmailVerification,
-  reload,
+  signOut,
   User as FirebaseUser,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -22,29 +18,29 @@ export interface UserProfile {
   displayName: string | null;
   photoURL: string | null;
   role?: string;
-  emailVerified?: boolean;
+  subscriptionTier?: string;
+  subscriptionStatus?: string;
   name?: string;
   createdAt?: any;
+  updatedAt?: any;
 }
 
-export interface AuthContextType {
+interface AuthContextType {
   user: FirebaseUser | null;
+  profile: UserProfile | null;
   userData: UserProfile | null;
   loading: boolean;
-  isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
-  resendVerification: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [userData, setUserData] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -55,36 +51,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
-            const profile: UserProfile = {
+            setProfile({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
-              displayName: firebaseUser.displayName || data.name || data.displayName || null,
-              photoURL: firebaseUser.photoURL,
-              role: data.role || 'user',
-              emailVerified: firebaseUser.emailVerified,
-              name: data.name || data.displayName || null,
+              displayName: data.displayName || firebaseUser.displayName,
+              photoURL: data.photoURL || firebaseUser.photoURL,
+              role: data.role,
+              subscriptionTier: data.subscriptionTier,
+              subscriptionStatus: data.subscriptionStatus,
+              name: data.name,
               createdAt: data.createdAt,
-            };
-            setUserData(profile);
-            setIsAdmin(data.role === 'admin');
+              updatedAt: data.updatedAt,
+            });
           } else {
-            setUserData({
+            setProfile({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
               photoURL: firebaseUser.photoURL,
-              emailVerified: firebaseUser.emailVerified,
             });
-            setIsAdmin(false);
           }
-        } catch (err) {
-          console.error('Error fetching user data:', err);
-          setUserData(null);
-          setIsAdmin(false);
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+          setProfile({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+          });
         }
       } else {
-        setUserData(null);
-        setIsAdmin(false);
+        setProfile(null);
       }
 
       setLoading(false);
@@ -101,52 +98,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     
     await updateProfile(userCredential.user, { displayName });
-    
-    await sendEmailVerification(userCredential.user, {
-      url: typeof window !== 'undefined' ? `${window.location.origin}/verify-email` : '',
-    });
-    
     await userCredential.user.reload();
-    setUser({ ...userCredential.user });
     
     await setDoc(doc(db, 'users', userCredential.user.uid), {
       email,
       displayName,
-      name: displayName,
       role: 'user',
-      emailVerified: false,
+      subscriptionTier: 'free',
+      subscriptionStatus: 'inactive',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+    });
+
+    setUser({ ...userCredential.user });
+    setProfile({
+      uid: userCredential.user.uid,
+      email: userCredential.user.email,
+      displayName,
+      photoURL: null,
+      role: 'user',
+      subscriptionTier: 'free',
+      subscriptionStatus: 'inactive',
     });
   };
 
   const logout = async () => {
     await signOut(auth);
     setUser(null);
-    setUserData(null);
-    setIsAdmin(false);
-  };
-
-  const resendVerification = async () => {
-    if (!auth.currentUser) throw new Error('No user logged in');
-    await sendEmailVerification(auth.currentUser, {
-      url: typeof window !== 'undefined' ? `${window.location.origin}/verify-email` : '',
-    });
+    setProfile(null);
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        userData,
-        loading,
-        isAdmin,
-        login,
-        signup,
-        logout,
-        resendVerification,
-      }}
-    >
+    <AuthContext.Provider value={{ user, profile, userData: profile, loading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
