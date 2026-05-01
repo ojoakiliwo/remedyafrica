@@ -1,51 +1,143 @@
 'use client';
 
-import { createContext, useContext, ReactNode } from 'react';
-import { useAuth } from './AuthProvider';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signOut,
+  User as FirebaseUser,
+} from 'firebase/auth';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase/client';
 
-type SubscriptionTier = 'free' | 'premium' | 'premium_pro';
-
-interface SubscriptionContextType {
-  tier: SubscriptionTier;
-  isPremium: boolean;
-  isPremiumPro: boolean;
-  canAccessPrescription: boolean;
-  canAccessSideEffects: boolean;
-  canAccessForum: boolean;
+export interface UserProfile {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  role?: string;
+  subscriptionTier?: string;
+  subscriptionStatus?: string;
+  name?: string;
+  createdAt?: any;
+  updatedAt?: any;
 }
 
-const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
+interface AuthContextType {
+  user: FirebaseUser | null;
+  profile: UserProfile | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, displayName: string) => Promise<void>;
+  logout: () => Promise<void>;
+}
 
-export function SubscriptionProvider({ children }: { children: ReactNode }) {
-  const { profile } = useAuth();
-  
-  // Fix: Add type assertion to ensure tier matches SubscriptionTier type
-  const tier = (profile?.subscriptionTier as SubscriptionTier) || 'free';
-  const isPremium = tier === 'premium' || tier === 'premium_pro';
-  const isPremiumPro = tier === 'premium_pro';
-  
-  const canAccessPrescription = isPremium;
-  const canAccessSideEffects = isPremium;
-  const canAccessForum = isPremiumPro;
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+
+      if (firebaseUser) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setProfile({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: data.displayName || firebaseUser.displayName,
+              photoURL: data.photoURL || firebaseUser.photoURL,
+              role: data.role,
+              subscriptionTier: data.subscriptionTier,
+              subscriptionStatus: data.subscriptionStatus,
+              name: data.name,
+              createdAt: data.createdAt,
+              updatedAt: data.updatedAt,
+            });
+          } else {
+            setProfile({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+          setProfile({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+          });
+        }
+      } else {
+        setProfile(null);
+      }
+
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const signup = async (email: string, password: string, displayName: string) => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    
+    await updateProfile(userCredential.user, { displayName });
+    await userCredential.user.reload();
+    
+    await setDoc(doc(db, 'users', userCredential.user.uid), {
+      email,
+      displayName,
+      role: 'user',
+      subscriptionTier: 'free',
+      subscriptionStatus: 'inactive',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    setUser({ ...userCredential.user });
+    setProfile({
+      uid: userCredential.user.uid,
+      email: userCredential.user.email,
+      displayName,
+      photoURL: null,
+      role: 'user',
+      subscriptionTier: 'free',
+      subscriptionStatus: 'inactive',
+    });
+  };
+
+  const logout = async () => {
+    await signOut(auth);
+    setUser(null);
+    setProfile(null);
+  };
 
   return (
-    <SubscriptionContext.Provider value={{
-      tier,
-      isPremium,
-      isPremiumPro,
-      canAccessPrescription,
-      canAccessSideEffects,
-      canAccessForum,
-    }}>
+    <AuthContext.Provider value={{ user, profile, loading, login, signup, logout }}>
       {children}
-    </SubscriptionContext.Provider>
+    </AuthContext.Provider>
   );
 }
 
-export const useSubscription = () => {
-  const context = useContext(SubscriptionContext);
+export function useAuth() {
+  const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useSubscription must be used within a SubscriptionProvider');
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-};
+}
