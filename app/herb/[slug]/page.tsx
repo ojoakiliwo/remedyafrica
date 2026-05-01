@@ -2,7 +2,7 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Header } from '@/components/Header';
+import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -73,7 +73,7 @@ export default function HerbDetailPage() {
   if (error || !herb) {
     return (
       <div className="min-h-screen bg-[#F5F5DC]">
-        <Header />
+        <Navbar />
         <div className="container mx-auto px-4 py-20 text-center">
           <h1 className="text-3xl font-bold text-[#2C3E2D] mb-4">{error || 'Herb Not Found'}</h1>
           <Link href="/" className="text-[#97A97C] hover:underline">
@@ -86,7 +86,7 @@ export default function HerbDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#F5F5DC]">
-      <Header />
+      <Navbar />
       
       <main className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
