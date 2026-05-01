@@ -23,7 +23,6 @@ export default function HomePage() {
   const [logoError, setLogoError] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Check admin status
   useEffect(() => {
     const checkAdmin = async () => {
       if (!user) {
@@ -32,7 +31,6 @@ export default function HomePage() {
       }
       
       try {
-        // Check if user has admin claim in their profile
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
@@ -112,7 +110,6 @@ export default function HomePage() {
         </p>
         
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* AI Health Search */}
           <Link href="/search" className="group">
             <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all hover:-translate-y-1 h-full">
               <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-green-200 transition-colors">
@@ -128,7 +125,6 @@ export default function HomePage() {
             </div>
           </Link>
 
-          {/* Find Practitioners */}
           <Link href="/practitioners" className="group">
             <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all hover:-translate-y-1 h-full">
               <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
@@ -144,7 +140,6 @@ export default function HomePage() {
             </div>
           </Link>
 
-          {/* Book Consultation */}
           <Link href="/booking" className="group">
             <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all hover:-translate-y-1 h-full">
               <div className="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-200 transition-colors">
@@ -160,7 +155,6 @@ export default function HomePage() {
             </div>
           </Link>
 
-          {/* Community Forum */}
           <Link href="/forum" className="group">
             <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all hover:-translate-y-1 h-full">
               <div className="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-orange-200 transition-colors">
@@ -176,7 +170,6 @@ export default function HomePage() {
             </div>
           </Link>
 
-          {/* Video Consultations */}
           <Link href="/profile" className="group">
             <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all hover:-translate-y-1 h-full">
               <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-red-200 transition-colors">
@@ -192,7 +185,6 @@ export default function HomePage() {
             </div>
           </Link>
 
-          {/* Admin Access - ONLY visible to admins */}
           {isAdmin && (
             <Link href="/admin" className="group">
               <div className="bg-[#2C3E2D] text-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all hover:-translate-y-1 h-full">
@@ -267,59 +259,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="bg-[#2C3E2D] text-white py-12 px-4">
-        <div className="max-w-6xl mx-auto grid md:grid-cols-4 gap-8">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Leaf className="h-8 w-8 text-[#97A97C]" />
-              <span className="font-bold text-xl">RemedyAfrica</span>
-            </div>
-            <p className="text-gray-400 text-sm">
-              Connecting traditional healing with modern wellness.
-            </p>
-          </div>
-          <div>
-            <h4 className="font-bold mb-4">Quick Links</h4>
-            <ul className="space-y-2 text-sm text-gray-400">
-              <li><Link href="/practitioners" className="hover:text-white">Find a Healer</Link></li>
-              <li><Link href="/search" className="hover:text-white">AI Health Search</Link></li>
-              <li><Link href="/booking" className="hover:text-white">Book Consultation</Link></li>
-              <li><Link href="/forum" className="hover:text-white">Community</Link></li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold mb-4">For Practitioners</h4>
-            <ul className="space-y-2 text-sm text-gray-400">
-              <li><Link href="/practitioners/apply" className="hover:text-white">Apply Now</Link></li>
-              <li><Link href="/pricing" className="hover:text-white">Pricing</Link></li>
-              {isAdmin && (
-                <li><Link href="/admin" className="hover:text-white">Admin Dashboard</Link></li>
-              )}
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-bold mb-4">Account</h4>
-            <ul className="space-y-2 text-sm text-gray-400">
-              {user ? (
-                <>
-                  <li><Link href="/profile" className="hover:text-white">My Profile</Link></li>
-                  <li><Link href="/practitioners/dashboard" className="hover:text-white">Practitioner Dashboard</Link></li>
-                </>
-              ) : (
-                <>
-                  <li><Link href="/login" className="hover:text-white">Login</Link></li>
-                  <li><Link href="/signup" className="hover:text-white">Sign Up</Link></li>
-                </>
-              )}
-            </ul>
-          </div>
-        </div>
-        <div className="max-w-6xl mx-auto mt-8 pt-8 border-t border-white/20 text-center text-gray-400 text-sm">
-          © 2026 RemedyAfrica. All rights reserved.
-        </div>
-      </footer>
     </div>
   );
 }
