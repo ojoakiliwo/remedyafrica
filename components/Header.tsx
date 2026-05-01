@@ -1,86 +1,147 @@
 'use client';
 
-import Link from 'next/link';
-import { useAuth } from '@/providers/AuthProvider';
-import { Button } from '@/components/ui/button';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { User, LogOut, Crown } from 'lucide-react';
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signOut,
+  User as FirebaseUser,
+} from 'firebase/auth';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase/client';
 
-export function Header() {
-  const { user, profile, logout } = useAuth();
+export interface UserProfile {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  role?: string;
+  subscriptionTier?: string;
+  subscriptionStatus?: string;
+  name?: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+interface AuthContextType {
+  user: FirebaseUser | null;
+  profile: UserProfile | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, displayName: string) => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch Firestore profile when auth user changes
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+
+      if (firebaseUser) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setProfile({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: data.displayName || firebaseUser.displayName,
+              photoURL: data.photoURL || firebaseUser.photoURL,
+              role: data.role,
+              subscriptionTier: data.subscriptionTier,
+              subscriptionStatus: data.subscriptionStatus,
+              name: data.name,
+              createdAt: data.createdAt,
+              updatedAt: data.updatedAt,
+            });
+          } else {
+            // No Firestore doc yet, use auth data only
+            setProfile({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              photoURL: firebaseUser.photoURL,
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+          setProfile({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+          });
+        }
+      } else {
+        setProfile(null);
+      }
+
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const login = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth, email, password);
+  };
+
+  const signup = async (email: string, password: string, displayName: string) => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    
+    await updateProfile(userCredential.user, { displayName });
+    await userCredential.user.reload();
+    
+    // Create Firestore user document
+    await setDoc(doc(db, 'users', userCredential.user.uid), {
+      email,
+      displayName,
+      role: 'user',
+      subscriptionTier: 'free',
+      subscriptionStatus: 'inactive',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    // Refresh local state
+    setUser({ ...userCredential.user });
+    setProfile({
+      uid: userCredential.user.uid,
+      email: userCredential.user.email,
+      displayName,
+      photoURL: null,
+      role: 'user',
+      subscriptionTier: 'free',
+      subscriptionStatus: 'inactive',
+    });
+  };
+
+  const logout = async () => {
+    await signOut(auth);
+    setUser(null);
+    setProfile(null);
+  };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-[#97A97C]/20 bg-[#F5F5DC]/95 backdrop-blur-md shadow-sm">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        {/* CLICKABLE LOGO - Links to homepage */}
-        <Link href="/" className="flex items-center space-x-3 group">
-          <img 
-            src="/logo.png" 
-            alt="RemedyAfrica" 
-            className="h-10 w-10 object-contain group-hover:scale-110 transition-transform"
-          />
-          <span className="text-xl font-bold text-[#2C3E2D] hidden sm:inline-block group-hover:text-[#97A97C] transition-colors">
-            RemedyAfrica
-          </span>
-        </Link>
-
-        <div className="flex items-center space-x-4">
-          {/* FORUM LINK - Always visible */}
-          <Button variant="ghost" asChild>
-            <Link href="/forum">Forum</Link>
-          </Button>
-          
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                  <div className="h-10 w-10 rounded-full bg-[#97A97C]/20 flex items-center justify-center border-2 border-[#97A97C]/30">
-                    <User className="h-5 w-5 text-[#97A97C]" />
-                  </div>
-                  {profile?.subscriptionTier !== 'free' && (
-                    <Crown className="absolute -top-1 -right-1 h-4 w-4 text-[#B8860B]" />
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end">
-                <div className="flex items-center justify-start gap-2 p-2">
-                  <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium">{profile?.displayName || user.email}</p>
-                    <p className="text-xs text-muted-foreground">{user.email}</p>
-                  </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/subscription">Subscription</Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  className="text-red-600 cursor-pointer"
-                  onClick={() => logout()}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" asChild>
-                <Link href="/login">Sign In</Link>
-              </Button>
-              <Button className="bg-[#97A97C] hover:bg-[#7A8A63] text-white" asChild>
-                <Link href="/signup">Get Started</Link>
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
-    </header>
+    <AuthContext.Provider value={{ user, profile, loading, login, signup, logout }}>
+      {children}
+    </AuthContext.Provider>
   );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }
