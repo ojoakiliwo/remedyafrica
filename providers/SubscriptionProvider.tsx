@@ -12,6 +12,7 @@ export interface SubscriptionContextType {
   canAccessPrescription: boolean;
   canAccessSideEffects: boolean;
   canAccessForum: boolean;
+  canAccessPractitioners: boolean;
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -23,9 +24,11 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const isPremium = tier === 'premium' || tier === 'premium_pro';
   const isPremiumPro = tier === 'premium_pro';
   
+  // Gate prescription and side effects behind ANY paid tier (premium or premium_pro)
   const canAccessPrescription = isPremium;
   const canAccessSideEffects = isPremium;
   const canAccessForum = isPremiumPro;
+  const canAccessPractitioners = isPremium; // Also gate practitioner directory
 
   return (
     <SubscriptionContext.Provider value={{
@@ -35,6 +38,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       canAccessPrescription,
       canAccessSideEffects,
       canAccessForum,
+      canAccessPractitioners,
     }}>
       {children}
     </SubscriptionContext.Provider>
