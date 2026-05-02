@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
@@ -36,12 +36,18 @@ import {
 export default function Navbar() {
   const { user, userData, logout } = useAuth();
   const { tier, isPremiumPro } = useSubscription();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [quickSearch, setQuickSearch] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch for theme toggle
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const isAdmin = userData?.role === 'admin';
 
@@ -65,6 +71,15 @@ export default function Navbar() {
   const navLinks = (isPremiumPro || isAdmin)
     ? [...baseNavLinks, { href: '/forum', label: 'Forum' }]
     : baseNavLinks;
+
+  // Don't render theme icon until mounted to avoid hydration mismatch
+  const themeIcon = !mounted ? (
+    <div className="h-5 w-5" /> // placeholder
+  ) : resolvedTheme === 'dark' ? (
+    <Sun className="h-5 w-5" />
+  ) : (
+    <Moon className="h-5 w-5" />
+  );
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-[#e8e4df] dark:border-[#2a3a2b] bg-white/95 dark:bg-[#1e2b1f]/95 backdrop-blur-md">
@@ -122,10 +137,10 @@ export default function Navbar() {
             variant="ghost"
             size="icon"
             className="text-[#5a5a5a] hover:bg-[#5c7c6b]/5 hover:text-[#5c7c6b] dark:text-gray-300 dark:hover:bg-[#97A97C]/10"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
             aria-label="Toggle theme"
           >
-            {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            {themeIcon}
           </Button>
 
           {/* Desktop Search Toggle */}

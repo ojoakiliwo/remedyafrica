@@ -2,24 +2,25 @@
 
 import * as React from 'react';
 
-// next-themes@0.3.0 exports differently - use dynamic import pattern
-const NextThemesProvider = require('next-themes').ThemeProvider;
+// @ts-ignore - next-themes has inconsistent type exports across versions
+import { ThemeProvider as NextThemesProvider } from 'next-themes';
 
-interface ThemeProviderProps {
-  children: React.ReactNode;
-  attribute?: string;
-  defaultTheme?: string;
-  enableSystem?: boolean;
-  disableTransitionOnChange?: boolean;
-  themes?: string[];
-  forcedTheme?: string;
-  storageKey?: string;
-}
+type Props = React.ComponentPropsWithoutRef<typeof NextThemesProvider>;
 
-export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+export function ThemeProvider({ children, ...props }: Props) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Prevent hydration mismatch by not rendering until mounted
+  if (!mounted) {
+    return <>{children}</>;
+  }
+
   return (
-    <NextThemesProvider {...props}>
-      {children}
-    </NextThemesProvider>
+    // @ts-ignore
+    <NextThemesProvider {...props}>{children}</NextThemesProvider>
   );
 }
