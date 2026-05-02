@@ -1,15 +1,60 @@
-'use client';
+import type { Metadata } from "next";
+import { Inter, Literata } from "next/font/google";
+import "./globals.css";
+import { Providers } from "@/app/providers";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
+import { ThemeProvider } from "@/components/ThemeProvider";
 
-import * as React from 'react';
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
 
-// @ts-ignore - next-themes has inconsistent type exports across versions
-import { ThemeProvider as NextThemesProvider } from 'next-themes';
+const literata = Literata({
+  variable: "--font-literata",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
 
-type Props = React.ComponentPropsWithoutRef<typeof NextThemesProvider>;
+export const metadata: Metadata = {
+  title: "RemedyAfrica - Traditional Herbal Remedies",
+  description: "Discover traditional African herbal remedies and connect with verified practitioners",
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/logo.png', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/logo.png',
+    other: {
+      rel: 'apple-touch-icon',
+      url: '/logo.png',
+    },
+  },
+};
 
-export function ThemeProvider({ children, ...props }: Props) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    // @ts-ignore
-    <NextThemesProvider {...props}>{children}</NextThemesProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${inter.variable} ${literata.variable} font-sans antialiased`}
+        suppressHydrationWarning
+      >
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <Providers>
+            <Navbar />
+            <main className="min-h-screen">
+              {children}
+            </main>
+            <Footer />
+          </Providers>
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }
