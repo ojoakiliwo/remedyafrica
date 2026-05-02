@@ -1,63 +1,98 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
 
-export async function POST(req: NextRequest) {
+if (!GEMINI_API_KEY) {
+  throw new Error('GEMINI_API_KEY environment variable is not set');
+}
+
+interface ExplainRequest {
+  symptoms: string;
+}
+
+export async function POST(request: NextRequest) {
   try {
-    const { query } = await req.json();
+    const body: ExplainRequest = await request.json();
+    const { symptoms } = body;
 
-    if (!query || typeof query !== 'string') {
-      return NextResponse.json({ error: 'Query is required' }, { status: 400 });
+    if (!symptoms || typeof symptoms !== 'string') {
+      return NextResponse.json(
+        { error: 'Symptoms description is required' },
+        { status: 400 }
+      );
     }
 
-    if (!GEMINI_API_KEY) {
-      console.error('GEMINI_API_KEY not set');
-      return NextResponse.json({
-        explanation: generateFallbackExplanation(query),
-        isFallback: true,
-      });
-    }
+    // Medical-first prompt: definition first, then traditional solutions
+    const prompt = `You are a medical information assistant. Provide a clear, accurate medical explanation of the following symptoms/condition.
 
-    const prompt = `You are a knowledgeable African traditional medicine assistant. A user searched for "${query}". 
+SYMPTOMS: "${symptoms}"
 
-Provide a brief, helpful explanation (2-3 paragraphs) about what this condition/symptom is, its common causes, and how traditional African herbal medicine typically approaches it. Keep it warm, informative, and culturally respectful. Do not provide medical prescriptions or dosage instructions. End with a gentle note that they should consult a qualified practitioner for personalized advice.
+RESPONSE FORMAT (follow exactly):
 
-Format the response as plain text paragraphs. Do not use markdown headers or bullet points.`;
+**1. What is this condition?**
+Provide a clear, factual medical definition of what these symptoms likely indicate. Use standard medical terminology. Explain what body systems are involved and what is happening physiologically. Be objective and informative.
 
-    const response = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 500 },
-      }),
-    });
+**2. Common Causes**
+List the most common causes or triggers for this condition.
+
+**3. When to Seek Medical Attention**
+Clearly state red flags or warning signs that require immediate professional medical care.
+
+**4. Traditional African Herbal Approaches**
+After the medical explanation, briefly mention that traditional African medicine has historically used herbal remedies to support the body's natural healing processes for symptoms like these. Do NOT prescribe specific herbs or dosages. Instead, suggest that the user explore the RemedyAfrica database for herbs traditionally associated with these symptoms, or consult a verified practitioner.
+
+**5. Important Disclaimer**
+Include: "This information is for educational purposes only and does not constitute medical advice. Always consult a qualified healthcare professional for diagnosis and treatment."
+
+RULES:
+- Lead with medical facts, NOT herbal recommendations
+- Do not diagnose — explain possibilities
+- Do not prescribe specific herbs or dosages
+- Keep the tone educational and neutral
+- Maximum 400 words`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 800,
+            topP: 0.8,
+            topK: 40,
+          },
+        }),
+      }
+    );
 
     if (!response.ok) {
-      const errText = await response.text();
-      console.error('Gemini API error:', response.status, errText);
-      return NextResponse.json({
-        explanation: generateFallbackExplanation(query),
-        isFallback: true,
-      });
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Gemini API error:', errorData);
+      return NextResponse.json(
+        { error: 'Failed to generate explanation' },
+        { status: 502 }
+      );
     }
 
     const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || generateFallbackExplanation(query);
+    const explanation = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    return NextResponse.json({ explanation: text.trim(), isFallback: false });
+    if (!explanation) {
+      return NextResponse.json(
+        { error: 'Empty response from AI' },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({ explanation });
   } catch (error) {
     console.error('AI explain error:', error);
     return NextResponse.json(
-      { explanation: generateFallbackExplanation('this condition'), isFallback: true },
-      { status: 200 }
+      { error: 'Internal server error' },
+      { status: 500 }
     );
   }
-}
-
-function generateFallbackExplanation(query: string): string {
-  return `Traditional African medicine has long recognized conditions like "${query}" and approaches them holistically, considering the body, mind, and environment as interconnected. Herbal remedies are often used to support the body's natural healing processes, alongside lifestyle and dietary adjustments.
-
-Practitioners of African traditional medicine draw on generations of knowledge about local plants and their properties. If you're experiencing "${query}", browsing our herbal database may reveal remedies that have been used traditionally for similar symptoms. For personalized guidance, we recommend consulting one of our verified practitioners.`;
 }
