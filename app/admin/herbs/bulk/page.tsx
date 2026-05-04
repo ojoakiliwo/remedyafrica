@@ -7,7 +7,6 @@ import { db } from '@/lib/firebase/client';
 import { collection, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { 
   Loader2, 
   Upload, 
@@ -28,7 +27,11 @@ interface ParsedHerb {
   benefits: string;
   origin: string;
   partsUsed: string;
-  [key: string]: string;
+  longDescription?: string;
+  dosage?: string;
+  uses?: string;
+  ailments?: string;
+  [key: string]: string | undefined;
 }
 
 const VALID_CATEGORIES = [
@@ -50,7 +53,6 @@ export default function BulkUploadPage() {
   const [success, setSuccess] = useState(false);
   const [resultStats, setResultStats] = useState({ success: 0, errors: 0, total: 0 });
 
-  // Admin check
   useEffect(() => {
     const checkAdmin = async () => {
       if (!user) {
@@ -88,7 +90,6 @@ export default function BulkUploadPage() {
     setFile(selectedFile);
     setSuccess(false);
     
-    // Simple CSV preview without papaparse dependency
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
@@ -136,6 +137,12 @@ export default function BulkUploadPage() {
     return rows;
   };
 
+  const parseArray = (value: string | undefined): string[] => {
+    if (!value || !value.trim()) return [];
+    const separator = value.includes(';') ? ';' : ',';
+    return value.split(separator).map(s => s.trim()).filter(s => s.length > 0);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) {
@@ -168,24 +175,39 @@ export default function BulkUploadPage() {
           const category = herb.category?.trim().toLowerCase() || 'uncategorized';
           const validCategory = VALID_CATEGORIES.includes(category) ? category : 'uncategorized';
 
+          const benefitsArray = parseArray(herb.benefits);
+          const warningsArray = parseArray(herb.warnings);
+          const usesArray = parseArray(herb.uses);
+          const ailmentsArray = parseArray(herb.ailments);
+
           const herbData = {
             name: herb.name.trim(),
             scientificName: herb.scientificName.trim(),
             category: validCategory,
             description: herb.description?.trim() || '',
-            preparation: herb.preparation?.trim() || '',
-            warnings: herb.warnings?.trim() || '',
-            benefits: herb.benefits?.trim() || '',
+            longDescription: herb.longDescription?.trim() || '',
             origin: herb.origin?.trim() || '',
             partsUsed: herb.partsUsed?.trim() || '',
-            status: 'published',
+            preparation: herb.preparation?.trim() || '',
+            dosage: herb.dosage?.trim() || '',
+            benefits: benefitsArray,
+            uses: usesArray,
+            warnings: warningsArray,
+            ailments: ailmentsArray,
+            images: [],
+            rating: 0,
+            reviews: 0,
+            views: 0,
+            status: 'active' as const,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             searchKeywords: [
               herb.name.toLowerCase(),
               herb.scientificName.toLowerCase(),
               validCategory,
-              ...(herb.benefits?.toLowerCase().split(',').map((s: string) => s.trim()) || []),
+              ...benefitsArray.map(b => b.toLowerCase()),
+              ...usesArray.map(u => u.toLowerCase()),
+              ...ailmentsArray.map(a => a.toLowerCase()),
               ...(herb.origin?.toLowerCase().split(',').map((s: string) => s.trim()) || [])
             ].filter(Boolean),
           };
@@ -235,7 +257,6 @@ export default function BulkUploadPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
-      {/* Header */}
       <div className="bg-[#B8860B] text-white p-4 rounded-lg mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Bulk Upload Herbs</h1>
@@ -245,7 +266,6 @@ export default function BulkUploadPage() {
       </div>
 
       <div className="max-w-4xl mx-auto">
-        {/* Instructions */}
         <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
           <h3 className="font-bold text-blue-800 mb-2">CSV Format Instructions</h3>
           <p className="text-sm text-blue-700 mb-2">Required columns:</p>
@@ -253,11 +273,10 @@ export default function BulkUploadPage() {
             name,scientificName,category,description,preparation,warnings,benefits,origin,partsUsed
           </code>
           <p className="text-xs text-blue-600 mt-2">
-            Valid categories: {VALID_CATEGORIES.join(', ')}
+            Optional: longDescription, dosage, uses, ailments | Valid categories: {VALID_CATEGORIES.join(', ')}
           </p>
         </div>
 
-        {/* Upload Form */}
         <div className="bg-white p-8 rounded-lg shadow">
           {success && (
             <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6">
@@ -273,8 +292,6 @@ export default function BulkUploadPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            
-            {/* File Upload */}
             <div>
               <label className="block font-bold text-[#2C3E2D] mb-2">Select CSV File</label>
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-[#B8860B] transition-colors">
@@ -295,7 +312,6 @@ export default function BulkUploadPage() {
               </div>
             </div>
 
-            {/* Preview */}
             {preview.length > 0 && (
               <div>
                 <h3 className="font-bold text-[#2C3E2D] mb-2">Preview (First {preview.length} rows)</h3>
@@ -322,7 +338,6 @@ export default function BulkUploadPage() {
               </div>
             )}
 
-            {/* Progress */}
             {loading && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm text-gray-600">
@@ -338,7 +353,6 @@ export default function BulkUploadPage() {
               </div>
             )}
 
-            {/* Submit */}
             <div className="flex gap-4">
               <Button 
                 type="submit" 
