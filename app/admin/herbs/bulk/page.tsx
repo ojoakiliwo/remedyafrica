@@ -27,10 +27,6 @@ interface ParsedHerb {
   benefits: string;
   origin: string;
   partsUsed: string;
-  longDescription?: string;
-  dosage?: string;
-  uses?: string;
-  ailments?: string;
   [key: string]: string | undefined;
 }
 
@@ -137,6 +133,7 @@ export default function BulkUploadPage() {
     return rows;
   };
 
+  // CRITICAL: Parse semicolon or comma separated string into array
   const parseArray = (value: string | undefined): string[] => {
     if (!value || !value.trim()) return [];
     const separator = value.includes(';') ? ';' : ',';
@@ -177,23 +174,17 @@ export default function BulkUploadPage() {
 
           const benefitsArray = parseArray(herb.benefits);
           const warningsArray = parseArray(herb.warnings);
-          const usesArray = parseArray(herb.uses);
-          const ailmentsArray = parseArray(herb.ailments);
 
           const herbData = {
             name: herb.name.trim(),
             scientificName: herb.scientificName.trim(),
             category: validCategory,
             description: herb.description?.trim() || '',
-            longDescription: herb.longDescription?.trim() || '',
+            preparation: herb.preparation?.trim() || '',
+            warnings: warningsArray,
+            benefits: benefitsArray,
             origin: herb.origin?.trim() || '',
             partsUsed: herb.partsUsed?.trim() || '',
-            preparation: herb.preparation?.trim() || '',
-            dosage: herb.dosage?.trim() || '',
-            benefits: benefitsArray,
-            uses: usesArray,
-            warnings: warningsArray,
-            ailments: ailmentsArray,
             images: [],
             rating: 0,
             reviews: 0,
@@ -206,8 +197,6 @@ export default function BulkUploadPage() {
               herb.scientificName.toLowerCase(),
               validCategory,
               ...benefitsArray.map(b => b.toLowerCase()),
-              ...usesArray.map(u => u.toLowerCase()),
-              ...ailmentsArray.map(a => a.toLowerCase()),
               ...(herb.origin?.toLowerCase().split(',').map((s: string) => s.trim()) || [])
             ].filter(Boolean),
           };
@@ -273,7 +262,10 @@ export default function BulkUploadPage() {
             name,scientificName,category,description,preparation,warnings,benefits,origin,partsUsed
           </code>
           <p className="text-xs text-blue-600 mt-2">
-            Optional: longDescription, dosage, uses, ailments | Valid categories: {VALID_CATEGORIES.join(', ')}
+            <strong>Benefits/Warnings:</strong> Use semicolons (;) to separate multiple values.
+          </p>
+          <p className="text-xs text-blue-600 mt-1">
+            Valid categories: {VALID_CATEGORIES.join(', ')}
           </p>
         </div>
 
