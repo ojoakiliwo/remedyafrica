@@ -320,26 +320,33 @@ export default function HerbsListPage() {
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          {/* View public page */}
                           <Link href={`/herb/${herb.id}`} target="_blank">
                             <Button 
                               variant="ghost" 
                               size="sm" 
                               className="h-8 w-8 p-0"
                               title="View public page"
+                              aria-label="View herb"
                             >
                               <Eye className="w-4 h-4 text-gray-500" />
                             </Button>
                           </Link>
+                          
+                          {/* EDIT — REAL LINK */}
                           <Link href={`/admin/herbs/edit/${herb.id}`}>
                             <Button 
                               variant="ghost" 
                               size="sm" 
                               className="h-8 w-8 p-0"
                               title="Edit herb"
+                              aria-label="Edit herb"
                             >
                               <Edit className="w-4 h-4 text-blue-500" />
                             </Button>
                           </Link>
+                          
+                          {/* Delete */}
                           <Button 
                             variant="ghost" 
                             size="sm" 
@@ -347,6 +354,7 @@ export default function HerbsListPage() {
                             onClick={() => handleDelete(herb.id, herb.name)}
                             disabled={deletingId === herb.id}
                             title="Delete herb"
+                            aria-label="Delete herb"
                           >
                             {deletingId === herb.id ? (
                               <Loader2 className="w-4 h-4 animate-spin text-red-500" />
