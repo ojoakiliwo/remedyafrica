@@ -8,8 +8,6 @@ import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { uploadHerbImage } from '@/lib/firebase/storage';
 import { 
-  Upload, 
-  X, 
   Plus, 
   AlertCircle, 
   CheckCircle, 
@@ -170,13 +168,19 @@ export default function EditHerbPage() {
   }, [isAdmin, herbId]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value } as HerbData));
     setError('');
   };
 
-  const handleArrayInputChange = (field: keyof HerbData, value: string) => {
+  const handleArrayInputChange = (field: 'warnings' | 'benefits' | 'uses' | 'ailments', value: string) => {
     const array = value.split(',').map(s => s.trim()).filter(s => s);
-    setFormData({ ...formData, [field]: array });
+    setFormData(prev => {
+      if (field === 'warnings') return { ...prev, warnings: array };
+      if (field === 'benefits') return { ...prev, benefits: array };
+      if (field === 'uses') return { ...prev, uses: array };
+      return { ...prev, ailments: array };
+    });
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -445,6 +449,7 @@ export default function EditHerbPage() {
                   onClick={() => fileInputRef.current?.click()}
                   className="aspect-square rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-[#97A97C] hover:bg-[#97A97C]/5 transition-colors"
                   aria-label="Upload new image"
+                  title="Upload new image"
                 >
                   <Plus className="w-8 h-8 text-gray-400 mb-2" />
                   <span className="text-sm text-gray-500">Upload</span>
@@ -465,13 +470,12 @@ export default function EditHerbPage() {
 
             {existingImages.length + newImages.length < 4 && (
               <div className="mt-4 pt-4 border-t border-gray-100">
-                <label htmlFor="image-url-input" className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
                   <LinkIcon className="w-4 h-4" />
                   Or add image by URL
                 </label>
                 <div className="flex gap-2">
                   <input
-                    id="image-url-input"
                     type="url"
                     value={imageUrlInput}
                     onChange={(e) => setImageUrlInput(e.target.value)}
@@ -503,9 +507,8 @@ export default function EditHerbPage() {
             
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="edit-herb-name" className="block font-bold text-[#2C3E2D] mb-1">Herb Name *</label>
+                <label className="block font-bold text-[#2C3E2D] mb-1">Herb Name *</label>
                 <input 
-                  id="edit-herb-name"
                   type="text" 
                   name="name"
                   required
@@ -513,13 +516,11 @@ export default function EditHerbPage() {
                   onChange={handleInputChange}
                   placeholder="e.g., Ashwagandha"
                   className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
-                  aria-label="Herb name"
                 />
               </div>
               <div>
-                <label htmlFor="edit-scientific-name" className="block font-bold text-[#2C3E2D] mb-1">Scientific Name *</label>
+                <label className="block font-bold text-[#2C3E2D] mb-1">Scientific Name *</label>
                 <input 
-                  id="edit-scientific-name"
                   type="text" 
                   name="scientificName"
                   required
@@ -527,15 +528,13 @@ export default function EditHerbPage() {
                   onChange={handleInputChange}
                   placeholder="e.g., Withania somnifera"
                   className="w-full p-2 border border-gray-300 rounded italic focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
-                  aria-label="Scientific name"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="edit-category" className="block font-bold text-[#2C3E2D] mb-1">Category</label>
+              <label className="block font-bold text-[#2C3E2D] mb-1">Category</label>
               <select 
-                id="edit-category"
                 name="category"
                 value={formData.category}
                 onChange={handleInputChange}
@@ -550,9 +549,8 @@ export default function EditHerbPage() {
             </div>
 
             <div>
-              <label htmlFor="edit-description" className="block font-bold text-[#2C3E2D] mb-1">Short Description *</label>
+              <label className="block font-bold text-[#2C3E2D] mb-1">Short Description *</label>
               <textarea 
-                id="edit-description"
                 name="description"
                 required
                 value={formData.description}
@@ -560,21 +558,18 @@ export default function EditHerbPage() {
                 placeholder="Brief description for cards and listings"
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                 rows={2}
-                aria-label="Short description"
               />
             </div>
 
             <div>
-              <label htmlFor="edit-long-description" className="block font-bold text-[#2C3E2D] mb-1">Full Description</label>
+              <label className="block font-bold text-[#2C3E2D] mb-1">Full Description</label>
               <textarea 
-                id="edit-long-description"
                 name="longDescription"
                 value={formData.longDescription}
                 onChange={handleInputChange}
                 placeholder="Detailed description of the herb"
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                 rows={4}
-                aria-label="Full description"
               />
             </div>
           </div>
@@ -585,120 +580,103 @@ export default function EditHerbPage() {
             
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="edit-origin" className="block font-bold text-[#2C3E2D] mb-1">Origin</label>
+                <label className="block font-bold text-[#2C3E2D] mb-1">Origin</label>
                 <input 
-                  id="edit-origin"
                   type="text"
                   name="origin"
                   value={formData.origin}
                   onChange={handleInputChange}
                   placeholder="e.g., India, Ayurveda"
                   className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
-                  aria-label="Origin"
                 />
               </div>
               <div>
-                <label htmlFor="edit-parts-used" className="block font-bold text-[#2C3E2D] mb-1">Parts Used</label>
+                <label className="block font-bold text-[#2C3E2D] mb-1">Parts Used</label>
                 <input 
-                  id="edit-parts-used"
                   type="text"
                   name="partsUsed"
                   value={formData.partsUsed}
                   onChange={handleInputChange}
                   placeholder="e.g., Root, Leaves"
                   className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
-                  aria-label="Parts used"
                 />
               </div>
             </div>
 
             <div>
-              <label htmlFor="edit-preparation" className="block font-bold text-[#2C3E2D] mb-1">Preparation Method</label>
+              <label className="block font-bold text-[#2C3E2D] mb-1">Preparation Method</label>
               <textarea 
-                id="edit-preparation"
                 name="preparation"
                 value={formData.preparation}
                 onChange={handleInputChange}
                 placeholder="How to prepare the herb"
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
                 rows={3}
-                aria-label="Preparation method"
               />
             </div>
 
             <div>
-              <label htmlFor="edit-dosage" className="block font-bold text-[#2C3E2D] mb-1">Dosage</label>
+              <label className="block font-bold text-[#2C3E2D] mb-1">Dosage</label>
               <input 
-                id="edit-dosage"
                 type="text"
                 name="dosage"
                 value={formData.dosage}
                 onChange={handleInputChange}
                 placeholder="e.g., 1-2 cups daily, 500mg capsules"
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
-                aria-label="Dosage"
               />
             </div>
 
             <div>
-              <label htmlFor="edit-benefits" className="block font-bold text-[#2C3E2D] mb-1">Benefits (comma-separated)</label>
+              <label className="block font-bold text-[#2C3E2D] mb-1">Benefits (comma-separated)</label>
               <input 
-                id="edit-benefits"
                 type="text"
                 value={formData.benefits.join(', ')}
                 onChange={(e) => handleArrayInputChange('benefits', e.target.value)}
                 placeholder="e.g., Reduces stress, Better sleep, Mental clarity"
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
-                aria-label="Benefits"
               />
               <p className="text-xs text-gray-500 mt-1">{formData.benefits.length} benefit(s) saved</p>
             </div>
 
             <div>
-              <label htmlFor="edit-uses" className="block font-bold text-[#2C3E2D] mb-1">Uses (comma-separated)</label>
+              <label className="block font-bold text-[#2C3E2D] mb-1">Uses (comma-separated)</label>
               <input 
-                id="edit-uses"
                 type="text"
                 value={formData.uses.join(', ')}
                 onChange={(e) => handleArrayInputChange('uses', e.target.value)}
                 placeholder="e.g., Anxiety, Insomnia, Stress"
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
-                aria-label="Uses"
               />
             </div>
 
             <div>
-              <label htmlFor="edit-ailments" className="block font-bold text-[#2C3E2D] mb-1">
+              <label className="block font-bold text-[#2C3E2D] mb-1">
                 Treats Ailments (comma-separated)
               </label>
               <input 
-                id="edit-ailments"
                 type="text"
                 value={formData.ailments.join(', ')}
                 onChange={(e) => handleArrayInputChange('ailments', e.target.value)}
                 placeholder="e.g., Anxiety, Stress, Insomnia, Depression"
                 className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
-                aria-label="Treats ailments"
               />
             </div>
 
             <div>
-              <label htmlFor="edit-warnings" className="block font-bold text-red-700 mb-1">⚠️ Warnings (comma-separated)</label>
+              <label className="block font-bold text-red-700 mb-1">Warnings (comma-separated)</label>
               <input 
-                id="edit-warnings"
                 type="text"
                 value={formData.warnings.join(', ')}
                 onChange={(e) => handleArrayInputChange('warnings', e.target.value)}
                 placeholder="e.g., Avoid during pregnancy, May cause drowsiness"
                 className="w-full p-2 border border-red-300 rounded bg-red-50 focus:ring-2 focus:ring-red-300 focus:border-transparent outline-none"
-                aria-label="Warnings"
               />
             </div>
 
             <div>
-              <label htmlFor="edit-status" className="block font-bold text-[#2C3E2D] mb-1">Status</label>
+              <label className="block font-bold text-[#2C3E2D] mb-1">Status</label>
               <select 
-                id="edit-status"
                 name="status"
                 value={formData.status}
                 onChange={handleInputChange}
