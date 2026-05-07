@@ -31,25 +31,50 @@ export default function AilmentDetailPage() {
     const loadAilmentData = async () => {
         setLoading(true);
         try {
-            // Get static data first
             const staticAilment = getAilmentById(ailmentId);
 
             if (staticAilment) {
                 setAilment(staticAilment);
 
-                // Check which herbs are actually available in database
-                const herbsQuery = query(
-                    collection(db, 'herbs'),
-                    where('ailments', 'array-contains', staticAilment.name)
-                );
-                const herbsSnapshot = await getDocs(herbsQuery);
+                // Search BOTH 'ailments' AND 'benefits' arrays for matching herbs
+                // Your CSV data stores conditions in 'benefits', not 'ailments'
+                const [ailmentsSnapshot, benefitsSnapshot] = await Promise.all([
+                    // Query 1: herbs with matching ailment in 'ailments' array
+                    getDocs(query(
+                        collection(db, 'herbs'),
+                        where('ailments', 'array-contains', staticAilment.name)
+                    )),
+                    // Query 2: herbs with matching ailment in 'benefits' array
+                    getDocs(query(
+                        collection(db, 'herbs'),
+                        where('benefits', 'array-contains', staticAilment.name)
+                    )),
+                    // Query 3: case-insensitive match for lowercase variations
+                    getDocs(query(
+                        collection(db, 'herbs'),
+                        where('benefits', 'array-contains', staticAilment.name.toLowerCase())
+                    ))
+                ]);
 
-                const herbs = herbsSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                })) as Herb[];
+                // Merge results and deduplicate by herb ID
+                const herbMap = new Map<string, Herb>();
 
-                setAvailableHerbs(herbs);
+                [...ailmentsSnapshot.docs, ...benefitsSnapshot.docs].forEach(doc => {
+                    if (!herbMap.has(doc.id)) {
+                        const data = doc.data();
+                        herbMap.set(doc.id, {
+                            id: doc.id,
+                            name: data.name || '',
+                            description: data.description || '',
+                            images: Array.isArray(data.images) ? data.images.map((img: any) => 
+                                typeof img === 'string' ? img : img?.url || ''
+                            ) : [],
+                            category: data.category || ''
+                        });
+                    }
+                });
+
+                setAvailableHerbs(Array.from(herbMap.values()));
             }
         } catch (error) {
             console.error('Error loading ailment:', error);
@@ -118,7 +143,7 @@ export default function AilmentDetailPage() {
                         <span className="text-[#97A97C]">🩺</span> Common Symptoms
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {ailment.symptoms.map((symptom, index) => (
+                        {(ailment.symptoms || []).map((symptom, index) => (
                             <div key={index} className="flex items-center gap-3 p-3 bg-[#F5F5F0] rounded-lg">
                                 <span className="w-2 h-2 bg-[#97A97C] rounded-full flex-shrink-0"></span>
                                 <span className="text-gray-700">{symptom}</span>
@@ -161,7 +186,7 @@ export default function AilmentDetailPage() {
                     {availableHerbs.length > 0 ? (
                         <div className="mb-6">
                             <p className="text-[#97A97C] font-semibold mb-2">
-                                ✓ {availableHerbs.length} remedy{availableHerbs.length !== 1 ? 'ies' : 'y'} available in database
+                                ✓ {availableHerbs.length} remedy{availableHerbs.length !== 1 ? 'ies' : 'y'} available
                             </p>
                             <button
                                 onClick={handleFindRemedies}
