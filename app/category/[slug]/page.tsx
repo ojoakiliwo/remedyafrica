@@ -3,13 +3,22 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { collection, query, where, getDocs, doc, setDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { ailmentsData, getAilmentsByCategory, AilmentData } from '@/lib/data/ailments';
 
 interface AilmentWithHerbCount extends AilmentData {
   herbCount: number;
-  firestoreId?: string;
+  matchingHerbIds: string[];
+}
+
+interface Herb {
+  id: string;
+  name: string;
+  benefits: string[] | string;
+  ailments: string[] | string;
+  description: string;
+  category: string;
 }
 
 export default function CategoryAilmentsPage() {
@@ -18,7 +27,6 @@ export default function CategoryAilmentsPage() {
   
   const [ailments, setAilments] = useState<AilmentWithHerbCount[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [categoryName, setCategoryName] = useState('');
 
   const categoryLabels: Record<string, string> = {
@@ -38,46 +46,38 @@ export default function CategoryAilmentsPage() {
   const loadAilments = async () => {
     setLoading(true);
     try {
-      // First, sync static data to Firestore (without creating duplicates)
-      await syncAilmentsToFirestore();
+      // Get static ailments for this category
+      const staticAilments = getAilmentsByCategory(categorySlug);
       
-      // Then fetch from Firestore
-      const q = query(
-        collection(db, 'ailments'), 
-        where('category', '==', categorySlug)
-      );
-      const snapshot = await getDocs(q);
-      
-      const ailmentsList = snapshot.docs.map(doc => {
-        const data = doc.data();
+      // Fetch ALL herbs from Firestore
+      const herbsSnapshot = await getDocs(collection(db, 'herbs'));
+      const allHerbs = herbsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Herb[];
+
+      // For each ailment, find matching herbs using keyword search
+      const ailmentsWithCounts = staticAilments.map(ailment => {
+        const matchingHerbs = findMatchingHerbs(ailment, allHerbs);
+        
         return {
-          ...data,
-          firestoreId: doc.id,
-          herbCount: data.associatedHerbs?.length || 0
-        } as AilmentWithHerbCount;
+          ...ailment,
+          herbCount: matchingHerbs.length,
+          matchingHerbIds: matchingHerbs.map(h => h.id)
+        };
       });
-      
-      // REMOVE DUPLICATES - Keep only the first occurrence of each ID
-      const uniqueAilments = Array.from(
-        new Map(ailmentsList.map(item => [item.id, item])).values()
-      );
-      
+
       // Sort by name
-      uniqueAilments.sort((a, b) => a.name.localeCompare(b.name));
-      setAilments(uniqueAilments);
-      
-      // If we found duplicates in Firestore, clean them up
-      if (ailmentsList.length !== uniqueAilments.length) {
-        console.log(`Found ${ailmentsList.length - uniqueAilments.length} duplicates, cleaning up...`);
-        await removeDuplicates(ailmentsList);
-      }
+      ailmentsWithCounts.sort((a, b) => a.name.localeCompare(b.name));
+      setAilments(ailmentsWithCounts);
       
     } catch (error) {
       console.error('Error loading ailments:', error);
-      // Fallback to static data if Firestore fails
+      // Fallback to static data with zero counts
       const staticAilments = getAilmentsByCategory(categorySlug).map(a => ({
         ...a,
-        herbCount: a.associatedHerbs.length
+        herbCount: 0,
+        matchingHerbIds: []
       }));
       setAilments(staticAilments);
     } finally {
@@ -85,62 +85,35 @@ export default function CategoryAilmentsPage() {
     }
   };
 
-  const syncAilmentsToFirestore = async () => {
-    setSyncing(true);
-    try {
-      const categoryAilments = getAilmentsByCategory(categorySlug);
-      
-      for (const ailment of categoryAilments) {
-        // Check if already exists by querying for the custom 'id' field
-        const q = query(
-          collection(db, 'ailments'),
-          where('id', '==', ailment.id)
-        );
-        const snapshot = await getDocs(q);
-        
-        if (snapshot.empty) {
-          // Add to Firestore only if it doesn't exist
-          await setDoc(doc(collection(db, 'ailments')), {
-            ...ailment,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          });
-          console.log(`Synced ${ailment.name} to Firestore`);
-        } else {
-          console.log(`${ailment.name} already exists, skipping`);
-        }
-      }
-    } catch (error) {
-      console.error('Sync error:', error);
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const removeDuplicates = async (ailmentsList: AilmentWithHerbCount[]) => {
-    // Group by ID
-    const grouped = ailmentsList.reduce((acc, item) => {
-      if (!acc[item.id]) acc[item.id] = [];
-      acc[item.id].push(item);
-      return acc;
-    }, {} as Record<string, AilmentWithHerbCount[]>);
+  // Find herbs that match an ailment using keyword search
+  const findMatchingHerbs = (ailment: AilmentData, herbs: Herb[]): Herb[] => {
+    const keywords = ailment.searchKeywords || [ailment.name.toLowerCase()];
     
-    // Delete extras (keep the first one)
-    for (const [id, items] of Object.entries(grouped)) {
-      if (items.length > 1) {
-        // Delete all except the first one
-        for (let i = 1; i < items.length; i++) {
-          if (items[i].firestoreId) {
-            try {
-              await deleteDoc(doc(db, 'ailments', items[i].firestoreId!));
-              console.log(`Deleted duplicate: ${id}`);
-            } catch (e) {
-              console.error('Error deleting duplicate:', e);
-            }
-          }
-        }
-      }
-    }
+    return herbs.filter(herb => {
+      // Check if herb category matches
+      const categoryMatch = herb.category === ailment.category;
+      
+      // Helper to check if a field contains any of the keywords
+      const fieldMatches = (field: string[] | string | undefined): boolean => {
+        if (!field) return false;
+        
+        const fieldStr = Array.isArray(field) 
+          ? field.join(' ').toLowerCase() 
+          : field.toLowerCase();
+        
+        return keywords.some(keyword => fieldStr.includes(keyword.toLowerCase()));
+      };
+      
+      // Check benefits, ailments, description, and name
+      const benefitsMatch = fieldMatches(herb.benefits);
+      const ailmentsMatch = fieldMatches(herb.ailments);
+      const descriptionMatch = herb.description?.toLowerCase().includes(ailment.name.toLowerCase());
+      const nameMatch = herb.name?.toLowerCase().includes(ailment.name.toLowerCase());
+      
+      // Match if any field contains keywords OR if category matches and description mentions ailment
+      return benefitsMatch || ailmentsMatch || descriptionMatch || nameMatch || 
+             (categoryMatch && (descriptionMatch || benefitsMatch));
+    });
   };
 
   if (loading) {
@@ -161,7 +134,6 @@ export default function CategoryAilmentsPage() {
           </Link>
           <h1 className="text-4xl font-bold mb-2">{categoryName}</h1>
           <p className="text-gray-300">Select a condition to learn more and find traditional African remedies</p>
-          {syncing && <span className="text-sm text-[#97A97C]">Syncing database...</span>}
         </div>
       </div>
 
@@ -195,7 +167,7 @@ export default function CategoryAilmentsPage() {
                 
                 <div className="flex items-center justify-between text-sm border-t pt-3">
                   <span className="text-gray-500">
-                  {(ailment.symptoms || []).slice(0, 2).join(', ')}...
+                    {(ailment.symptoms || []).slice(0, 2).join(', ')}...
                   </span>
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                     ailment.herbCount > 0 
@@ -203,7 +175,7 @@ export default function CategoryAilmentsPage() {
                       : 'bg-gray-200 text-gray-600'
                   }`}>
                     {ailment.herbCount > 0 
-                      ? `${ailment.herbCount} remedies` 
+                      ? `${ailment.herbCount} remedy${ailment.herbCount !== 1 ? 'ies' : 'y'}` 
                       : 'No remedies yet'}
                   </span>
                 </div>
