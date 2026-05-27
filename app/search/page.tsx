@@ -173,7 +173,7 @@ function SearchPageContent() {
       const res = await fetch('/api/ai-explain', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q }),
+        body: JSON.stringify({ symptoms: q }),  // ✅ FIXED: was { query: q }
       });
       const data = await res.json();
       if (data.explanation) {
