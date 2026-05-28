@@ -62,7 +62,7 @@ RULES:
           'X-Title': 'RemedyAfrica',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-pro-exp-03-25:free',
+          model: 'deepseek/deepseek-chat-v3-0324:free',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.3,
           max_tokens: 800,
