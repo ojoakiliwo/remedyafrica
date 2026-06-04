@@ -62,7 +62,7 @@ RULES:
           'X-Title': 'RemedyAfrica',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.0-flash-001',
+          model: 'google/gemini-2.5-pro',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.3,
           max_tokens: 800,
