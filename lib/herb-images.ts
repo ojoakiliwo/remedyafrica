@@ -49,8 +49,13 @@ export function getHerbImages(herb: any): string[] {
     });
   }
   
-  // Deduplicate
-  return [...new Set(images)];
+  // Legacy image field
+  if (herb.image && typeof herb.image === 'string') {
+    images.push(herb.image);
+  }
+  
+  // Deduplicate - use Array.from for compatibility with older TypeScript targets
+  return Array.from(new Set(images));
 }
 
 export function getHerbImageCount(herb: any): number {

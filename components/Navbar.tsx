@@ -44,6 +44,7 @@ export default function Navbar() {
   const [quickSearch, setQuickSearch] = useState('');
   const [mounted, setMounted] = useState(false);
 
+  // Prevent hydration mismatch for theme toggle
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -71,8 +72,9 @@ export default function Navbar() {
     ? [...baseNavLinks, { href: '/forum', label: 'Forum' }]
     : baseNavLinks;
 
+  // Don't render theme icon until mounted to avoid hydration mismatch
   const themeIcon = !mounted ? (
-    <div className="h-5 w-5" />
+    <div className="h-5 w-5" /> // placeholder
   ) : resolvedTheme === 'dark' ? (
     <Sun className="h-5 w-5" />
   ) : (
@@ -82,6 +84,7 @@ export default function Navbar() {
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-[#e8e4df] dark:border-[#2a3a2b] bg-white/95 dark:bg-[#1e2b1f]/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        {/* Logo with white background */}
         <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden">
             <img 
@@ -101,6 +104,7 @@ export default function Navbar() {
           </span>
         </Link>
 
+        {/* Desktop Navigation */}
         <div className="hidden items-center gap-1 md:flex">
           {navLinks.map((link) => (
             <Link
@@ -126,7 +130,9 @@ export default function Navbar() {
           )}
         </div>
 
+        {/* Right Side Actions */}
         <div className="flex items-center gap-2">
+          {/* Theme Toggle */}
           <Button
             variant="ghost"
             size="icon"
@@ -137,6 +143,7 @@ export default function Navbar() {
             {themeIcon}
           </Button>
 
+          {/* Desktop Search Toggle */}
           <div className="hidden md:block">
             {searchOpen ? (
               <form onSubmit={handleQuickSearch} className="flex items-center gap-2">
@@ -148,7 +155,11 @@ export default function Navbar() {
                   className="h-9 w-64 border-[#d4cfc7] bg-white text-sm focus-visible:ring-[#5c7c6b] dark:bg-[#2a3a2b] dark:border-[#3d523e] dark:text-white"
                   autoFocus
                 />
-                <Button type="submit" size="sm" className="h-9 bg-[#5c7c6b] hover:bg-[#4a6354]">
+                <Button 
+                  type="submit" 
+                  size="sm" 
+                  className="h-9 bg-[#5c7c6b] hover:bg-[#4a6354]"
+                >
                   <Search className="h-4 w-4" />
                 </Button>
                 <Button 
@@ -173,6 +184,7 @@ export default function Navbar() {
             )}
           </div>
 
+          {/* Mobile Search Link */}
           <Link href="/search" className="md:hidden">
             <Button
               variant="ghost"
@@ -183,6 +195,7 @@ export default function Navbar() {
             </Button>
           </Link>
 
+          {/* Subscription Badge */}
           {user && tier !== 'free' && (
             <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700">
               <Crown className="h-3 w-3 text-amber-600 dark:text-amber-400" />
@@ -190,6 +203,7 @@ export default function Navbar() {
             </div>
           )}
 
+          {/* Auth Section */}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -277,6 +291,7 @@ export default function Navbar() {
             </div>
           )}
 
+          {/* Mobile Menu Toggle */}
           <Button
             variant="ghost"
             size="icon"
@@ -288,6 +303,7 @@ export default function Navbar() {
         </div>
       </div>
 
+      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="border-t border-[#e8e4df] dark:border-[#2a3a2b] bg-white dark:bg-[#1e2b1f] px-4 py-4 md:hidden">
           <form onSubmit={handleQuickSearch} className="mb-4 flex gap-2">
