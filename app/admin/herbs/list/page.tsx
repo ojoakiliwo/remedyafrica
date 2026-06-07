@@ -28,6 +28,7 @@ import {
   Leaf
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getHerbPrimaryImage } from '@/lib/herb-images';
 
 interface Herb {
   id: string;
@@ -39,7 +40,8 @@ interface Herb {
   partsUsed: string;
   status: string;
   benefits: string[];
-  images?: { url: string }[];
+  images?: { url: string }[] | string[];
+  imageUrl?: string;
   createdAt?: any;
 }
 
@@ -78,6 +80,28 @@ export default function HerbsListPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Restore scroll + search on mount
+  useEffect(() => {
+    const savedSearch = sessionStorage.getItem('herbListSearch');
+    const savedScroll = sessionStorage.getItem('herbListScroll');
+    
+    if (savedSearch) {
+      setSearchQuery(savedSearch);
+      sessionStorage.removeItem('herbListSearch');
+    }
+    
+    if (savedScroll) {
+      // Wait for herbs to render then restore scroll
+      const restoreScroll = () => {
+        window.scrollTo(0, parseInt(savedScroll, 10));
+        sessionStorage.removeItem('herbListScroll');
+      };
+      // Delay to ensure DOM is rendered
+      const timer = setTimeout(restoreScroll, 300);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -160,6 +184,13 @@ export default function HerbsListPage() {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleEdit = (herbId: string) => {
+    // Save current scroll and search before navigating
+    sessionStorage.setItem('herbListScroll', window.scrollY.toString());
+    sessionStorage.setItem('herbListSearch', searchQuery);
+    router.push(`/admin/herbs/edit/${herbId}`);
   };
 
   if (checkingAdmin) {
@@ -276,17 +307,20 @@ export default function HerbsListPage() {
                     <tr key={herb.id} className="hover:bg-gray-50 transition-colors">
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          {herb.images && herb.images.length > 0 ? (
-                            <img 
-                              src={herb.images[0].url} 
-                              alt={herb.name}
-                              className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-lg bg-[#97A97C]/10 flex items-center justify-center flex-shrink-0">
-                              <Leaf className="w-5 h-5 text-[#97A97C]" />
-                            </div>
-                          )}
+                          {(() => {
+                            const imgUrl = getHerbPrimaryImage(herb);
+                            return imgUrl ? (
+                              <img 
+                                src={imgUrl} 
+                                alt={herb.name}
+                                className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-lg bg-[#97A97C]/10 flex items-center justify-center flex-shrink-0">
+                                <Leaf className="w-5 h-5 text-[#97A97C]" />
+                              </div>
+                            );
+                          })()}
                           <div>
                             <p className="font-semibold text-[#2C3E2D]">{herb.name}</p>
                             <p className="text-xs text-gray-500 italic">{herb.scientificName}</p>
@@ -332,17 +366,16 @@ export default function HerbsListPage() {
                             </Button>
                           </Link>
                           
-                          <Link href={`/admin/herbs/edit/${herb.id}`}>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-8 w-8 p-0"
-                              title="Edit herb"
-                              aria-label="Edit herb"
-                            >
-                              <Edit className="w-4 h-4 text-blue-500" />
-                            </Button>
-                          </Link>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-8 w-8 p-0"
+                            onClick={() => handleEdit(herb.id)}
+                            title="Edit herb"
+                            aria-label="Edit herb"
+                          >
+                            <Edit className="w-4 h-4 text-blue-500" />
+                          </Button>
                           
                           <Button 
                             variant="ghost" 

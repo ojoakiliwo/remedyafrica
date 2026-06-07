@@ -46,6 +46,9 @@ interface Herb {
   origin?: string;
   category?: string;
   scientificName?: string;
+  benefits?: string | string[];
+  preparation?: string;
+  partsUsed?: string;
 }
 
 interface Practitioner {
@@ -173,7 +176,7 @@ function SearchPageContent() {
       const res = await fetch('/api/ai-explain', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symptoms: q }),  // ✅ FIXED: was { query: q }
+        body: JSON.stringify({ symptoms: q }),
       });
       const data = await res.json();
       if (data.explanation) {
@@ -201,10 +204,29 @@ function SearchPageContent() {
     const lowerQuery = query.toLowerCase();
     const terms = lowerQuery.split(/\s+/).filter(t => t.length > 2);
 
+    // BROADER MATCHING: include benefits, preparation, partsUsed
     const matched = allHerbs.filter(herb => {
-      const text = `${herb.name || ''} ${herb.scientificName || ''} ${herb.description || ''} ${(herb.medicinalUses || []).join(' ')} ${herb.origin || ''} ${herb.category || ''}`.toLowerCase();
+      const benefitsText = Array.isArray(herb.benefits) 
+        ? herb.benefits.join(' ') 
+        : (herb.benefits || '');
+      const usesText = Array.isArray(herb.medicinalUses) 
+        ? herb.medicinalUses.join(' ') 
+        : (herb.medicinalUses || '');
+      
+      const text = [
+        herb.name || '',
+        herb.scientificName || '',
+        herb.description || '',
+        usesText,
+        herb.origin || '',
+        herb.category || '',
+        benefitsText,
+        herb.preparation || '',
+        herb.partsUsed || '',
+      ].join(' ').toLowerCase();
+      
       return terms.some(t => text.includes(t)) || text.includes(lowerQuery);
-    }).slice(0, 8);
+    }).slice(0, 20); // Increased from 8 to 20
 
     setHerbs(matched);
     setStep('herbs');

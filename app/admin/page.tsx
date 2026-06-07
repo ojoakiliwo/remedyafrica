@@ -21,8 +21,9 @@ import { toast } from 'sonner';
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -34,31 +35,53 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkAdmin = async () => {
-      if (!user) {
-        router.push('/login');
+    // Use userData from auth hook first to avoid flash-redirect
+    if (userData) {
+      // Check both role and isAdmin for backward compatibility
+      const adminStatus = userData.role === 'admin' || (userData as any).isAdmin === true;
+      setIsAdmin(adminStatus);
+      setAuthChecked(true);
+      
+      if (!adminStatus) {
+        toast.error('Access denied');
+        router.push('/dashboard');
         return;
       }
       
+      fetchStats();
+      return;
+    }
+    
+    // Fallback: check Firestore directly if userData not yet loaded
+    if (!user) {
+      setAuthChecked(true);
+      router.push('/login');
+      return;
+    }
+    
+    const checkAdmin = async () => {
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
-          const userData = userDoc.data();
-          const adminStatus = userData.role === 'admin' || userData.isAdmin === true;
+          const data = userDoc.data();
+          const adminStatus = data.role === 'admin' || data.isAdmin === true;
           setIsAdmin(adminStatus);
+          setAuthChecked(true);
           
           if (!adminStatus) {
             toast.error('Access denied');
-            router.push('/');
+            router.push('/dashboard');
             return;
           }
         } else {
-          router.push('/');
+          setAuthChecked(true);
+          router.push('/dashboard');
           return;
         }
       } catch (err) {
         console.error('Error checking admin:', err);
-        router.push('/');
+        setAuthChecked(true);
+        router.push('/dashboard');
         return;
       }
       
@@ -66,7 +89,7 @@ export default function AdminDashboard() {
     };
 
     checkAdmin();
-  }, [user, router]);
+  }, [user, userData, router]);
 
   const fetchStats = async () => {
     try {
@@ -91,7 +114,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (loading) {
+  if (!authChecked || loading) {
     return (
       <div className="min-h-screen bg-[#faf9f7] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-[#5c7c6b]" />

@@ -1,4 +1,4 @@
-const { initializeApp, cert } = require('firebase-admin/app');
+const { initializeApp, cert, getApps } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getStorage } = require('firebase-admin/storage');
 const https = require('https');
@@ -6,22 +6,38 @@ const fs = require('fs');
 const path = require('path');
 
 // ─── CONFIG ───
-const SERVICE_ACCOUNT = require('../serviceAccountKey.json');
-const STORAGE_BUCKET = 'remedyafricaojo.firebasestorage.app';
-const DELAY_MS = 2000;
-const MIN_WIDTH = 400;
-
-// ─── INIT FIREBASE ───
-initializeApp({
-  credential: cert(SERVICE_ACCOUNT),
-  storageBucket: STORAGE_BUCKET
-});
+if (getApps().length === 0) {
+  initializeApp({ 
+    credential: cert(require('../serviceAccountKey.json')),
+    storageBucket: 'remedyafricaojo.firebasestorage.app'
+  });
+}
 
 const db = getFirestore();
-const bucket = getStorage().bucket();
+const bucket = getStorage().bucket('remedyafricaojo.firebasestorage.app');
 
 const TEMP_DIR = path.join(__dirname, '../temp-images');
 if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
+
+const PROGRESS_FILE = path.join(__dirname, '../upload-progress.json');
+const DELAY_MS = 2000;
+const MIN_WIDTH = 400;
+
+// ─── PROGRESS TRACKING ───
+function loadProgress() {
+  if (fs.existsSync(PROGRESS_FILE)) {
+    try {
+      return JSON.parse(fs.readFileSync(PROGRESS_FILE, 'utf8'));
+    } catch (e) {
+      console.log('⚠️  Corrupt progress file, starting fresh');
+    }
+  }
+  return { completed: [], failed: [], notFound: [] };
+}
+
+function saveProgress(progress) {
+  fs.writeFileSync(PROGRESS_FILE, JSON.stringify(progress, null, 2));
+}
 
 // ─── HELPERS ───
 function fetchJson(url) {
@@ -98,22 +114,31 @@ async function searchWikimedia(scientificName) {
   return null;
 }
 
-async function processHerb(herbDoc) {
+async function processHerb(herbDoc, progress) {
   const data = herbDoc.data();
   const id = herbDoc.id;
   const name = data.name || 'Unknown';
   const scientificName = data.scientificName || '';
 
-  // Skip if already has imageUrl (not just images array)
-  if (data.imageUrl && data.imageUrl.length > 10) {
-    return { status: 'skipped', name, reason: 'already_has_imageUrl' };
+  // SKIP if already processed
+  if (progress.completed && progress.completed.includes(id)) {
+    return { status: 'skipped', name, reason: 'already_processed' };
   }
 
-  console.log(`🔍 ${name} (${scientificName})`);
+  // SKIP if already has imageUrl (your manual uploads + previous fixes)
+  if (data.imageUrl && data.imageUrl.length > 10 && !data.imageUrl.includes('GoogleAccessId')) {
+    if (!progress.completed) progress.completed = [];
+    progress.completed.push(id);
+    return { status: 'skipped', name, reason: 'already_has_public_imageUrl' };
+  }
+
+  console.log(`\n🔍 ${name} (${scientificName})`);
 
   const imageInfo = await searchWikimedia(scientificName);
   if (!imageInfo) {
     console.log(`  ❌ No image found`);
+    if (!progress.notFound) progress.notFound = [];
+    progress.notFound.push(id);
     return { status: 'not_found', name };
   }
 
@@ -139,16 +164,12 @@ async function processHerb(herbDoc) {
     }
   });
 
-  // FIX: Use Firebase's getSignedUrl instead of manual URL construction
-  const file = bucket.file(destination);
-  const [publicUrl] = await file.getSignedUrl({
-    action: 'read',
-    expires: '03-01-2500'
-  });
+  // Use public URL (no signed URL!)
+  const publicUrl = `https://storage.googleapis.com/${bucket.name}/${destination}`;
 
   console.log(`  ☁️  Uploaded: ${publicUrl}`);
 
-  // FIX: Update both imageUrl (for herb cards) and images array
+  // Update Firestore
   await db.collection('herbs').doc(id).update({
     imageUrl: publicUrl,
     images: [{ 
@@ -163,56 +184,77 @@ async function processHerb(herbDoc) {
   console.log(`  💾 Firestore updated`);
 
   fs.unlinkSync(tempPath);
+  if (!progress.completed) progress.completed = [];
+  progress.completed.push(id);
 
   return { status: 'success', name, url: publicUrl };
 }
 
 // ─── MAIN ───
 async function main() {
-  console.log('🌿 BULK IMAGE UPLOAD STARTING...');
-  console.log(`   Bucket: ${STORAGE_BUCKET}`);
-  console.log(`   Temp dir: ${TEMP_DIR}\n`);
+  console.log('🌿 SAFE BULK IMAGE UPLOAD STARTING...');
+  console.log('   ✋ Will NOT overwrite existing images\n');
+
+  const progress = loadProgress();
+
+  // Ensure arrays exist
+  if (!progress.completed) progress.completed = [];
+  if (!progress.failed) progress.failed = [];
+  if (!progress.notFound) progress.notFound = [];
+
+  console.log(`   Resume progress: ${progress.completed.length} done, ${progress.failed.length} failed, ${progress.notFound.length} not found\n`);
 
   const snapshot = await db.collection('herbs').get();
   const herbs = [];
   snapshot.forEach(doc => herbs.push(doc));
 
-  console.log(`Found ${herbs.length} herbs in Firestore\n`);
+  // Filter out already processed
+  const toProcess = herbs.filter(h => !progress.completed.includes(h.id));
+
+  console.log(`Total herbs: ${herbs.length}`);
+  console.log(`Already done: ${progress.completed.length}`);
+  console.log(`To process: ${toProcess.length}\n`);
 
   let success = 0, skipped = 0, notFound = 0, errors = 0;
 
-  for (let i = 0; i < herbs.length; i++) {
-    const herb = herbs[i];
-    console.log(`\n[${i + 1}/${herbs.length}]`);
+  for (let i = 0; i < toProcess.length; i++) {
+    const herb = toProcess[i];
+    console.log(`[${i + 1}/${toProcess.length}] (overall: ${progress.completed.length + i + 1}/${herbs.length})`);
 
     try {
-      const result = await processHerb(herb);
+      const result = await processHerb(herb, progress);
       if (result.status === 'success') success++;
       else if (result.status === 'skipped') skipped++;
       else if (result.status === 'not_found') notFound++;
     } catch (err) {
       console.error(`  💥 ERROR: ${err.message}`);
+      if (!progress.failed) progress.failed = [];
+      progress.failed.push({ id: herb.id, error: err.message, time: new Date().toISOString() });
       errors++;
     }
 
-    if (i < herbs.length - 1) {
+    // Save progress after every herb
+    saveProgress(progress);
+
+    if (i < toProcess.length - 1) {
       process.stdout.write(`  ⏱️  Waiting ${DELAY_MS}ms...`);
       await new Promise(r => setTimeout(r, DELAY_MS));
       process.stdout.write('\r                          \r');
     }
   }
 
+  // Clean up
   if (fs.existsSync(TEMP_DIR)) {
     fs.rmSync(TEMP_DIR, { recursive: true, force: true });
   }
 
   console.log('\n' + '='.repeat(50));
   console.log('📊 BULK IMAGE UPLOAD COMPLETE');
-  console.log(`   ✅ Success: ${success}`);
-  console.log(`   ⏭️  Skipped (has images): ${skipped}`);
+  console.log(`   ✅ Success this run: ${success}`);
+  console.log(`   ⏭️  Skipped (already done): ${skipped}`);
   console.log(`   ❌ No image found: ${notFound}`);
   console.log(`   💥 Errors: ${errors}`);
-  console.log(`   📦 Total: ${herbs.length}`);
+  console.log(`   📦 Total processed ever: ${progress.completed.length}`);
   console.log('='.repeat(50));
 }
 

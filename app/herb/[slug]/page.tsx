@@ -22,6 +22,9 @@ import {
 import { useState, useEffect } from 'react';
 import { getHerbById, getAllHerbs } from '@/lib/firebase/herbs';
 import { useSubscription } from '@/providers/SubscriptionProvider';
+import { getHerbImages, getHerbPrimaryImage } from '@/lib/herb-images';
+import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 
 export default function HerbDetailPage() {
   const params = useParams();
@@ -38,13 +41,62 @@ export default function HerbDetailPage() {
     async function loadHerb() {
       try {
         setLoading(true);
-        const data = await getHerbById(slug);
+        setError('');
+        let data: any = await getHerbById(slug);
+        
+        // Fallback 1: Try matching by slug field in Firestore
+        if (!data) {
+          const slugQuery = query(
+            collection(db, 'herbs'),
+            where('slug', '==', slug),
+            limit(1)
+          );
+          const slugSnap = await getDocs(slugQuery);
+          if (!slugSnap.empty) {
+            data = { id: slugSnap.docs[0].id, ...slugSnap.docs[0].data() } as any;
+          }
+        }
+        
+        // Fallback 2: Try matching by name (URL-decoded, hyphen-to-space)
+        if (!data) {
+          const decodedName = decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase();
+          const nameQuery = query(
+            collection(db, 'herbs'),
+            where('name', '==', decodedName),
+            limit(1)
+          );
+          const nameSnap = await getDocs(nameQuery);
+          if (!nameSnap.empty) {
+            data = { id: nameSnap.docs[0].id, ...nameSnap.docs[0].data() } as any;
+          }
+        }
+        
+        // Fallback 3: Fetch all and do client-side fuzzy match
+        if (!data) {
+          const allSnap = await getDocs(collection(db, 'herbs'));
+          const decodedSlug = decodeURIComponent(slug).toLowerCase().replace(/-/g, ' ');
+          const match = allSnap.docs.find(d => {
+            const dData = d.data();
+            const name = (dData.name || '').toLowerCase();
+            const scientific = (dData.scientificName || '').toLowerCase();
+            return (
+              name === decodedSlug ||
+              name.replace(/-/g, ' ') === decodedSlug ||
+              scientific.replace(/\s+/g, '-') === slug.toLowerCase() ||
+              scientific.toLowerCase() === decodedSlug
+            );
+          });
+          if (match) {
+            data = { id: match.id, ...match.data() } as any;
+          }
+        }
+        
         if (data) {
           setHerb(data);
           
           const allHerbs = await getAllHerbs();
           const related = allHerbs
-            .filter(h => h.category === data.category && h.id !== slug)
+            .filter((h: any) => h.category === data.category && h.id !== data.id)
             .slice(0, 3);
           setRelatedHerbs(related);
         } else {
@@ -62,6 +114,10 @@ export default function HerbDetailPage() {
       loadHerb();
     }
   }, [slug]);
+
+  // Normalize images for display
+  const herbImages = herb ? getHerbImages(herb) : [];
+  const primaryImage = herb ? getHerbPrimaryImage(herb) : undefined;
 
   if (loading) {
     return (
@@ -139,9 +195,9 @@ export default function HerbDetailPage() {
           {/* Left Column - Images */}
           <div className="space-y-4">
             <div className="aspect-square bg-gray-200 dark:bg-[#1e2b1f] rounded-2xl overflow-hidden relative">
-              {herb.images && herb.images.length > 0 ? (
+              {herbImages.length > 0 ? (
                 <img 
-                  src={herb.images[selectedImage]} 
+                  src={herbImages[selectedImage]} 
                   alt={herb.name}
                   className="w-full h-full object-cover"
                 />
@@ -156,9 +212,9 @@ export default function HerbDetailPage() {
               </div>
             </div>
             
-            {herb.images && herb.images.length > 1 && (
+            {herbImages.length > 1 && (
               <div className="grid grid-cols-4 gap-2">
-                {herb.images.map((img: string, idx: number) => (
+                {herbImages.map((img: string, idx: number) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedImage(idx)}
@@ -370,11 +426,14 @@ export default function HerbDetailPage() {
                 <Link key={related.id} href={`/herb/${related.id}`}>
                   <Card className="hover:shadow-lg transition-shadow cursor-pointer border-[#97A97C]/20 dark:border-[#97A97C]/30 dark:bg-[#1e2b1f]">
                     <div className="h-32 bg-gradient-to-br from-[#97A97C]/20 to-[#B8860B]/20 flex items-center justify-center">
-                      {related.images && related.images.length > 0 ? (
-                        <img src={related.images[0]} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-4xl">🌿</span>
-                      )}
+                      {(() => {
+                        const relatedImg = getHerbPrimaryImage(related);
+                        return relatedImg ? (
+                          <img src={relatedImg} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-4xl">🌿</span>
+                        );
+                      })()}
                     </div>
                     <CardContent className="p-4">
                       <h3 className="font-bold text-[#2C3E2D] dark:text-[#F5F5F0]">{related.name}</h3>

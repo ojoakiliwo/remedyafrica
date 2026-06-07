@@ -57,26 +57,26 @@ function downloadFile(url, dest) {
 
 async function searchWikimedia(scientificName) {
   if (!scientificName) return null;
-
+  
   const query = encodeURIComponent(`"${scientificName}"`);
   const searchUrl = `https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${query}&srnamespace=6&srlimit=3&format=json&origin=*`;
-
+  
   try {
     const data = await fetchJson(searchUrl);
     const results = data.query?.search || [];
-
+    
     for (const result of results) {
       const filename = result.title.replace('File:', '');
-
+      
       const lower = filename.toLowerCase();
       if (['diagram', 'map', 'chart', 'illustration', 'drawing', 'icon', 'logo'].some(k => lower.includes(k))) {
         continue;
       }
-
+      
       const infoUrl = `https://commons.wikimedia.org/w/api.php?action=query&titles=File:${encodeURIComponent(filename)}&prop=imageinfo&iiprop=url|size|mime&format=json&origin=*`;
       const infoData = await fetchJson(infoUrl);
       const pages = infoData.query?.pages || {};
-
+      
       for (const pageId in pages) {
         const page = pages[pageId];
         if (page.imageinfo?.[0]) {
@@ -103,29 +103,28 @@ async function processHerb(herbDoc) {
   const id = herbDoc.id;
   const name = data.name || 'Unknown';
   const scientificName = data.scientificName || '';
-
-  // Skip if already has imageUrl (not just images array)
+  
+  // Skip if already has imageUrl
   if (data.imageUrl && data.imageUrl.length > 10) {
     return { status: 'skipped', name, reason: 'already_has_imageUrl' };
   }
-
+  
   console.log(`🔍 ${name} (${scientificName})`);
-
+  
   const imageInfo = await searchWikimedia(scientificName);
   if (!imageInfo) {
     console.log(`  ❌ No image found`);
     return { status: 'not_found', name };
   }
-
+  
   console.log(`  ✅ Found: ${imageInfo.filename} (${imageInfo.width}x${imageInfo.height})`);
-
+  
   const tempPath = path.join(TEMP_DIR, `${id}.jpg`);
   await downloadFile(imageInfo.url, tempPath);
   console.log(`  ⬇️  Downloaded`);
-
+  
   const destination = `herbs/${id}/main.jpg`;
-
-  // Upload to Firebase Storage
+  
   await bucket.upload(tempPath, {
     destination,
     metadata: {
@@ -138,17 +137,15 @@ async function processHerb(herbDoc) {
       }
     }
   });
-
-  // FIX: Use Firebase's getSignedUrl instead of manual URL construction
+  
   const file = bucket.file(destination);
   const [publicUrl] = await file.getSignedUrl({
     action: 'read',
     expires: '03-01-2500'
   });
-
-  console.log(`  ☁️  Uploaded: ${publicUrl}`);
-
-  // FIX: Update both imageUrl (for herb cards) and images array
+  
+  console.log(`  ☁️  Uploaded`);
+  
   await db.collection('herbs').doc(id).update({
     imageUrl: publicUrl,
     images: [{ 
@@ -161,9 +158,9 @@ async function processHerb(herbDoc) {
     updatedAt: new Date()
   });
   console.log(`  💾 Firestore updated`);
-
+  
   fs.unlinkSync(tempPath);
-
+  
   return { status: 'success', name, url: publicUrl };
 }
 
@@ -172,19 +169,19 @@ async function main() {
   console.log('🌿 BULK IMAGE UPLOAD STARTING...');
   console.log(`   Bucket: ${STORAGE_BUCKET}`);
   console.log(`   Temp dir: ${TEMP_DIR}\n`);
-
+  
   const snapshot = await db.collection('herbs').get();
   const herbs = [];
   snapshot.forEach(doc => herbs.push(doc));
-
+  
   console.log(`Found ${herbs.length} herbs in Firestore\n`);
-
+  
   let success = 0, skipped = 0, notFound = 0, errors = 0;
-
+  
   for (let i = 0; i < herbs.length; i++) {
     const herb = herbs[i];
     console.log(`\n[${i + 1}/${herbs.length}]`);
-
+    
     try {
       const result = await processHerb(herb);
       if (result.status === 'success') success++;
@@ -194,18 +191,18 @@ async function main() {
       console.error(`  💥 ERROR: ${err.message}`);
       errors++;
     }
-
+    
     if (i < herbs.length - 1) {
       process.stdout.write(`  ⏱️  Waiting ${DELAY_MS}ms...`);
       await new Promise(r => setTimeout(r, DELAY_MS));
       process.stdout.write('\r                          \r');
     }
   }
-
+  
   if (fs.existsSync(TEMP_DIR)) {
     fs.rmSync(TEMP_DIR, { recursive: true, force: true });
   }
-
+  
   console.log('\n' + '='.repeat(50));
   console.log('📊 BULK IMAGE UPLOAD COMPLETE');
   console.log(`   ✅ Success: ${success}`);
