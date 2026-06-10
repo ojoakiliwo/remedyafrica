@@ -110,6 +110,72 @@ async function checkSubscription(uid: string): Promise<{ active: boolean; plan?:
   }
 }
 
+/* ─────────── Synonym Map ─────────── */
+const synonymMap: Record<string, string[]> = {
+  // Pain / Headache
+  'headache': ['headache', 'migraine', 'pain', 'relief', 'analgesic', 'anti-inflammatory', 'inflammatory'],
+  'migraine': ['migraine', 'headache', 'pain', 'relief', 'analgesic'],
+  'pain': ['pain', 'ache', 'relief', 'analgesic', 'anti-inflammatory', 'inflammatory', 'headache', 'migraine'],
+  
+  // Malaria / Fever
+  'malaria': ['malaria', 'antimalarial', 'fever', 'parasite', 'plasmodium', 'quinine'],
+  'fever': ['fever', 'antipyretic', 'malaria', 'typhoid', 'temperature'],
+  
+  // Digestion
+  'digestion': ['digestion', 'digestive', 'stomach', 'gastric', 'ulcer', 'constipation', 'diarrhea', 'bloating', 'indigestion', 'appetite'],
+  'stomach': ['stomach', 'digestion', 'digestive', 'gastric', 'ulcer', 'constipation', 'diarrhea'],
+  'constipation': ['constipation', 'digestion', 'laxative', 'bowel', 'stomach'],
+  
+  // Immune
+  'immune': ['immune', 'immunity', 'antiviral', 'antibacterial', 'infection', 'cold', 'flu', 'cough', 'respiratory'],
+  'cold': ['cold', 'flu', 'cough', 'respiratory', 'immune', 'congestion', 'sore throat'],
+  'cough': ['cough', 'cold', 'flu', 'respiratory', 'congestion', 'bronchitis'],
+  
+  // Skin
+  'skin': ['skin', 'dermatitis', 'eczema', 'acne', 'rash', 'wound', 'burn', 'complexion'],
+  'acne': ['acne', 'skin', 'pimple', 'dermatitis', 'complexion'],
+  
+  // Stress / Sleep
+  'stress': ['stress', 'anxiety', 'calm', 'relax', 'sedative', 'insomnia', 'sleep', 'nervous', 'depression'],
+  'anxiety': ['anxiety', 'stress', 'calm', 'relax', 'sedative', 'nervous', 'depression'],
+  'sleep': ['sleep', 'insomnia', 'sedative', 'calm', 'relax', 'stress', 'anxiety'],
+  'insomnia': ['insomnia', 'sleep', 'sedative', 'calm', 'relax'],
+  
+  // Women's health
+  'period': ['period', 'menstrual', 'menstruation', 'cramps', 'pms', 'fertility', 'hormone', 'uterine'],
+  'menstrual': ['menstrual', 'period', 'menstruation', 'cramps', 'pms', 'fertility', 'hormone'],
+  'fertility': ['fertility', 'conception', 'pregnant', 'pregnancy', 'uterine', 'hormone', 'ovulation'],
+  
+  // Men's health
+  'prostate': ['prostate', 'urinary', 'bph', 'libido', 'testosterone', 'virility'],
+  'libido': ['libido', 'aphrodisiac', 'sexual', 'virility', 'testosterone', 'performance'],
+  
+  // Diabetes / Blood sugar
+  'diabetes': ['diabetes', 'sugar', 'glucose', 'insulin', 'hypoglycemic', 'blood sugar'],
+  'sugar': ['sugar', 'glucose', 'diabetes', 'hypoglycemic', 'insulin', 'blood sugar'],
+  
+  // Blood pressure / Heart
+  'pressure': ['pressure', 'hypertension', 'blood pressure', 'cardiovascular', 'heart', 'circulation'],
+  'heart': ['heart', 'cardiovascular', 'circulation', 'hypertension', 'cholesterol', 'blood pressure'],
+  'cholesterol': ['cholesterol', 'heart', 'cardiovascular', 'lipid', 'triglyceride'],
+  
+  // Liver / Kidney
+  'liver': ['liver', 'hepatitis', 'detox', 'jaundice', 'hepatic'],
+  'kidney': ['kidney', 'renal', 'urinary', 'diuretic', 'bladder', 'stones'],
+  
+  // Worms / Parasites
+  'worms': ['worms', 'parasite', 'anthelmintic', 'vermifuge', 'intestinal'],
+  
+  // General wellness
+  'energy': ['energy', 'fatigue', 'tired', 'vitality', 'stamina', 'tonic', 'adaptogen'],
+  'fatigue': ['fatigue', 'energy', 'tired', 'vitality', 'stamina', 'tonic'],
+  
+  // Inflammation
+  'inflammation': ['inflammation', 'inflammatory', 'anti-inflammatory', 'swelling', 'arthritis', 'rheumatism', 'joint'],
+  'arthritis': ['arthritis', 'rheumatism', 'joint', 'inflammation', 'inflammatory', 'anti-inflammatory', 'pain'],
+  'joint': ['joint', 'arthritis', 'rheumatism', 'inflammation', 'pain', 'mobility'],
+};
+
 /* ─────────── Component ─────────── */
 function SearchPageContent() {
   const searchParams = useSearchParams();
@@ -204,29 +270,74 @@ function SearchPageContent() {
     const lowerQuery = query.toLowerCase();
     const terms = lowerQuery.split(/\s+/).filter(t => t.length > 2);
 
-    // BROADER MATCHING: include benefits, preparation, partsUsed
-    const matched = allHerbs.filter(herb => {
-      const benefitsText = Array.isArray(herb.benefits) 
-        ? herb.benefits.join(' ') 
-        : (herb.benefits || '');
+    // Expand search terms with synonyms
+    const expandedTerms = new Set<string>();
+    terms.forEach(term => {
+      expandedTerms.add(term);
+      if (synonymMap[term]) {
+        synonymMap[term].forEach(syn => expandedTerms.add(syn));
+      }
+    });
+    const searchTerms = Array.from(expandedTerms);
+
+    // SMART MATCHING with scoring
+    const scoredHerbs = allHerbs.map(herb => {
+      // Parse benefits - handle both string and array formats
+      let benefitsList: string[] = [];
+      if (Array.isArray(herb.benefits)) {
+        benefitsList = herb.benefits;
+      } else if (typeof herb.benefits === 'string') {
+        benefitsList = herb.benefits.split(/[;|,]/).map((b: string) => b.trim()).filter(Boolean);
+      }
+      const benefitsText = benefitsList.join(' ').toLowerCase();
+      
+      // Parse medicinalUses
       const usesText = Array.isArray(herb.medicinalUses) 
-        ? herb.medicinalUses.join(' ') 
-        : (herb.medicinalUses || '');
+        ? herb.medicinalUses.join(' ').toLowerCase()
+        : (herb.medicinalUses || '').toLowerCase();
       
-      const text = [
-        herb.name || '',
-        herb.scientificName || '',
-        herb.description || '',
-        usesText,
-        herb.origin || '',
-        herb.category || '',
-        benefitsText,
-        herb.preparation || '',
-        herb.partsUsed || '',
-      ].join(' ').toLowerCase();
-      
-      return terms.some(t => text.includes(t)) || text.includes(lowerQuery);
-    }).slice(0, 20); // Increased from 8 to 20
+      // Build searchable text from all fields
+      const nameText = (herb.name || '').toLowerCase();
+      const scientificText = (herb.scientificName || '').toLowerCase();
+      const descText = (herb.description || '').toLowerCase();
+      const categoryText = (herb.category || '').toLowerCase();
+      const originText = (herb.origin || '').toLowerCase();
+      const partsText = (herb.partsUsed || '').toLowerCase();
+      const prepText = (herb.preparation || '').toLowerCase();
+
+      let score = 0;
+      let matchedTerms: string[] = [];
+
+      searchTerms.forEach(term => {
+        // Exact matches in key fields (highest score)
+        if (nameText.includes(term)) { score += 10; matchedTerms.push(term); }
+        if (scientificText.includes(term)) { score += 8; matchedTerms.push(term); }
+        if (usesText.includes(term)) { score += 7; matchedTerms.push(term); }
+        if (benefitsText.includes(term)) { score += 6; matchedTerms.push(term); }
+        if (descText.includes(term)) { score += 5; matchedTerms.push(term); }
+        if (categoryText.includes(term)) { score += 4; matchedTerms.push(term); }
+        if (originText.includes(term)) { score += 2; matchedTerms.push(term); }
+        if (partsText.includes(term)) { score += 2; matchedTerms.push(term); }
+        if (prepText.includes(term)) { score += 1; matchedTerms.push(term); }
+        
+        // Also check if any individual benefit contains the term
+        benefitsList.forEach((benefit: string) => {
+          if (benefit.toLowerCase().includes(term)) {
+            score += 3;
+            matchedTerms.push(`${term}(in:${benefit})`);
+          }
+        });
+      });
+
+      return { herb, score, matchedTerms: [...new Set(matchedTerms)] };
+    });
+
+    // Filter herbs with any match, sort by score, take top 20
+    const matched = scoredHerbs
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 20)
+      .map(item => item.herb);
 
     setHerbs(matched);
     setStep('herbs');
