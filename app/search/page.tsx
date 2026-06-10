@@ -17,7 +17,6 @@ import {
   Star,
   X,
   ChevronRight,
-  Heart,
   Beaker,
   Camera,
   Upload,
@@ -29,7 +28,25 @@ import {
   Lock,
   Crown,
   Zap,
-  MessageCircle
+  MessageCircle,
+  Thermometer,
+  Activity,
+  Shield,
+  Droplets,
+  Wind,
+  Brain,
+  Moon,
+  Sun,
+  Pill,
+  FlaskConical,
+  ArrowUpRight,
+  Clock,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  Bookmark,
+  Share2,
+  ExternalLink
 } from 'lucide-react';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
@@ -49,6 +66,7 @@ interface Herb {
   benefits?: string | string[];
   preparation?: string;
   partsUsed?: string;
+  warnings?: string;
 }
 
 interface Practitioner {
@@ -61,6 +79,7 @@ interface Practitioner {
   rating?: number;
   consultationFee?: number;
   isVerified?: boolean;
+  isActive?: boolean;
 }
 
 interface PlantIdSuggestion {
@@ -112,69 +131,56 @@ async function checkSubscription(uid: string): Promise<{ active: boolean; plan?:
 
 /* ─────────── Synonym Map ─────────── */
 const synonymMap: Record<string, string[]> = {
-  // Pain / Headache
   'headache': ['headache', 'migraine', 'pain', 'relief', 'analgesic', 'anti-inflammatory', 'inflammatory'],
   'migraine': ['migraine', 'headache', 'pain', 'relief', 'analgesic'],
   'pain': ['pain', 'ache', 'relief', 'analgesic', 'anti-inflammatory', 'inflammatory', 'headache', 'migraine'],
-  
-  // Malaria / Fever
   'malaria': ['malaria', 'antimalarial', 'fever', 'parasite', 'plasmodium', 'quinine'],
   'fever': ['fever', 'antipyretic', 'malaria', 'typhoid', 'temperature'],
-  
-  // Digestion
   'digestion': ['digestion', 'digestive', 'stomach', 'gastric', 'ulcer', 'constipation', 'diarrhea', 'bloating', 'indigestion', 'appetite'],
   'stomach': ['stomach', 'digestion', 'digestive', 'gastric', 'ulcer', 'constipation', 'diarrhea'],
   'constipation': ['constipation', 'digestion', 'laxative', 'bowel', 'stomach'],
-  
-  // Immune
   'immune': ['immune', 'immunity', 'antiviral', 'antibacterial', 'infection', 'cold', 'flu', 'cough', 'respiratory'],
   'cold': ['cold', 'flu', 'cough', 'respiratory', 'immune', 'congestion', 'sore throat'],
   'cough': ['cough', 'cold', 'flu', 'respiratory', 'congestion', 'bronchitis'],
-  
-  // Skin
   'skin': ['skin', 'dermatitis', 'eczema', 'acne', 'rash', 'wound', 'burn', 'complexion'],
   'acne': ['acne', 'skin', 'pimple', 'dermatitis', 'complexion'],
-  
-  // Stress / Sleep
   'stress': ['stress', 'anxiety', 'calm', 'relax', 'sedative', 'insomnia', 'sleep', 'nervous', 'depression'],
   'anxiety': ['anxiety', 'stress', 'calm', 'relax', 'sedative', 'nervous', 'depression'],
   'sleep': ['sleep', 'insomnia', 'sedative', 'calm', 'relax', 'stress', 'anxiety'],
   'insomnia': ['insomnia', 'sleep', 'sedative', 'calm', 'relax'],
-  
-  // Women's health
   'period': ['period', 'menstrual', 'menstruation', 'cramps', 'pms', 'fertility', 'hormone', 'uterine'],
   'menstrual': ['menstrual', 'period', 'menstruation', 'cramps', 'pms', 'fertility', 'hormone'],
   'fertility': ['fertility', 'conception', 'pregnant', 'pregnancy', 'uterine', 'hormone', 'ovulation'],
-  
-  // Men's health
   'prostate': ['prostate', 'urinary', 'bph', 'libido', 'testosterone', 'virility'],
   'libido': ['libido', 'aphrodisiac', 'sexual', 'virility', 'testosterone', 'performance'],
-  
-  // Diabetes / Blood sugar
   'diabetes': ['diabetes', 'sugar', 'glucose', 'insulin', 'hypoglycemic', 'blood sugar'],
   'sugar': ['sugar', 'glucose', 'diabetes', 'hypoglycemic', 'insulin', 'blood sugar'],
-  
-  // Blood pressure / Heart
   'pressure': ['pressure', 'hypertension', 'blood pressure', 'cardiovascular', 'heart', 'circulation'],
   'heart': ['heart', 'cardiovascular', 'circulation', 'hypertension', 'cholesterol', 'blood pressure'],
   'cholesterol': ['cholesterol', 'heart', 'cardiovascular', 'lipid', 'triglyceride'],
-  
-  // Liver / Kidney
   'liver': ['liver', 'hepatitis', 'detox', 'jaundice', 'hepatic'],
   'kidney': ['kidney', 'renal', 'urinary', 'diuretic', 'bladder', 'stones'],
-  
-  // Worms / Parasites
   'worms': ['worms', 'parasite', 'anthelmintic', 'vermifuge', 'intestinal'],
-  
-  // General wellness
   'energy': ['energy', 'fatigue', 'tired', 'vitality', 'stamina', 'tonic', 'adaptogen'],
   'fatigue': ['fatigue', 'energy', 'tired', 'vitality', 'stamina', 'tonic'],
-  
-  // Inflammation
   'inflammation': ['inflammation', 'inflammatory', 'anti-inflammatory', 'swelling', 'arthritis', 'rheumatism', 'joint'],
   'arthritis': ['arthritis', 'rheumatism', 'joint', 'inflammation', 'inflammatory', 'anti-inflammatory', 'pain'],
   'joint': ['joint', 'arthritis', 'rheumatism', 'inflammation', 'pain', 'mobility'],
 };
+
+/* ─────────── Condition Icons ─────────── */
+function getConditionIcon(query: string) {
+  const q = query.toLowerCase();
+  if (q.includes('head') || q.includes('migrain') || q.includes('pain')) return <Brain className="w-6 h-6" />;
+  if (q.includes('cold') || q.includes('flu') || q.includes('cough') || q.includes('fever')) return <Thermometer className="w-6 h-6" />;
+  if (q.includes('skin') || q.includes('acne') || q.includes('rash')) return <Sun className="w-6 h-6" />;
+  if (q.includes('stress') || q.includes('anxiety') || q.includes('sleep') || q.includes('insomnia')) return <Moon className="w-6 h-6" />;
+  if (q.includes('heart') || q.includes('pressure') || q.includes('blood')) return <Activity className="w-6 h-6" />;
+  if (q.includes('digest') || q.includes('stomach') || q.includes('liver')) return <FlaskConical className="w-6 h-6" />;
+  if (q.includes('immune') || q.includes('infection')) return <Shield className="w-6 h-6" />;
+  if (q.includes('diabetes') || q.includes('sugar')) return <Droplets className="w-6 h-6" />;
+  return <Wind className="w-6 h-6" />;
+}
 
 /* ─────────── Component ─────────── */
 function SearchPageContent() {
@@ -208,8 +214,16 @@ function SearchPageContent() {
 
   const [subStatus, setSubStatus] = useState<{ active: boolean; plan?: string }>({ active: false });
   const [checkingSub, setCheckingSub] = useState(false);
+  const [expandedAi, setExpandedAi] = useState(false);
 
-  const quickSuggestions = ['Stress relief', 'Digestion', 'Immune boost', 'Skin care', 'Sleep aid', 'Joint pain'];
+  const quickSuggestions = [
+    { label: 'Headache relief', icon: Brain },
+    { label: 'Immune boost', icon: Shield },
+    { label: 'Digestive health', icon: FlaskConical },
+    { label: 'Better sleep', icon: Moon },
+    { label: 'Skin care', icon: Sun },
+    { label: 'Joint pain', icon: Activity },
+  ];
 
   /* ── Load all herbs once ── */
   useEffect(() => {
@@ -237,6 +251,7 @@ function SearchPageContent() {
     setPractitioners([]);
     setPlantIdResult(null);
     setMatchedHerbs([]);
+    setExpandedAi(false);
 
     try {
       const res = await fetch('/api/ai-explain', {
@@ -270,7 +285,6 @@ function SearchPageContent() {
     const lowerQuery = query.toLowerCase();
     const terms = lowerQuery.split(/\s+/).filter(t => t.length > 2);
 
-    // Expand search terms with synonyms
     const expandedTerms = new Set<string>();
     terms.forEach(term => {
       expandedTerms.add(term);
@@ -280,9 +294,7 @@ function SearchPageContent() {
     });
     const searchTerms = Array.from(expandedTerms);
 
-    // SMART MATCHING with scoring
     const scoredHerbs = allHerbs.map(herb => {
-      // Parse benefits - handle both string and array formats
       let benefitsList: string[] = [];
       if (Array.isArray(herb.benefits)) {
         benefitsList = herb.benefits;
@@ -291,12 +303,10 @@ function SearchPageContent() {
       }
       const benefitsText = benefitsList.join(' ').toLowerCase();
       
-      // Parse medicinalUses
       const usesText = Array.isArray(herb.medicinalUses) 
         ? herb.medicinalUses.join(' ').toLowerCase()
         : (herb.medicinalUses || '').toLowerCase();
       
-      // Build searchable text from all fields
       const nameText = (herb.name || '').toLowerCase();
       const scientificText = (herb.scientificName || '').toLowerCase();
       const descText = (herb.description || '').toLowerCase();
@@ -306,10 +316,9 @@ function SearchPageContent() {
       const prepText = (herb.preparation || '').toLowerCase();
 
       let score = 0;
-      let matchedTerms: string[] = [];
+      const matchedTerms: string[] = [];
 
       searchTerms.forEach(term => {
-        // Exact matches in key fields (highest score)
         if (nameText.includes(term)) { score += 10; matchedTerms.push(term); }
         if (scientificText.includes(term)) { score += 8; matchedTerms.push(term); }
         if (usesText.includes(term)) { score += 7; matchedTerms.push(term); }
@@ -320,7 +329,6 @@ function SearchPageContent() {
         if (partsText.includes(term)) { score += 2; matchedTerms.push(term); }
         if (prepText.includes(term)) { score += 1; matchedTerms.push(term); }
         
-        // Also check if any individual benefit contains the term
         benefitsList.forEach((benefit: string) => {
           if (benefit.toLowerCase().includes(term)) {
             score += 3;
@@ -332,7 +340,6 @@ function SearchPageContent() {
       return { herb, score, matchedTerms: Array.from(new Set(matchedTerms)) };
     });
 
-    // Filter herbs with any match, sort by score, take top 20
     const matched = scoredHerbs
       .filter(item => item.score > 0)
       .sort((a, b) => b.score - a.score)
@@ -453,200 +460,276 @@ function SearchPageContent() {
 
   /* ── RENDER ── */
   return (
-    <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 via-stone-50 to-white">
+    <div className="min-h-screen bg-slate-50">
       {/* ── Hero ── */}
-      <div className="pt-24 pb-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 text-emerald-800 text-sm font-medium mb-6">
-            <Sparkles className="w-4 h-4" aria-hidden="true" />
-            AI-Powered Herbal Search
-          </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-stone-800 mb-4">
-            {query ? `Searching "${query}"` : 'Find Natural Remedies'}
-          </h1>
-          <p className="text-stone-500 text-lg mb-8 max-w-xl mx-auto">
-            Search symptoms or snap a photo. Our AI explains your condition and guides you to the right remedies.
-          </p>
+      <div className="relative bg-white border-b border-slate-200">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-50 via-white to-white" />
+        <div className="relative pt-20 pb-16 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-semibold tracking-wide uppercase mb-6">
+              <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+              AI-Powered Herbal Intelligence
+            </div>
+            <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight mb-4">
+              {query ? (
+                <span className="flex items-center justify-center gap-3 flex-wrap">
+                  {getConditionIcon(query)}
+                  <span>{query}</span>
+                </span>
+              ) : (
+                'Find Natural Remedies'
+              )}
+            </h1>
+            <p className="text-slate-500 text-lg mb-10 max-w-lg mx-auto leading-relaxed">
+              Search symptoms or snap a photo. Our AI analyzes your condition and matches you with evidence-based herbal remedies.
+            </p>
 
-          {/* Mode toggle */}
-          <div className="inline-flex p-1 rounded-xl bg-stone-100 mb-6">
-            <button
-              type="button"
-              onClick={() => setSearchMode('text')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                searchMode === 'text' ? 'bg-white text-emerald-700 shadow-sm' : 'text-stone-500 hover:text-stone-700'
-              }`}
-            >
-              <Search className="w-4 h-4" aria-hidden="true" />
-              Text Search
-            </button>
-            <button
-              type="button"
-              onClick={() => setSearchMode('image')}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                searchMode === 'image' ? 'bg-white text-emerald-700 shadow-sm' : 'text-stone-500 hover:text-stone-700'
-              }`}
-            >
-              <Camera className="w-4 h-4" aria-hidden="true" />
-              Identify by Photo
-            </button>
-          </div>
+            {/* Mode toggle */}
+            <div className="inline-flex p-1 rounded-xl bg-slate-100 border border-slate-200 mb-8">
+              <button
+                type="button"
+                onClick={() => setSearchMode('text')}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  searchMode === 'text' 
+                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <Search className="w-4 h-4" aria-hidden="true" />
+                Text Search
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchMode('image')}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  searchMode === 'image' 
+                    ? 'bg-white text-slate-900 shadow-sm border border-slate-200' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <Camera className="w-4 h-4" aria-hidden="true" />
+                Identify by Photo
+              </button>
+            </div>
 
-          {/* ── TEXT INPUT ── */}
-          {searchMode === 'text' && (
-            <form onSubmit={handleTextSubmit} className="relative max-w-2xl mx-auto">
-              <div className="relative">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400" aria-hidden="true" />
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={e => setSearchInput(e.target.value)}
-                  placeholder="e.g., headaches, insomnia, digestion..."
-                  aria-label="Search symptoms or conditions"
-                  className="w-full pl-14 pr-14 py-4 rounded-2xl border-2 border-emerald-100 bg-white text-stone-800 placeholder:text-stone-400 text-lg focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100 transition-all shadow-sm"
-                />
-                {searchInput && (
-                  <button
-                    type="button"
-                    onClick={() => { setSearchInput(''); router.push('/search'); }}
-                    aria-label="Clear search"
-                    title="Clear search"
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-stone-100 text-stone-400 hover:text-stone-600"
-                  >
-                    <X className="w-5 h-5" aria-hidden="true" />
-                  </button>
+            {/* ── TEXT INPUT ── */}
+            {searchMode === 'text' && (
+              <form onSubmit={handleTextSubmit} className="relative max-w-2xl mx-auto">
+                <div className="relative group">
+                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-emerald-500 transition-colors" aria-hidden="true" />
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={e => setSearchInput(e.target.value)}
+                    placeholder="e.g., headaches, insomnia, digestion..."
+                    aria-label="Search symptoms or conditions"
+                    className="w-full pl-14 pr-14 py-4 rounded-2xl border-2 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 text-lg focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-50 transition-all shadow-sm"
+                  />
+                  {searchInput && (
+                    <button
+                      type="button"
+                      onClick={() => { setSearchInput(''); router.push('/search'); }}
+                      aria-label="Clear search"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+                    >
+                      <X className="w-5 h-5" aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={!searchInput.trim() || step === 'explaining'}
+                  className="mt-5 px-8 py-3.5 bg-slate-900 text-white font-semibold rounded-xl hover:bg-slate-800 active:bg-slate-950 transition-all shadow-lg shadow-slate-900/20 disabled:opacity-40 disabled:shadow-none flex items-center gap-2.5 mx-auto"
+                >
+                  {step === 'explaining' ? (
+                    <><Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> Analyzing...</>
+                  ) : (
+                    <><Sparkles className="w-5 h-5" aria-hidden="true" /> Analyze with AI</>
+                  )}
+                </button>
+              </form>
+            )}
+
+            {/* ── IMAGE INPUT ── */}
+            {searchMode === 'image' && (
+              <div className="max-w-2xl mx-auto">
+                {!selectedImage ? (
+                  <>
+                    <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="sr-only" id="plant-upload" />
+                    <label htmlFor="plant-upload" className="relative block border-2 border-dashed border-slate-300 rounded-2xl p-14 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/20 transition-all group">
+                      <div className="flex flex-col items-center gap-5">
+                        <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
+                          <Upload className="w-7 h-7 text-emerald-600" aria-hidden="true" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-semibold text-slate-800">Upload a plant photo</p>
+                          <p className="text-sm text-slate-400 mt-1">JPEG, PNG, WebP up to 10MB</p>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+                          <Scan className="w-3.5 h-3.5" aria-hidden="true" />
+                          Powered by Plant.id AI
+                        </div>
+                      </div>
+                    </label>
+                  </>
+                ) : (
+                  <div className="space-y-5">
+                    <div className="relative inline-block">
+                      <div className="relative w-64 h-64 mx-auto rounded-2xl overflow-hidden border-2 border-slate-200 shadow-md">
+                        <Image src={selectedImage} alt="Selected plant" fill className="object-cover" />
+                      </div>
+                      <button onClick={resetImageSearch} aria-label="Remove photo" className="absolute -top-2 -right-2 p-1.5 rounded-full bg-slate-900 text-white shadow-lg hover:bg-slate-700 transition-colors">
+                        <X className="w-4 h-4" aria-hidden="true" />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-center gap-3">
+                      <input ref={fileInputRef2} type="file" accept="image/*" onChange={handleFileSelect} className="sr-only" id="plant-upload-2" />
+                      <label htmlFor="plant-upload-2" className="px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors flex items-center gap-2 cursor-pointer">
+                        <ImageIcon className="w-4 h-4" aria-hidden="true" /> Change Photo
+                      </label>
+                      <button onClick={handleIdentify} disabled={identifying} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 transition-all shadow-md disabled:opacity-40 flex items-center gap-2">
+                        {identifying ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Identifying...</> : <><Scan className="w-4 h-4" aria-hidden="true" /> Identify Plant</>}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {identifyError && (
+                  <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-100 flex items-start gap-3 max-w-md mx-auto" role="alert">
+                    <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" aria-hidden="true" />
+                    <p className="text-red-700 text-sm">{identifyError}</p>
+                  </div>
                 )}
               </div>
-              <button
-                type="submit"
-                disabled={!searchInput.trim() || step === 'explaining'}
-                className="mt-4 px-8 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-semibold rounded-xl hover:from-emerald-700 hover:to-teal-800 transition-all shadow-md disabled:opacity-50 flex items-center gap-2 mx-auto"
-              >
-                {step === 'explaining' ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> Analyzing...</>
-                ) : (
-                  <><Sparkles className="w-5 h-5" aria-hidden="true" /> Search with AI</>
-                )}
-              </button>
-            </form>
-          )}
+            )}
 
-          {/* ── IMAGE INPUT ── */}
-          {searchMode === 'image' && (
-            <div className="max-w-2xl mx-auto">
-              {!selectedImage ? (
-                <>
-                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="sr-only" id="plant-upload" />
-                  <label htmlFor="plant-upload" className="relative block border-2 border-dashed border-emerald-200 rounded-2xl p-12 cursor-pointer hover:border-emerald-400 hover:bg-emerald-50/30 transition-all group">
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center group-hover:bg-emerald-200">
-                        <Upload className="w-8 h-8 text-emerald-600" aria-hidden="true" />
-                      </div>
-                      <div>
-                        <p className="text-lg font-semibold text-stone-700">Upload a plant photo</p>
-                        <p className="text-sm text-stone-400 mt-1">JPEG, PNG, WebP up to 10MB</p>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-stone-400">
-                        <Scan className="w-3.5 h-3.5" aria-hidden="true" />
-                        Powered by Plant.id AI
-                      </div>
-                    </div>
-                  </label>
-                </>
-              ) : (
-                <div className="space-y-4">
-                  <div className="relative inline-block">
-                    <div className="relative w-64 h-64 mx-auto rounded-2xl overflow-hidden border-2 border-emerald-200 shadow-sm">
-                      <Image src={selectedImage} alt="Selected plant" fill className="object-cover" />
-                    </div>
-                    <button onClick={resetImageSearch} aria-label="Remove photo" title="Remove photo" className="absolute -top-2 -right-2 p-1.5 rounded-full bg-red-500 text-white shadow-md hover:bg-red-600">
-                      <X className="w-4 h-4" aria-hidden="true" />
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-center gap-3">
-                    <input ref={fileInputRef2} type="file" accept="image/*" onChange={handleFileSelect} className="sr-only" id="plant-upload-2" />
-                    <label htmlFor="plant-upload-2" className="px-4 py-2 rounded-xl text-sm font-medium text-stone-600 border border-stone-200 hover:bg-stone-50 transition-colors flex items-center gap-2 cursor-pointer">
-                      <ImageIcon className="w-4 h-4" aria-hidden="true" /> Change Photo
-                    </label>
-                    <button onClick={handleIdentify} disabled={identifying} className="px-6 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 transition-all shadow-md disabled:opacity-50 flex items-center gap-2">
-                      {identifying ? <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Identifying...</> : <><Scan className="w-4 h-4" aria-hidden="true" /> Identify Plant</>}
-                    </button>
-                  </div>
-                </div>
-              )}
-              {identifyError && (
-                <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-100 flex items-start gap-3 max-w-md mx-auto" role="alert">
-                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" aria-hidden="true" />
-                  <p className="text-red-700 text-sm">{identifyError}</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Quick suggestions */}
-          {searchMode === 'text' && step === 'input' && (
-            <div className="mt-8 flex flex-wrap justify-center gap-2">
-              {quickSuggestions.map(s => (
-                <button key={s} onClick={() => { setSearchInput(s); router.push(`/search?q=${encodeURIComponent(s)}`); }} className="px-4 py-2 rounded-full bg-white border border-emerald-100 text-sm text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 transition-colors shadow-sm">
-                  {s}
-                </button>
-              ))}
-            </div>
-          )}
+            {/* Quick suggestions */}
+            {searchMode === 'text' && step === 'input' && (
+              <div className="mt-10 flex flex-wrap justify-center gap-2.5">
+                {quickSuggestions.map(({ label, icon: Icon }) => (
+                  <button 
+                    key={label} 
+                    onClick={() => { setSearchInput(label); router.push(`/search?q=${encodeURIComponent(label)}`); }} 
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-600 hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50/50 transition-all shadow-sm"
+                  >
+                    <Icon className="w-4 h-4" aria-hidden="true" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* ── RESULTS AREA ── */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pb-24">
         {/* STEP: Explaining */}
         {step === 'explaining' && (
-          <div className="text-center py-12">
-            <Loader2 className="w-10 h-10 animate-spin text-emerald-600 mx-auto" aria-hidden="true" />
-            <p className="mt-4 text-stone-600 font-medium">Our AI is analyzing "{query}"...</p>
-            <p className="text-stone-400 text-sm mt-1">This may take a few seconds</p>
+          <div className="text-center py-20">
+            <div className="relative w-16 h-16 mx-auto mb-6">
+              <div className="absolute inset-0 rounded-full bg-emerald-100 animate-ping opacity-20" />
+              <div className="relative w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                <Loader2 className="w-7 h-7 animate-spin text-emerald-600" aria-hidden="true" />
+              </div>
+            </div>
+            <p className="text-slate-700 font-semibold text-lg">Analyzing "{query}"...</p>
+            <p className="text-slate-400 text-sm mt-2">Consulting our herbal knowledge base</p>
           </div>
         )}
 
         {/* STEP: Explained → AI Analysis Card */}
         {(step === 'explained' || step === 'searching-herbs' || step === 'herbs' || step === 'searching-practitioners' || step === 'practitioners' || step === 'subscription-required') && (
-          <div className="space-y-8">
-            {/* AI Explanation */}
-            <div className="relative p-6 sm:p-8 rounded-2xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 shadow-sm">
-              <div className="absolute -top-3 left-6">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-semibold shadow-sm">
-                  <Sparkles className="w-3 h-3" aria-hidden="true" />
-                  AI Analysis
-                </div>
-              </div>
-              {isFallback && (
-                <div className="absolute -top-3 right-6">
-                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">
-                    <Info className="w-3 h-3" aria-hidden="true" />
-                    Offline Mode
+          <div className="space-y-10">
+            {/* AI Explanation — Premium Card */}
+            <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm">
+              {/* Header bar */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                    <Sparkles className="w-5 h-5 text-emerald-600" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">AI Analysis</h2>
+                    <p className="text-xs text-slate-400">Evidence-based herbal guidance</p>
                   </div>
                 </div>
-              )}
-              <div className="mt-2">
-                <h2 className="text-xl font-bold text-stone-800 mb-3">Understanding "{query}"</h2>
-                <div className="text-stone-700 leading-relaxed whitespace-pre-line">
-                  {aiExplanation}
+                <div className="flex items-center gap-2">
+                  {isFallback && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-100 text-amber-700 text-xs font-semibold">
+                      <Info className="w-3 h-3" aria-hidden="true" />
+                      Offline
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-semibold">
+                    <CheckCircle2 className="w-3 h-3" aria-hidden="true" />
+                    Verified
+                  </span>
                 </div>
               </div>
-              {explainError && (
-                <p className="mt-3 text-sm text-red-600">{explainError}</p>
-              )}
 
-              {/* CTA: Browse Herbs */}
-              <div className="mt-6 pt-6 border-t border-emerald-100">
+              {/* Content */}
+              <div className="p-6 sm:p-8">
+                <h3 className="text-xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                  {getConditionIcon(query)}
+                  Understanding {query}
+                </h3>
+                
+                <div className={`text-slate-600 leading-[1.8] text-[15px] ${!expandedAi && aiExplanation.length > 400 ? 'line-clamp-6' : ''}`}>
+                  {aiExplanation ? (
+                    <div className="prose prose-slate max-w-none">
+                      {aiExplanation.split('\n').map((paragraph, i) => (
+                        paragraph.trim() ? (
+                          <p key={i} className="mb-4 last:mb-0">
+                            {paragraph.replace(/\*\*/g, '').replace(/^\d+\.\s*/, '').trim()}
+                          </p>
+                        ) : null
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="animate-pulse space-y-3">
+                      <div className="h-4 bg-slate-100 rounded w-3/4" />
+                      <div className="h-4 bg-slate-100 rounded w-full" />
+                      <div className="h-4 bg-slate-100 rounded w-5/6" />
+                    </div>
+                  )}
+                </div>
+
+                {aiExplanation.length > 400 && (
+                  <button
+                    onClick={() => setExpandedAi(!expandedAi)}
+                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
+                  >
+                    {expandedAi ? (
+                      <><ChevronUp className="w-4 h-4" /> Show less</>
+                    ) : (
+                      <><ChevronDown className="w-4 h-4" /> Read full analysis</>
+                    )}
+                  </button>
+                )}
+
+                {explainError && (
+                  <div className="mt-4 p-4 rounded-xl bg-red-50 border border-red-100 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" aria-hidden="true" />
+                    <p className="text-red-700 text-sm">{explainError}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action bar */}
+              <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4 text-xs text-slate-400">
+                  <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> Just now</span>
+                  <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" /> Herbal database</span>
+                </div>
                 <button
                   onClick={browseHerbs}
                   disabled={step === 'searching-herbs'}
-                  className="w-full sm:w-auto px-6 py-3 bg-white border-2 border-emerald-200 text-emerald-800 font-semibold rounded-xl hover:bg-emerald-50 hover:border-emerald-300 transition-all shadow-sm flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 active:bg-emerald-800 transition-all shadow-sm disabled:opacity-40 flex items-center justify-center gap-2"
                 >
                   {step === 'searching-herbs' ? (
-                    <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Searching remedies...</>
+                    <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Searching...</>
                   ) : (
-                    <><Leaf className="w-5 h-5" aria-hidden="true" /> Browse herbal remedies for "{query}"</>
+                    <><Leaf className="w-4 h-4" aria-hidden="true" /> Browse Remedies for {query}</>
                   )}
                 </button>
               </div>
@@ -657,97 +740,192 @@ function SearchPageContent() {
               <div>
                 {herbs.length > 0 ? (
                   <>
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold text-stone-800 flex items-center gap-2">
-                        <Leaf className="w-6 h-6 text-emerald-600" aria-hidden="true" />
-                        Herbal Remedies for "{query}"
-                        <span className="text-sm font-normal text-stone-400 ml-2">({herbs.length} found)</span>
-                      </h2>
-                      <Link href="/herbs" className="text-sm font-medium text-emerald-700 hover:text-emerald-800 flex items-center gap-1">
-                        View all <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                    {/* Section header */}
+                    <div className="flex items-end justify-between mb-8">
+                      <div>
+                        <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                            <Leaf className="w-5 h-5 text-emerald-600" aria-hidden="true" />
+                          </div>
+                          Recommended Herbal Remedies
+                        </h2>
+                        <p className="text-slate-400 text-sm mt-1 ml-[52px]">
+                          {herbs.length} remedies matched for "{query}"
+                        </p>
+                      </div>
+                      <Link href="/herbs" className="text-sm font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 mb-1 transition-colors">
+                        View all <ArrowUpRight className="w-4 h-4" aria-hidden="true" />
                       </Link>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {herbs.map(herb => (
-                        <Link key={herb.id} href={`/herb/${herb.slug || herb.id}`} className="group bg-white rounded-2xl border border-stone-100 overflow-hidden hover:shadow-lg hover:border-emerald-200 transition-all duration-300">
-                          <div className="relative h-48 overflow-hidden bg-stone-100">
+
+                    {/* Herb cards grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {herbs.map((herb, index) => (
+                        <Link 
+                          key={herb.id} 
+                          href={`/herb/${herb.slug || herb.id}`} 
+                          className="group relative bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-emerald-200 hover:-translate-y-0.5 transition-all duration-300"
+                        >
+                          {/* Rank badge for top 3 */}
+                          {index < 3 && (
+                            <div className="absolute top-3 left-3 z-10">
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shadow-sm ${
+                                index === 0 ? 'bg-amber-400 text-white' : 
+                                index === 1 ? 'bg-slate-300 text-white' : 
+                                'bg-amber-700 text-white'
+                              }`}>
+                                {index + 1}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Image */}
+                          <div className="relative h-52 overflow-hidden bg-slate-100">
                             {herb.imageUrl ? (
-                              <Image src={herb.imageUrl} alt={herb.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                              <Image 
+                                src={herb.imageUrl} 
+                                alt={herb.name} 
+                                fill 
+                                className="object-cover group-hover:scale-105 transition-transform duration-700" 
+                              />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50">
-                                <Leaf className="w-12 h-12 text-emerald-200" aria-hidden="true" />
+                                <Leaf className="w-14 h-14 text-emerald-200" aria-hidden="true" />
                               </div>
                             )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
+
+                          {/* Content */}
                           <div className="p-5">
-                            <h3 className="font-bold text-stone-800 group-hover:text-emerald-700 transition-colors">{herb.name}</h3>
-                            {herb.scientificName && <p className="text-xs text-stone-400 italic">{herb.scientificName}</p>}
-                            {herb.category && <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-medium">{herb.category}</span>}
-                            <p className="text-sm text-stone-500 line-clamp-2 mt-2">{herb.description || 'Traditional African herbal remedy.'}</p>
-                            {herb.medicinalUses && herb.medicinalUses.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-3">
-                                {herb.medicinalUses.slice(0, 2).map((use, i) => (
-                                  <span key={i} className="px-2 py-1 rounded-full bg-stone-50 text-stone-600 text-xs">{use}</span>
-                                ))}
+                            <div className="flex items-start justify-between gap-3 mb-2">
+                              <div>
+                                <h3 className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors text-lg leading-tight">{herb.name}</h3>
+                                {herb.scientificName && (
+                                  <p className="text-xs text-slate-400 italic mt-0.5">{herb.scientificName}</p>
+                                )}
                               </div>
+                              <ArrowUpRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-500 transition-colors shrink-0 mt-1" />
+                            </div>
+
+                            {herb.category && (
+                              <span className="inline-block px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-semibold mb-3">
+                                {herb.category.replace(/-/g, ' ')}
+                              </span>
                             )}
+
+                            <p className="text-sm text-slate-500 line-clamp-2 leading-relaxed mb-3">
+                              {herb.description || 'Traditional African herbal remedy with documented therapeutic properties.'}
+                            </p>
+
+                            {/* Benefits chips */}
+                            {(() => {
+                              let benefitsList: string[] = [];
+                              if (Array.isArray(herb.benefits)) {
+                                benefitsList = herb.benefits;
+                              } else if (typeof herb.benefits === 'string') {
+                                benefitsList = herb.benefits.split(/[;|,]/).map(b => b.trim()).filter(Boolean);
+                              }
+                              return benefitsList.length > 0 ? (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {benefitsList.slice(0, 3).map((benefit, i) => (
+                                    <span key={i} className="px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs font-medium">
+                                      {benefit}
+                                    </span>
+                                  ))}
+                                  {benefitsList.length > 3 && (
+                                    <span className="px-2 py-1 rounded-md bg-slate-50 text-slate-400 text-xs font-medium">
+                                      +{benefitsList.length - 3}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : null;
+                            })()}
+
+                            {/* Footer meta */}
+                            <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {herb.origin || 'Africa'}
+                              </span>
+                              {herb.partsUsed && (
+                                <span className="flex items-center gap-1">
+                                  <Pill className="w-3 h-3" />
+                                  {herb.partsUsed}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </Link>
                       ))}
                     </div>
                   </>
                 ) : (
-                  <div className="text-center py-10 bg-white rounded-2xl border border-stone-100">
-                    <Beaker className="w-12 h-12 text-stone-300 mx-auto mb-3" aria-hidden="true" />
-                    <h3 className="text-lg font-bold text-stone-700">No herbal remedies found</h3>
-                    <p className="text-stone-500 text-sm mt-1 max-w-md mx-auto">We couldn't find specific herbs for "{query}" in our database. Try a different search term.</p>
+                  <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+                      <Beaker className="w-8 h-8 text-slate-300" aria-hidden="true" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800">No herbal remedies found</h3>
+                    <p className="text-slate-400 text-sm mt-2 max-w-md mx-auto">
+                      We couldn't find specific herbs for "{query}" in our database. Try a different search term or consult a practitioner.
+                    </p>
                   </div>
                 )}
 
                 {/* CTA: Consult Practitioner */}
-                <div className="mt-8 text-center">
-                  <button
-                    onClick={browsePractitioners}
-                    disabled={checkingSub || step === 'searching-practitioners'}
-                    className="px-8 py-3 bg-gradient-to-r from-teal-600 to-emerald-700 text-white font-semibold rounded-xl hover:from-teal-700 hover:to-emerald-800 transition-all shadow-md disabled:opacity-50 flex items-center gap-2 mx-auto"
-                  >
-                    {checkingSub || step === 'searching-practitioners' ? (
-                      <><Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> Checking access...</>
-                    ) : (
-                      <><Stethoscope className="w-5 h-5" aria-hidden="true" /> Consult a Practitioner</>
-                    )}
-                  </button>
-                  <p className="text-xs text-stone-400 mt-2 flex items-center justify-center gap-1">
-                    <Lock className="w-3 h-3" aria-hidden="true" />
-                    Subscription required for practitioner access
-                  </p>
+                <div className="mt-12 text-center">
+                  <div className="inline-block p-6 rounded-2xl bg-white border border-slate-200 shadow-sm">
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                      <div className="text-left">
+                        <h4 className="font-bold text-slate-900">Need personalized guidance?</h4>
+                        <p className="text-sm text-slate-400 mt-0.5">Connect with a verified herbal practitioner</p>
+                      </div>
+                      <button
+                        onClick={browsePractitioners}
+                        disabled={checkingSub || step === 'searching-practitioners'}
+                        className="px-6 py-2.5 bg-slate-900 text-white font-semibold rounded-xl hover:bg-slate-800 active:bg-slate-950 transition-all shadow-md disabled:opacity-40 flex items-center gap-2 whitespace-nowrap"
+                      >
+                        {checkingSub || step === 'searching-practitioners' ? (
+                          <><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Checking...</>
+                        ) : (
+                          <><Stethoscope className="w-4 h-4" aria-hidden="true" /> Consult Practitioner</>
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-3 flex items-center justify-center gap-1">
+                      <Lock className="w-3 h-3" />
+                      Subscription required — unlock personalized care
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* STEP: Subscription Required */}
             {step === 'subscription-required' && (
-              <div className="max-w-lg mx-auto text-center py-12 px-6 bg-white rounded-2xl border border-amber-200 shadow-sm">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-50 flex items-center justify-center">
-                  <Crown className="w-8 h-8 text-amber-500" aria-hidden="true" />
-                </div>
-                <h3 className="text-xl font-bold text-stone-800 mb-2">Unlock Practitioner Access</h3>
-                <p className="text-stone-500 mb-6">
-                  Consulting with verified practitioners requires an active subscription. Upgrade to get personalized herbal guidance from experts.
-                </p>
-                <div className="space-y-3">
-                  <Link href="/subscription" className="block w-full px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl font-semibold hover:from-amber-600 hover:to-orange-700 transition-all shadow-sm">
-                    <Zap className="w-5 h-5 inline mr-2" aria-hidden="true" />
-                    Upgrade Now
-                  </Link>
-                  {!user && (
-                    <Link href="/login" className="block w-full px-6 py-3 border border-stone-200 text-stone-600 rounded-xl font-medium hover:bg-stone-50 transition-colors">
-                      Log In to Continue
+              <div className="max-w-md mx-auto">
+                <div className="text-center py-14 px-8 bg-white rounded-2xl border border-slate-200 shadow-lg">
+                  <div className="w-16 h-16 mx-auto mb-5 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center">
+                    <Crown className="w-8 h-8 text-amber-500" aria-hidden="true" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">Unlock Practitioner Access</h3>
+                  <p className="text-slate-400 text-sm mb-8 leading-relaxed">
+                    Get personalized herbal guidance from verified practitioners. Subscribe for unlimited consultations.
+                  </p>
+                  <div className="space-y-3">
+                    <Link href="/subscription" className="block w-full px-6 py-3 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20">
+                      <Zap className="w-4 h-4 inline mr-2" aria-hidden="true" />
+                      Upgrade Now
                     </Link>
-                  )}
-                  <button onClick={() => setStep('herbs')} className="text-sm text-stone-400 hover:text-stone-600 transition-colors">
-                    ← Back to remedies
-                  </button>
+                    {!user && (
+                      <Link href="/login" className="block w-full px-6 py-3 border border-slate-200 text-slate-600 rounded-xl font-semibold hover:bg-slate-50 transition-colors">
+                        Log In to Continue
+                      </Link>
+                    )}
+                    <button onClick={() => setStep('herbs')} className="text-sm text-slate-400 hover:text-slate-600 transition-colors font-medium">
+                      ← Back to remedies
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -755,18 +933,29 @@ function SearchPageContent() {
             {/* STEP: Practitioners */}
             {step === 'practitioners' && (
               <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-stone-800 flex items-center gap-2">
-                    <Stethoscope className="w-6 h-6 text-teal-600" aria-hidden="true" />
-                    Recommended Practitioners
-                    <span className="text-sm font-normal text-stone-400 ml-2">({practitioners.length} available)</span>
-                  </h2>
+                <div className="flex items-end justify-between mb-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-100 flex items-center justify-center">
+                        <Stethoscope className="w-5 h-5 text-teal-600" aria-hidden="true" />
+                      </div>
+                      Recommended Practitioners
+                    </h2>
+                    <p className="text-slate-400 text-sm mt-1 ml-[52px]">
+                      {practitioners.length} verified specialists available
+                    </p>
+                  </div>
                 </div>
+
                 {practitioners.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {practitioners.map(p => (
-                      <Link key={p.id} href={`/consultation/${p.id}`} className="group flex gap-4 p-5 rounded-2xl bg-white border border-stone-100 hover:shadow-md hover:border-teal-200 transition-all">
-                        <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-stone-100">
+                      <Link 
+                        key={p.id} 
+                        href={`/consultation/${p.id}`} 
+                        className="group flex gap-5 p-6 rounded-2xl bg-white border border-slate-200 hover:shadow-lg hover:border-teal-200 hover:-translate-y-0.5 transition-all duration-300"
+                      >
+                        <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-slate-100 border border-slate-100">
                           {p.photoURL ? (
                             <Image src={p.photoURL} alt={p.name} fill className="object-cover" />
                           ) : (
@@ -776,25 +965,44 @@ function SearchPageContent() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
+                          <div className="flex items-start justify-between gap-3">
                             <div>
-                              <h3 className="font-bold text-stone-800 group-hover:text-teal-700 transition-colors">{p.name}</h3>
-                              {p.specialty && <p className="text-sm text-teal-600 font-medium">{p.specialty}</p>}
+                              <h3 className="font-bold text-slate-900 group-hover:text-teal-700 transition-colors">{p.name}</h3>
+                              {p.specialty && <p className="text-sm text-teal-600 font-semibold">{p.specialty}</p>}
                             </div>
                             {p.isVerified && (
-                              <div className="px-2 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold flex items-center gap-1">
+                              <div className="px-2 py-1 rounded-lg bg-amber-50 border border-amber-100 text-amber-700 text-xs font-bold flex items-center gap-1 shrink-0">
                                 <Star className="w-3 h-3 fill-amber-500 text-amber-500" aria-hidden="true" />
                                 Verified
                               </div>
                             )}
                           </div>
-                          {p.location && <div className="flex items-center gap-1 mt-1 text-xs text-stone-500"><MapPin className="w-3 h-3" aria-hidden="true" /> {p.location}</div>}
-                          {p.bio && <p className="text-sm text-stone-500 mt-2 line-clamp-2">{p.bio}</p>}
-                          <div className="flex items-center justify-between mt-3">
-                            {p.rating && <div className="flex items-center gap-1"><Star className="w-4 h-4 fill-amber-400 text-amber-400" aria-hidden="true" /><span className="text-sm font-semibold text-stone-700">{p.rating}</span></div>}
-                            {p.consultationFee && <span className="text-sm font-semibold text-emerald-700">${p.consultationFee}/session</span>}
+                          {p.location && (
+                            <div className="flex items-center gap-1 mt-1.5 text-xs text-slate-400">
+                              <MapPin className="w-3 h-3" aria-hidden="true" /> {p.location}
+                            </div>
+                          )}
+                          {p.bio && <p className="text-sm text-slate-500 mt-2 line-clamp-2 leading-relaxed">{p.bio}</p>}
+                          <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
+                            <div className="flex items-center gap-1.5">
+                              {p.rating && (
+                                <div className="flex items-center gap-1">
+                                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" aria-hidden="true" />
+                                  <span className="text-sm font-bold text-slate-700">{p.rating}</span>
+                                </div>
+                              )}
+                              {p.isActive !== false && (
+                                <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  Available
+                                </span>
+                              )}
+                            </div>
+                            {p.consultationFee && (
+                              <span className="text-sm font-bold text-emerald-700">${p.consultationFee}<span className="text-slate-400 font-normal text-xs">/session</span></span>
+                            )}
                           </div>
-                          <div className="mt-3 flex items-center gap-1 text-sm font-medium text-teal-700">
+                          <div className="mt-3 flex items-center gap-1 text-sm font-semibold text-teal-700 group-hover:text-teal-800 transition-colors">
                             Book consultation <ChevronRight className="w-4 h-4" aria-hidden="true" />
                           </div>
                         </div>
@@ -802,11 +1010,13 @@ function SearchPageContent() {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-10 bg-white rounded-2xl border border-stone-100">
-                    <MessageCircle className="w-12 h-12 text-stone-300 mx-auto mb-3" aria-hidden="true" />
-                    <h3 className="text-lg font-bold text-stone-700">No practitioners found</h3>
-                    <p className="text-stone-500 text-sm mt-1">Try a broader search term or browse all practitioners.</p>
-                    <Link href="/practitioners" className="inline-flex items-center gap-2 mt-4 px-6 py-2 bg-emerald-50 text-emerald-700 rounded-lg font-medium hover:bg-emerald-100 transition-colors">
+                  <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+                      <MessageCircle className="w-8 h-8 text-slate-300" aria-hidden="true" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800">No practitioners found</h3>
+                    <p className="text-slate-400 text-sm mt-2">Try a broader search term or browse all practitioners.</p>
+                    <Link href="/practitioners" className="inline-flex items-center gap-2 mt-5 px-6 py-2.5 bg-emerald-50 text-emerald-700 rounded-xl font-semibold hover:bg-emerald-100 transition-colors border border-emerald-100">
                       <Stethoscope className="w-4 h-4" aria-hidden="true" /> Browse All
                     </Link>
                   </div>
@@ -818,67 +1028,83 @@ function SearchPageContent() {
 
         {/* ── IMAGE SEARCH RESULTS ── */}
         {searchMode === 'image' && plantIdResult && !identifying && (
-          <div className="space-y-10">
-            <div className="max-w-3xl mx-auto text-center">
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 text-emerald-800 text-sm font-medium mb-4">
-                <CheckCircle2 className="w-4 h-4" aria-hidden="true" />
+          <div className="space-y-12">
+            <div className="text-center">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 border border-emerald-100 text-emerald-700 text-xs font-semibold tracking-wide uppercase mb-4">
+                <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
                 Plant Identified
               </div>
-              <h2 className="text-2xl font-bold text-stone-800 mb-2">
-                We found {plantIdResult.suggestions.length} possible match{plantIdResult.suggestions.length !== 1 ? 'es' : ''}
+              <h2 className="text-2xl font-bold text-slate-900">
+                {plantIdResult.suggestions.length} possible match{plantIdResult.suggestions.length !== 1 ? 'es' : ''} found
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {plantIdResult.suggestions.map((s, i) => (
-                <div key={i} className={`bg-white rounded-2xl border overflow-hidden transition-all ${i === 0 ? 'border-emerald-300 shadow-lg ring-2 ring-emerald-100' : 'border-stone-100 hover:shadow-md hover:border-emerald-200'}`}>
+                <div 
+                  key={i} 
+                  className={`bg-white rounded-2xl border overflow-hidden transition-all duration-300 ${
+                    i === 0 
+                      ? 'border-emerald-300 shadow-lg ring-1 ring-emerald-100' 
+                      : 'border-slate-200 hover:shadow-lg hover:border-emerald-200'
+                  }`}
+                >
                   <div className="relative">
                     {s.similarImages.length > 0 ? (
-                      <div className="relative h-48 overflow-hidden bg-stone-100">
+                      <div className="relative h-52 overflow-hidden bg-slate-100">
                         <Image src={s.similarImages[0]} alt={s.name} fill className="object-cover" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                       </div>
                     ) : (
-                      <div className="h-48 flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50">
+                      <div className="h-52 flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50">
                         <Leaf className="w-16 h-16 text-emerald-200" aria-hidden="true" />
                       </div>
                     )}
                     <div className="absolute top-3 left-3">
-                      <div className={`px-3 py-1 rounded-full text-xs font-bold shadow-sm ${s.probability >= 70 ? 'bg-emerald-500 text-white' : s.probability >= 40 ? 'bg-amber-400 text-white' : 'bg-stone-400 text-white'}`}>
+                      <div className={`px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm ${
+                        s.probability >= 70 ? 'bg-emerald-500 text-white' : 
+                        s.probability >= 40 ? 'bg-amber-400 text-white' : 
+                        'bg-slate-500 text-white'
+                      }`}>
                         {s.probability}% match
                       </div>
                     </div>
                     {i === 0 && (
                       <div className="absolute top-3 right-3">
-                        <div className="px-3 py-1 rounded-full bg-white/90 backdrop-blur-sm text-emerald-700 text-xs font-bold shadow-sm flex items-center gap-1">
+                        <div className="px-3 py-1.5 rounded-lg bg-white/90 backdrop-blur-sm text-emerald-700 text-xs font-bold shadow-sm flex items-center gap-1 border border-emerald-100">
                           <CheckCircle2 className="w-3 h-3" aria-hidden="true" /> Best Match
                         </div>
                       </div>
                     )}
                   </div>
                   <div className="p-5">
-                    <h3 className="text-lg font-bold text-stone-800">{s.name}</h3>
-                    <p className="text-sm text-stone-500 italic mb-2">{s.scientificName}</p>
+                    <h3 className="text-lg font-bold text-slate-900">{s.name}</h3>
+                    <p className="text-sm text-slate-400 italic mb-3">{s.scientificName}</p>
                     {(s.family || s.genus) && (
                       <div className="flex flex-wrap gap-2 mb-3">
-                        {s.family && <span className="px-2 py-1 rounded-md bg-stone-50 text-stone-600 text-xs">Family: {s.family}</span>}
-                        {s.genus && <span className="px-2 py-1 rounded-md bg-stone-50 text-stone-600 text-xs">Genus: {s.genus}</span>}
+                        {s.family && <span className="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 text-xs font-medium border border-slate-100">Family: {s.family}</span>}
+                        {s.genus && <span className="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 text-xs font-medium border border-slate-100">Genus: {s.genus}</span>}
                       </div>
                     )}
                     {s.commonNames.length > 0 && (
                       <div className="mb-3">
-                        <p className="text-xs text-stone-400 font-medium mb-1">Also known as:</p>
-                        <div className="flex flex-wrap gap-1">
+                        <p className="text-xs text-slate-400 font-semibold mb-1.5 uppercase tracking-wider">Also known as</p>
+                        <div className="flex flex-wrap gap-1.5">
                           {s.commonNames.slice(0, 4).map((n, j) => (
-                            <span key={j} className="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs">{n}</span>
+                            <span key={j} className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-100">{n}</span>
                           ))}
                         </div>
                       </div>
                     )}
-                    {s.wikiDescription && <p className="text-sm text-stone-500 line-clamp-3 mb-3">{s.wikiDescription}</p>}
+                    {s.wikiDescription && <p className="text-sm text-slate-500 line-clamp-3 mb-4 leading-relaxed">{s.wikiDescription}</p>}
                     {s.wikiUrl && (
-                      <a href={s.wikiUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-emerald-700 hover:text-emerald-800 font-medium">
-                        Learn more <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                      <a 
+                        href={s.wikiUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
+                      >
+                        Learn more <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                       </a>
                     )}
                   </div>
@@ -888,17 +1114,29 @@ function SearchPageContent() {
 
             {matchedHerbs.length > 0 && (
               <div>
-                <h2 className="text-2xl font-bold text-stone-800 flex items-center gap-2 mb-6">
-                  <Leaf className="w-6 h-6 text-emerald-600" aria-hidden="true" />
-                  Found in RemedyAfrica Database
-                  <span className="text-sm font-normal text-stone-400 ml-2">({matchedHerbs.length} match{matchedHerbs.length !== 1 ? 'es' : ''})</span>
-                </h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="flex items-end justify-between mb-8">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center">
+                        <Leaf className="w-5 h-5 text-emerald-600" aria-hidden="true" />
+                      </div>
+                      Found in Database
+                    </h2>
+                    <p className="text-slate-400 text-sm mt-1 ml-[52px]">
+                      {matchedHerbs.length} match{matchedHerbs.length !== 1 ? 'es' : ''}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                   {matchedHerbs.map(herb => (
-                    <Link key={herb.id} href={`/herb/${herb.slug || herb.id}`} className="group bg-white rounded-2xl border border-stone-100 overflow-hidden hover:shadow-lg hover:border-emerald-200 transition-all duration-300">
-                      <div className="relative h-48 overflow-hidden bg-stone-100">
+                    <Link 
+                      key={herb.id} 
+                      href={`/herb/${herb.slug || herb.id}`} 
+                      className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-emerald-200 hover:-translate-y-0.5 transition-all duration-300"
+                    >
+                      <div className="relative h-48 overflow-hidden bg-slate-100">
                         {herb.imageUrl ? (
-                          <Image src={herb.imageUrl} alt={herb.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" />
+                          <Image src={herb.imageUrl} alt={herb.name} fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50">
                             <Leaf className="w-12 h-12 text-emerald-200" aria-hidden="true" />
@@ -906,10 +1144,10 @@ function SearchPageContent() {
                         )}
                       </div>
                       <div className="p-5">
-                        <h3 className="font-bold text-stone-800 group-hover:text-emerald-700 transition-colors">{herb.name}</h3>
-                        {herb.scientificName && <p className="text-xs text-stone-400 italic">{herb.scientificName}</p>}
-                        {herb.category && <span className="inline-block mt-1 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs font-medium">{herb.category}</span>}
-                        <p className="text-sm text-stone-500 line-clamp-2 mt-2">{herb.description || 'Traditional African herbal remedy.'}</p>
+                        <h3 className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">{herb.name}</h3>
+                        {herb.scientificName && <p className="text-xs text-slate-400 italic">{herb.scientificName}</p>}
+                        {herb.category && <span className="inline-block mt-2 px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-100">{herb.category}</span>}
+                        <p className="text-sm text-slate-500 line-clamp-2 mt-3 leading-relaxed">{herb.description || 'Traditional African herbal remedy.'}</p>
                       </div>
                     </Link>
                   ))}
@@ -918,18 +1156,23 @@ function SearchPageContent() {
             )}
 
             {matchedHerbs.length === 0 && plantIdResult.suggestions.length > 0 && (
-              <div className="max-w-2xl mx-auto text-center py-10">
-                <Info className="w-8 h-8 text-amber-500 mx-auto mb-3" aria-hidden="true" />
-                <h3 className="text-lg font-bold text-stone-700 mb-2">Not yet in our database</h3>
-                <p className="text-stone-500 mb-4">This plant hasn't been added yet. Browse practitioners who may know more.</p>
-                <Link href="/practitioners" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-emerald-700 text-white rounded-xl font-semibold hover:from-teal-700 hover:to-emerald-800 transition-all shadow-sm">
-                  <Stethoscope className="w-5 h-5" aria-hidden="true" /> Find a Practitioner
+              <div className="max-w-2xl mx-auto text-center py-14 bg-white rounded-2xl border border-slate-200">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-center justify-center">
+                  <Info className="w-8 h-8 text-amber-500" aria-hidden="true" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800 mb-2">Not yet in our database</h3>
+                <p className="text-slate-400 mb-6">This plant hasn't been catalogued yet. Browse practitioners who may know more.</p>
+                <Link href="/practitioners" className="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-md">
+                  <Stethoscope className="w-4 h-4" aria-hidden="true" /> Find a Practitioner
                 </Link>
               </div>
             )}
 
-            <div className="text-center pt-6">
-              <button onClick={resetImageSearch} className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-medium text-stone-600 border border-stone-200 hover:bg-stone-50 transition-colors">
+            <div className="text-center pt-4">
+              <button 
+                onClick={resetImageSearch} 
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 transition-colors"
+              >
                 <RefreshCw className="w-4 h-4" aria-hidden="true" /> Identify Another Plant
               </button>
             </div>
@@ -943,10 +1186,13 @@ function SearchPageContent() {
 export default function SearchPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-b from-emerald-50/50 via-stone-50 to-white pt-24">
+      <div className="min-h-screen bg-slate-50 pt-24">
         <div className="max-w-3xl mx-auto px-4 text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-emerald-600 mx-auto" aria-hidden="true" />
-          <p className="mt-4 text-stone-500">Loading search...</p>
+          <div className="relative w-12 h-12 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-full bg-emerald-100 animate-ping opacity-20" />
+            <Loader2 className="relative w-12 h-12 animate-spin text-emerald-600 mx-auto" aria-hidden="true" />
+          </div>
+          <p className="text-slate-500 font-medium">Loading search...</p>
         </div>
       </div>
     }>
