@@ -324,12 +324,12 @@ function SearchPageContent() {
         benefitsList.forEach((benefit: string) => {
           if (benefit.toLowerCase().includes(term)) {
             score += 3;
-            matchedTerms.push(`${term}(in:${benefit})`);
+            matchedTerms.push(term + '(in:' + benefit + ')');
           }
         });
       });
 
-      return { herb, score, matchedTerms: [...new Set(matchedTerms)] };
+      return { herb, score, matchedTerms: Array.from(new Set(matchedTerms)) };
     });
 
     // Filter herbs with any match, sort by score, take top 20
