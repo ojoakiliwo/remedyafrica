@@ -11,9 +11,11 @@ interface ExplainRequest {
 }
 
 export async function POST(request: NextRequest) {
+  let symptoms = '';
+
   try {
     const body: ExplainRequest = await request.json();
-    const { symptoms } = body;
+    symptoms = body.symptoms;
 
     if (!symptoms || typeof symptoms !== 'string') {
       return NextResponse.json(
@@ -22,7 +24,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Medical-first prompt: definition first, then traditional solutions
     const prompt = `You are a medical information assistant. Provide a clear, accurate medical explanation of the following symptoms/condition.
 
 SYMPTOMS: "${symptoms}"
@@ -65,7 +66,7 @@ RULES:
           model: 'google/gemini-2.5-pro',
           messages: [{ role: 'user', content: prompt }],
           temperature: 0.3,
-          max_tokens: 800,
+          max_tokens: 2048,
           top_p: 0.8,
         }),
       }
@@ -75,27 +76,66 @@ RULES:
       const errorData = await response.json().catch(() => ({}));
       console.error('OpenRouter API error:', errorData);
       return NextResponse.json(
-        { error: 'Failed to generate explanation' },
-        { status: 502 }
+        {
+          error: 'Failed to generate explanation',
+          isFallback: true,
+          explanation: generateFallbackExplanation(symptoms)
+        },
+        { status: 200 }
       );
     }
 
     const data = await response.json();
-    const explanation = data.choices?.[0]?.message?.content || '';
+    const choice = data.choices?.[0];
+    const explanation = choice?.message?.content || '';
+
+    const wasTruncated = choice?.finish_reason === 'length';
+    if (wasTruncated) {
+      console.warn('OpenRouter response was truncated — consider increasing max_tokens');
+    }
 
     if (!explanation) {
       return NextResponse.json(
-        { error: 'Empty response from AI' },
-        { status: 502 }
+        {
+          isFallback: true,
+          explanation: generateFallbackExplanation(symptoms)
+        },
+        { status: 200 }
       );
     }
 
-    return NextResponse.json({ explanation });
+    return NextResponse.json({
+      explanation: explanation.trim(),
+      isFallback: false,
+      wasTruncated
+    });
+
   } catch (error) {
     console.error('AI explain error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      {
+        error: 'Internal server error',
+        isFallback: true,
+        explanation: generateFallbackExplanation(symptoms || 'this condition')
+      },
+      { status: 200 }
     );
   }
+}
+
+function generateFallbackExplanation(symptoms: string): string {
+  return `**1. What is this condition?**
+We apologize, but our AI analysis service is currently experiencing high demand and could not generate a complete response for "${symptoms}".
+
+**2. Common Causes**
+Unable to retrieve at this time.
+
+**3. When to Seek Medical Attention**
+If symptoms are severe, persistent, or worsening, please consult a qualified healthcare professional immediately.
+
+**4. Traditional African Herbal Approaches**
+We recommend browsing our herbal database below for remedies traditionally associated with these symptoms, or consulting with one of our verified practitioners.
+
+**5. Important Disclaimer**
+This information is for educational purposes only and does not constitute medical advice. Always consult a qualified healthcare professional for diagnosis and treatment.`;
 }
