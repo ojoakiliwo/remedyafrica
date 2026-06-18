@@ -5,7 +5,6 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, 
   Star, 
@@ -23,7 +22,7 @@ import { useState, useEffect } from 'react';
 import { getHerbById, getAllHerbs } from '@/lib/firebase/herbs';
 import { useSubscription } from '@/providers/SubscriptionProvider';
 import { getHerbImages, getHerbPrimaryImage } from '@/lib/herb-images';
-import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 
 export default function HerbDetailPage() {
@@ -36,16 +35,20 @@ export default function HerbDetailPage() {
   const [error, setError] = useState('');
   const [selectedImage, setSelectedImage] = useState(0);
   const [saved, setSaved] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   useEffect(() => {
     async function loadHerb() {
       try {
         setLoading(true);
         setError('');
+        setDebugInfo('Starting load...');
         let data: any = await getHerbById(slug);
+        setDebugInfo(prev => prev + `\ngetHerbById result: ${data ? 'found' : 'null'}`);
         
         // Fallback 1: Try matching by slug field in Firestore
         if (!data) {
+          setDebugInfo(prev => prev + '\nTrying slug fallback...');
           const slugQuery = query(
             collection(db, 'herbs'),
             where('slug', '==', slug),
@@ -54,11 +57,13 @@ export default function HerbDetailPage() {
           const slugSnap = await getDocs(slugQuery);
           if (!slugSnap.empty) {
             data = { id: slugSnap.docs[0].id, ...slugSnap.docs[0].data() } as any;
+            setDebugInfo(prev => prev + '\nFound by slug');
           }
         }
         
-        // Fallback 2: Try matching by name (URL-decoded, hyphen-to-space)
+        // Fallback 2: Try matching by name
         if (!data) {
+          setDebugInfo(prev => prev + '\nTrying name fallback...');
           const decodedName = decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase();
           const nameQuery = query(
             collection(db, 'herbs'),
@@ -68,11 +73,13 @@ export default function HerbDetailPage() {
           const nameSnap = await getDocs(nameQuery);
           if (!nameSnap.empty) {
             data = { id: nameSnap.docs[0].id, ...nameSnap.docs[0].data() } as any;
+            setDebugInfo(prev => prev + '\nFound by name');
           }
         }
         
-        // Fallback 3: Fetch all and do client-side fuzzy match
+        // Fallback 3: Fuzzy match
         if (!data) {
+          setDebugInfo(prev => prev + '\nTrying fuzzy fallback...');
           const allSnap = await getDocs(collection(db, 'herbs'));
           const decodedSlug = decodeURIComponent(slug).toLowerCase().replace(/-/g, ' ');
           const match = allSnap.docs.find(d => {
@@ -88,10 +95,15 @@ export default function HerbDetailPage() {
           });
           if (match) {
             data = { id: match.id, ...match.data() } as any;
+            setDebugInfo(prev => prev + '\nFound by fuzzy match');
           }
         }
         
         if (data) {
+          setDebugInfo(prev => prev + `\nHerb data keys: ${Object.keys(data).join(', ')}`);
+          setDebugInfo(prev => prev + `\nimageUrl: ${data.imageUrl || 'MISSING'}`);
+          setDebugInfo(prev => prev + `\nimages: ${data.images ? JSON.stringify(data.images) : 'MISSING'}`);
+          setDebugInfo(prev => prev + `\ngetHerbImages result: ${JSON.stringify(getHerbImages(data))}`);
           setHerb(data);
           
           const allHerbs = await getAllHerbs();
@@ -101,10 +113,12 @@ export default function HerbDetailPage() {
           setRelatedHerbs(related);
         } else {
           setError('Herb not found');
+          setDebugInfo(prev => prev + '\nHerb not found after all fallbacks');
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error loading herb:', err);
         setError('Failed to load herb details');
+        setDebugInfo(prev => prev + `\nERROR: ${err.message}`);
       } finally {
         setLoading(false);
       }
@@ -149,6 +163,11 @@ export default function HerbDetailPage() {
       <Navbar />
       
       <main className="container mx-auto px-4 py-8">
+        {/* DEBUG INFO - Remove after fixing */}
+        <div className="mb-4 p-4 bg-yellow-100 rounded-lg text-xs font-mono whitespace-pre-wrap">
+          <strong>DEBUG:</strong>{'\n'}{debugInfo}
+        </div>
+
         {/* Breadcrumb */}
         <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-6">
           <Link href="/" className="hover:text-[#97A97C]">Home</Link>
@@ -200,6 +219,17 @@ export default function HerbDetailPage() {
                   src={herbImages[selectedImage]} 
                   alt={herb.name}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    console.error('Image failed to load:', herbImages[selectedImage]);
+                    (e.target as HTMLImageElement).style.display = 'none';
+                    const parent = (e.target as HTMLImageElement).parentElement;
+                    if (parent) {
+                      const fallback = document.createElement('div');
+                      fallback.className = 'absolute inset-0 flex items-center justify-center text-9xl bg-gradient-to-br from-[#97A97C]/20 to-[#B8860B]/20';
+                      fallback.innerHTML = '🌿';
+                      parent.appendChild(fallback);
+                    }
+                  }}
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-9xl bg-gradient-to-br from-[#97A97C]/20 to-[#B8860B]/20">
@@ -425,7 +455,7 @@ export default function HerbDetailPage() {
               {relatedHerbs.map((related) => (
                 <Link key={related.id} href={`/herb/${related.id}`}>
                   <Card className="hover:shadow-lg transition-shadow cursor-pointer border-[#97A97C]/20 dark:border-[#97A97C]/30 dark:bg-[#1e2b1f]">
-                    <div className="h-32 bg-gradient-to-br from-[#97A97C]/20 to-[#B8860B]/20 flex items-center justify-center">
+                    <div className="h-32 bg-gradient-to-br from-[#97A97C]/20 to-[#B8860B]/20 flex items-center justify-center overflow-hidden">
                       {(() => {
                         const relatedImg = getHerbPrimaryImage(related);
                         return relatedImg ? (
