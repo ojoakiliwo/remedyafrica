@@ -92,12 +92,10 @@ export default function HerbsListPage() {
     }
     
     if (savedScroll) {
-      // Wait for herbs to render then restore scroll
       const restoreScroll = () => {
         window.scrollTo(0, parseInt(savedScroll, 10));
         sessionStorage.removeItem('herbListScroll');
       };
-      // Delay to ensure DOM is rendered
       const timer = setTimeout(restoreScroll, 300);
       return () => clearTimeout(timer);
     }
@@ -187,7 +185,6 @@ export default function HerbsListPage() {
   };
 
   const handleEdit = (herbId: string) => {
-    // Save current scroll and search before navigating
     sessionStorage.setItem('herbListScroll', window.scrollY.toString());
     sessionStorage.setItem('herbListSearch', searchQuery);
     router.push(`/admin/herbs/edit/${herbId}`);
@@ -316,8 +313,8 @@ export default function HerbsListPage() {
                                 className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
                               />
                             ) : (
-                              <div className="w-10 h-10 rounded-lg bg-[#97A97C]/10 flex items-center justify-center flex-shrink-0">
-                                <Leaf className="w-5 h-5 text-[#97A97C]" />
+                              <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                <span className="text-xs text-gray-400">—</span>
                               </div>
                             );
                           })()}

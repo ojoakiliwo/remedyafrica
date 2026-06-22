@@ -35,20 +35,18 @@ export default function HerbDetailPage() {
   const [error, setError] = useState('');
   const [selectedImage, setSelectedImage] = useState(0);
   const [saved, setSaved] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string>('');
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     async function loadHerb() {
       try {
         setLoading(true);
         setError('');
-        setDebugInfo('Starting load...');
+        setImageError(false);
         let data: any = await getHerbById(slug);
-        setDebugInfo(prev => prev + `\ngetHerbById result: ${data ? 'found' : 'null'}`);
         
         // Fallback 1: Try matching by slug field in Firestore
         if (!data) {
-          setDebugInfo(prev => prev + '\nTrying slug fallback...');
           const slugQuery = query(
             collection(db, 'herbs'),
             where('slug', '==', slug),
@@ -57,13 +55,11 @@ export default function HerbDetailPage() {
           const slugSnap = await getDocs(slugQuery);
           if (!slugSnap.empty) {
             data = { id: slugSnap.docs[0].id, ...slugSnap.docs[0].data() } as any;
-            setDebugInfo(prev => prev + '\nFound by slug');
           }
         }
         
         // Fallback 2: Try matching by name
         if (!data) {
-          setDebugInfo(prev => prev + '\nTrying name fallback...');
           const decodedName = decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase();
           const nameQuery = query(
             collection(db, 'herbs'),
@@ -73,13 +69,11 @@ export default function HerbDetailPage() {
           const nameSnap = await getDocs(nameQuery);
           if (!nameSnap.empty) {
             data = { id: nameSnap.docs[0].id, ...nameSnap.docs[0].data() } as any;
-            setDebugInfo(prev => prev + '\nFound by name');
           }
         }
         
         // Fallback 3: Fuzzy match
         if (!data) {
-          setDebugInfo(prev => prev + '\nTrying fuzzy fallback...');
           const allSnap = await getDocs(collection(db, 'herbs'));
           const decodedSlug = decodeURIComponent(slug).toLowerCase().replace(/-/g, ' ');
           const match = allSnap.docs.find(d => {
@@ -95,15 +89,10 @@ export default function HerbDetailPage() {
           });
           if (match) {
             data = { id: match.id, ...match.data() } as any;
-            setDebugInfo(prev => prev + '\nFound by fuzzy match');
           }
         }
         
         if (data) {
-          setDebugInfo(prev => prev + `\nHerb data keys: ${Object.keys(data).join(', ')}`);
-          setDebugInfo(prev => prev + `\nimageUrl: ${data.imageUrl || 'MISSING'}`);
-          setDebugInfo(prev => prev + `\nimages: ${data.images ? JSON.stringify(data.images) : 'MISSING'}`);
-          setDebugInfo(prev => prev + `\ngetHerbImages result: ${JSON.stringify(getHerbImages(data))}`);
           setHerb(data);
           
           const allHerbs = await getAllHerbs();
@@ -113,12 +102,10 @@ export default function HerbDetailPage() {
           setRelatedHerbs(related);
         } else {
           setError('Herb not found');
-          setDebugInfo(prev => prev + '\nHerb not found after all fallbacks');
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error loading herb:', err);
         setError('Failed to load herb details');
-        setDebugInfo(prev => prev + `\nERROR: ${err.message}`);
       } finally {
         setLoading(false);
       }
@@ -163,11 +150,6 @@ export default function HerbDetailPage() {
       <Navbar />
       
       <main className="container mx-auto px-4 py-8">
-        {/* DEBUG INFO - Remove after fixing */}
-        <div className="mb-4 p-4 bg-yellow-100 rounded-lg text-xs font-mono whitespace-pre-wrap">
-          <strong>DEBUG:</strong>{'\n'}{debugInfo}
-        </div>
-
         {/* Breadcrumb */}
         <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-6">
           <Link href="/" className="hover:text-[#97A97C]">Home</Link>
@@ -213,50 +195,50 @@ export default function HerbDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Images */}
           <div className="space-y-4">
-            <div className="aspect-square bg-gray-200 dark:bg-[#1e2b1f] rounded-2xl overflow-hidden relative">
-              {herbImages.length > 0 ? (
-                <img 
-                  src={herbImages[selectedImage]} 
-                  alt={herb.name}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    console.error('Image failed to load:', herbImages[selectedImage]);
-                    (e.target as HTMLImageElement).style.display = 'none';
-                    const parent = (e.target as HTMLImageElement).parentElement;
-                    if (parent) {
-                      const fallback = document.createElement('div');
-                      fallback.className = 'absolute inset-0 flex items-center justify-center text-9xl bg-gradient-to-br from-[#97A97C]/20 to-[#B8860B]/20';
-                      fallback.innerHTML = '🌿';
-                      parent.appendChild(fallback);
-                    }
-                  }}
-                />
-              ) : (
-                <div className="absolute inset-0 flex items-center justify-center text-9xl bg-gradient-to-br from-[#97A97C]/20 to-[#B8860B]/20">
-                  🌿
+            {herbImages.length > 0 && (
+              <>
+                <div className="aspect-square bg-gray-200 dark:bg-[#1e2b1f] rounded-2xl overflow-hidden relative">
+                  {!imageError ? (
+                    <img 
+                      src={herbImages[selectedImage]} 
+                      alt={herb.name}
+                      className="w-full h-full object-cover"
+                      onError={() => {
+                        console.error('Image failed to load:', herbImages[selectedImage]);
+                        setImageError(true);
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-[#1e2b1f]">
+                      <p className="text-sm text-gray-500">Image failed to load</p>
+                    </div>
+                  )}
+                  <div className="absolute top-4 right-4 bg-white/90 dark:bg-[#1e2b1f]/90 backdrop-blur px-3 py-1 rounded-full flex items-center shadow-lg">
+                    <Star className="h-4 w-4 text-yellow-500 fill-current mr-1" />
+                    <span className="font-bold">{herb.rating || '4.5'}</span>
+                  </div>
                 </div>
-              )}
-              <div className="absolute top-4 right-4 bg-white/90 dark:bg-[#1e2b1f]/90 backdrop-blur px-3 py-1 rounded-full flex items-center shadow-lg">
-                <Star className="h-4 w-4 text-yellow-500 fill-current mr-1" />
-                <span className="font-bold">{herb.rating || '4.5'}</span>
-              </div>
-            </div>
-            
-            {herbImages.length > 1 && (
-              <div className="grid grid-cols-4 gap-2">
-                {herbImages.map((img: string, idx: number) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedImage(idx)}
-                    className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                      selectedImage === idx ? 'border-[#97A97C]' : 'border-transparent'
-                    }`}
-                    aria-label={`View image ${idx + 1} of ${herb.name}`}
-                  >
-                    <img src={img} alt="" className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
+                
+                {herbImages.length > 1 && (
+                  <div className="grid grid-cols-4 gap-2">
+                    {herbImages.map((img: string, idx: number) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setSelectedImage(idx);
+                          setImageError(false);
+                        }}
+                        className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                          selectedImage === idx ? 'border-[#97A97C]' : 'border-transparent'
+                        }`}
+                        aria-label={`View image ${idx + 1} of ${herb.name}`}
+                      >
+                        <img src={img} alt="" className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
 
             {/* AI Camera */}
@@ -429,7 +411,7 @@ export default function HerbDetailPage() {
                     <Lock className="h-8 w-8 text-amber-600 dark:text-amber-400 mx-auto mb-3" />
                     <h3 className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0] mb-2">Safety Information Locked</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      Side effects, contraindications, and drug interactions are available for Premium subscribers.
+                      Side effects, precautions, and drug interaction data are available for Premium subscribers.
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
                       Your current plan: <span className="font-semibold capitalize">{tier}</span>
@@ -444,37 +426,40 @@ export default function HerbDetailPage() {
                 </Card>
               )
             )}
+
+            {/* Related Herbs */}
+            {relatedHerbs.length > 0 && (
+              <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="text-xl font-bold text-[#2C3E2D] dark:text-[#F5F5F0] mb-4">Related Herbs</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {relatedHerbs.map((related: any) => (
+                    <Link 
+                      key={related.id} 
+                      href={`/herb/${related.slug || related.id}`}
+                      className="group block"
+                    >
+                      <div className="bg-white dark:bg-[#1e2b1f] rounded-xl overflow-hidden border border-[#97A97C]/20 hover:border-[#97A97C] transition-all hover:shadow-md">
+                        <div className="aspect-video bg-gray-100 dark:bg-[#2a3a2b] relative overflow-hidden">
+                          {related.imageUrl && (
+                            <img 
+                              src={related.imageUrl} 
+                              alt={related.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          )}
+                        </div>
+                        <div className="p-3">
+                          <h4 className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0] text-sm">{related.name}</h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 italic truncate">{related.scientificName}</p>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Related Herbs */}
-        {relatedHerbs.length > 0 && (
-          <section className="mt-12">
-            <h2 className="text-2xl font-bold text-[#2C3E2D] dark:text-[#F5F5F0] mb-6">Related Herbs</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {relatedHerbs.map((related) => (
-                <Link key={related.id} href={`/herb/${related.id}`}>
-                  <Card className="hover:shadow-lg transition-shadow cursor-pointer border-[#97A97C]/20 dark:border-[#97A97C]/30 dark:bg-[#1e2b1f]">
-                    <div className="h-32 bg-gradient-to-br from-[#97A97C]/20 to-[#B8860B]/20 flex items-center justify-center overflow-hidden">
-                      {(() => {
-                        const relatedImg = getHerbPrimaryImage(related);
-                        return relatedImg ? (
-                          <img src={relatedImg} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-4xl">🌿</span>
-                        );
-                      })()}
-                    </div>
-                    <CardContent className="p-4">
-                      <h3 className="font-bold text-[#2C3E2D] dark:text-[#F5F5F0]">{related.name}</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 italic">{related.scientificName}</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
       </main>
     </div>
   );

@@ -779,22 +779,18 @@ function SearchPageContent() {
                             </div>
                           )}
 
-                          {/* Image */}
-                          <div className="relative h-52 overflow-hidden bg-slate-100">
-                            {herb.imageUrl ? (
+                          {/* Image — only if imageUrl exists */}
+                          {herb.imageUrl && (
+                            <div className="relative h-52 overflow-hidden bg-slate-100">
                               <Image 
                                 src={herb.imageUrl} 
                                 alt={herb.name} 
                                 fill 
                                 className="object-cover group-hover:scale-105 transition-transform duration-700" 
                               />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50">
-                                <Leaf className="w-14 h-14 text-emerald-200" aria-hidden="true" />
-                              </div>
-                            )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </div>
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          )}
 
                           {/* Content */}
                           <div className="p-5">
@@ -1134,15 +1130,11 @@ function SearchPageContent() {
                       href={`/herb/${herb.slug || herb.id}`} 
                       className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-xl hover:border-emerald-200 hover:-translate-y-0.5 transition-all duration-300"
                     >
-                      <div className="relative h-48 overflow-hidden bg-slate-100">
-                        {herb.imageUrl ? (
+                      {herb.imageUrl && (
+                        <div className="relative h-48 overflow-hidden bg-slate-100">
                           <Image src={herb.imageUrl} alt={herb.name} fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50">
-                            <Leaf className="w-12 h-12 text-emerald-200" aria-hidden="true" />
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      )}
                       <div className="p-5">
                         <h3 className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">{herb.name}</h3>
                         {herb.scientificName && <p className="text-xs text-slate-400 italic">{herb.scientificName}</p>}
