@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   ArrowLeft, 
-  Star, 
   Clock, 
   AlertTriangle, 
   Heart, 
@@ -45,7 +44,6 @@ export default function HerbDetailPage() {
         setImageError(false);
         let data: any = await getHerbById(slug);
         
-        // Fallback 1: Try matching by slug field in Firestore
         if (!data) {
           const slugQuery = query(
             collection(db, 'herbs'),
@@ -58,7 +56,6 @@ export default function HerbDetailPage() {
           }
         }
         
-        // Fallback 2: Try matching by name
         if (!data) {
           const decodedName = decodeURIComponent(slug).replace(/-/g, ' ').toLowerCase();
           const nameQuery = query(
@@ -72,7 +69,6 @@ export default function HerbDetailPage() {
           }
         }
         
-        // Fallback 3: Fuzzy match
         if (!data) {
           const allSnap = await getDocs(collection(db, 'herbs'));
           const decodedSlug = decodeURIComponent(slug).toLowerCase().replace(/-/g, ' ');
@@ -116,9 +112,8 @@ export default function HerbDetailPage() {
     }
   }, [slug]);
 
-  // Normalize images for display
   const herbImages = herb ? getHerbImages(herb) : [];
-  const primaryImage = herb ? getHerbPrimaryImage(herb) : undefined;
+  const hasImages = herbImages.length > 0;
 
   if (loading) {
     return (
@@ -195,7 +190,7 @@ export default function HerbDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Images */}
           <div className="space-y-4">
-            {herbImages.length > 0 && (
+            {hasImages ? (
               <>
                 <div className="aspect-square bg-gray-200 dark:bg-[#1e2b1f] rounded-2xl overflow-hidden relative">
                   {!imageError ? (
@@ -213,10 +208,6 @@ export default function HerbDetailPage() {
                       <p className="text-sm text-gray-500">Image failed to load</p>
                     </div>
                   )}
-                  <div className="absolute top-4 right-4 bg-white/90 dark:bg-[#1e2b1f]/90 backdrop-blur px-3 py-1 rounded-full flex items-center shadow-lg">
-                    <Star className="h-4 w-4 text-yellow-500 fill-current mr-1" />
-                    <span className="font-bold">{herb.rating || '4.5'}</span>
-                  </div>
                 </div>
                 
                 {herbImages.length > 1 && (
@@ -239,7 +230,7 @@ export default function HerbDetailPage() {
                   </div>
                 )}
               </>
-            )}
+            ) : null}
 
             {/* AI Camera */}
             <Card className="bg-gradient-to-r from-[#97A97C]/10 to-[#B8860B]/10 border-[#97A97C]/30">
@@ -271,26 +262,30 @@ export default function HerbDetailPage() {
 
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{herb.longDescription || herb.description}</p>
 
-            {/* Quick Stats */}
+            {/* Quick Stats - Only show fields that exist */}
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white/80 dark:bg-[#1e2b1f]/80 p-4 rounded-xl border border-[#97A97C]/20 text-center">
-                <Clock className="h-5 w-5 text-[#97A97C] mx-auto mb-1" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Origin</p>
-                <p className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0] text-sm">{herb.origin || 'Africa'}</p>
-              </div>
-              <div className="bg-white/80 dark:bg-[#1e2b1f]/80 p-4 rounded-xl border border-[#97A97C]/20 text-center">
-                <span className="text-xl">🌿</span>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Parts</p>
-                <p className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0] text-sm">{herb.partsUsed || 'Root'}</p>
-              </div>
-              <div className="bg-white/80 dark:bg-[#1e2b1f]/80 p-4 rounded-xl border border-[#97A97C]/20 text-center">
-                <Star className="h-5 w-5 text-[#97A97C] mx-auto mb-1" />
-                <p className="text-sm text-gray-600 dark:text-gray-400">Rating</p>
-                <p className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0]">{herb.rating || '4.5'}</p>
-              </div>
+              {herb.origin && (
+                <div className="bg-white/80 dark:bg-[#1e2b1f]/80 p-4 rounded-xl border border-[#97A97C]/20 text-center">
+                  <Clock className="h-5 w-5 text-[#97A97C] mx-auto mb-1" />
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Origin</p>
+                  <p className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0] text-sm">{herb.origin}</p>
+                </div>
+              )}
+              {herb.partsUsed && (
+                <div className="bg-white/80 dark:bg-[#1e2b1f]/80 p-4 rounded-xl border border-[#97A97C]/20 text-center">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Parts</p>
+                  <p className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0] text-sm">{herb.partsUsed}</p>
+                </div>
+              )}
+              {herb.rating && (
+                <div className="bg-white/80 dark:bg-[#1e2b1f]/80 p-4 rounded-xl border border-[#97A97C]/20 text-center">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Rating</p>
+                  <p className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0]">{herb.rating}</p>
+                </div>
+              )}
             </div>
 
-            {/* Benefits - Always visible */}
+            {/* Benefits */}
             {herb.benefits && herb.benefits.length > 0 && (
               <Card className="border-[#97A97C]/20 dark:border-[#97A97C]/30 dark:bg-[#1e2b1f]">
                 <CardHeader>
@@ -309,7 +304,7 @@ export default function HerbDetailPage() {
               </Card>
             )}
 
-            {/* Preparation - Always visible */}
+            {/* Preparation */}
             {herb.preparation && (
               <Card className="border-[#97A97C]/20 dark:border-[#97A97C]/30 dark:bg-[#1e2b1f]">
                 <CardHeader>
@@ -331,7 +326,7 @@ export default function HerbDetailPage() {
               </Card>
             )}
 
-            {/* Prescription - GATED: Premium only */}
+            {/* Prescription - GATED */}
             {herb.prescription && (
               canAccessPrescription ? (
                 <Card className="border-[#97A97C]/20 dark:border-[#97A97C]/30 dark:bg-[#1e2b1f]">
@@ -372,7 +367,7 @@ export default function HerbDetailPage() {
               )
             )}
 
-            {/* Side Effects - GATED: Premium only */}
+            {/* Side Effects - GATED */}
             {herb.warnings && herb.warnings.length > 0 && (
               canAccessSideEffects ? (
                 <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
@@ -440,13 +435,13 @@ export default function HerbDetailPage() {
                     >
                       <div className="bg-white dark:bg-[#1e2b1f] rounded-xl overflow-hidden border border-[#97A97C]/20 hover:border-[#97A97C] transition-all hover:shadow-md">
                         <div className="aspect-video bg-gray-100 dark:bg-[#2a3a2b] relative overflow-hidden">
-                          {related.imageUrl && (
+                          {related.imageUrl ? (
                             <img 
                               src={related.imageUrl} 
                               alt={related.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                             />
-                          )}
+                          ) : null}
                         </div>
                         <div className="p-3">
                           <h4 className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0] text-sm">{related.name}</h4>
