@@ -15,6 +15,46 @@ type FeaturedHerb = {
   image?: string;
 };
 
+function RemedyCard({ herb }: { herb: FeaturedHerb }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const showPhoto = Boolean(herb.image) && !imgFailed;
+
+  return (
+    <Link
+      href={`/herb/${herb.id}`}
+      className="group block overflow-hidden rounded-3xl bg-white border border-forest/10 shadow-soft hover:shadow-lift transition-all duration-500"
+    >
+      <div className="relative aspect-[4/5] overflow-hidden bg-forest">
+        {showPhoto ? (
+          <img
+            src={herb.image}
+            alt={herb.name}
+            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center bg-gradient-to-br from-forest to-forest-deep">
+            <Leaf className="h-12 w-12 text-cream/30" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-forest-deep/85 via-forest-deep/20 to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-6 text-cream">
+          <p className="text-[11px] tracking-[0.22em] uppercase text-bronze mb-2">
+            {herb.origin || 'African tradition'}
+          </p>
+          <h3 className="font-serif text-2xl leading-tight">{herb.name}</h3>
+          {herb.scientificName && (
+            <p className="mt-1 text-sm italic text-cream/70">{herb.scientificName}</p>
+          )}
+          <span className="mt-4 inline-flex items-center gap-2 text-sm text-cream/90">
+            View remedy <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function FeaturedRemedies() {
   const [herbs, setHerbs] = useState<FeaturedHerb[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,38 +99,7 @@ export default function FeaturedRemedies() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {herbs.map((herb) => (
-        <Link
-          key={herb.id}
-          href={`/herb/${herb.id}`}
-          className="group block overflow-hidden rounded-3xl bg-white border border-forest/10 shadow-soft hover:shadow-lift transition-all duration-500"
-        >
-          <div className="relative aspect-[4/5] overflow-hidden bg-cream-dark">
-            {herb.image ? (
-              <img
-                src={herb.image}
-                alt={herb.name}
-                className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-              />
-            ) : (
-              <div className="flex h-full items-center justify-center">
-                <Leaf className="h-12 w-12 text-sage/50" />
-              </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-forest-deep/80 via-forest-deep/10 to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-6 text-cream">
-              <p className="text-[11px] tracking-[0.22em] uppercase text-bronze mb-2">
-                {herb.origin || 'African tradition'}
-              </p>
-              <h3 className="font-serif text-2xl leading-tight">{herb.name}</h3>
-              {herb.scientificName && (
-                <p className="mt-1 text-sm italic text-cream/70">{herb.scientificName}</p>
-              )}
-              <span className="mt-4 inline-flex items-center gap-2 text-sm text-cream/90">
-                View remedy <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-              </span>
-            </div>
-          </div>
-        </Link>
+        <RemedyCard key={herb.id} herb={herb} />
       ))}
     </div>
   );
