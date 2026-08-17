@@ -3,8 +3,6 @@
 import { Resend } from 'resend';
 import { NextRequest, NextResponse } from 'next/server';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 export async function POST(req: NextRequest) {
   try {
     const { to, subject, html, text } = await req.json();
@@ -15,6 +13,16 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'Email service is not configured' },
+        { status: 503 }
+      );
+    }
+
+    const resend = new Resend(apiKey);
 
     const { data, error } = await resend.emails.send({
       from: 'RemedyAfrica <onboarding@resend.dev>',

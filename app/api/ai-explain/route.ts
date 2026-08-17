@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
-if (!OPENROUTER_API_KEY) {
-  throw new Error('OPENROUTER_API_KEY environment variable is not set');
-}
-
 interface ExplainRequest {
   symptoms: string;
 }
@@ -21,6 +17,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Symptoms description is required' },
         { status: 400 }
+      );
+    }
+
+    if (!OPENROUTER_API_KEY) {
+      return NextResponse.json(
+        {
+          isFallback: true,
+          explanation: generateFallbackExplanation(symptoms),
+        },
+        { status: 200 }
       );
     }
 
