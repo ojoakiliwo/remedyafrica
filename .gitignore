@@ -5,3 +5,6 @@
 *.log
 .DS_Store
 serviceAccountKey.json
+temp-herb-images
+temp-images
+image-refresh-progress.json
