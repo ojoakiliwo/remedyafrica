@@ -4,48 +4,48 @@
 
 @layer base {
   :root {
-    --background: 48 33% 97%;
-    --foreground: 142 20% 17%;
-    --card: 48 33% 99%;
-    --card-foreground: 142 20% 17%;
-    --popover: 48 33% 99%;
-    --popover-foreground: 142 20% 17%;
-    --primary: 82 24% 57%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 48 33% 94%;
-    --secondary-foreground: 142 20% 17%;
-    --muted: 48 20% 90%;
-    --muted-foreground: 142 10% 40%;
-    --accent: 43 89% 38%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84.2% 60.2%;
+    --background: 42 33% 97%;
+    --foreground: 150 18% 12%;
+    --card: 40 40% 99%;
+    --card-foreground: 150 18% 12%;
+    --popover: 40 40% 99%;
+    --popover-foreground: 150 18% 12%;
+    --primary: 142 18% 28%;
+    --primary-foreground: 42 40% 97%;
+    --secondary: 42 24% 94%;
+    --secondary-foreground: 150 18% 16%;
+    --muted: 40 16% 92%;
+    --muted-foreground: 150 8% 38%;
+    --accent: 36 42% 46%;
+    --accent-foreground: 40 40% 98%;
+    --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 98%;
-    --border: 82 24% 80%;
-    --input: 82 24% 80%;
-    --ring: 82 24% 57%;
-    --radius: 0.75rem;
+    --border: 40 18% 86%;
+    --input: 40 18% 86%;
+    --ring: 142 18% 28%;
+    --radius: 1rem;
   }
 
   .dark {
-    --background: 142 20% 8%;
-    --foreground: 48 33% 95%;
-    --card: 142 15% 12%;
-    --card-foreground: 48 33% 95%;
-    --popover: 142 15% 12%;
-    --popover-foreground: 48 33% 95%;
-    --primary: 82 24% 62%;
-    --primary-foreground: 142 20% 8%;
-    --secondary: 142 12% 18%;
-    --secondary-foreground: 48 33% 95%;
-    --muted: 142 12% 18%;
-    --muted-foreground: 48 10% 60%;
-    --accent: 43 70% 45%;
-    --accent-foreground: 142 20% 8%;
+    --background: 150 16% 7%;
+    --foreground: 42 28% 94%;
+    --card: 150 14% 10%;
+    --card-foreground: 42 28% 94%;
+    --popover: 150 14% 10%;
+    --popover-foreground: 42 28% 94%;
+    --primary: 82 22% 62%;
+    --primary-foreground: 150 16% 8%;
+    --secondary: 150 10% 16%;
+    --secondary-foreground: 42 28% 94%;
+    --muted: 150 10% 16%;
+    --muted-foreground: 42 12% 68%;
+    --accent: 36 38% 58%;
+    --accent-foreground: 150 16% 8%;
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 98%;
-    --border: 142 12% 20%;
-    --input: 142 12% 20%;
-    --ring: 82 24% 62%;
+    --border: 150 10% 18%;
+    --input: 150 10% 18%;
+    --ring: 82 22% 62%;
   }
 }
 
@@ -53,21 +53,41 @@
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-literata), ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "ss01" on, "cv11" on;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-bold tracking-tight;
+  h1, h2, h3 {
+    font-family: var(--font-literata), ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    @apply font-medium tracking-tight text-balance;
+  }
+  h4, h5, h6 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  .eyebrow {
+    @apply text-[11px] sm:text-xs font-semibold uppercase tracking-[0.28em] text-bronze;
+  }
+  .hairline {
+    @apply h-px w-12 bg-bronze/70;
+  }
+  .surface-card {
+    @apply bg-card/90 border border-border/80 shadow-soft backdrop-blur-sm;
   }
 }
 
 @layer utilities {
   .text-balance {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    text-align: balance;
+    text-wrap: balance;
+  }
+  .bg-grain {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
   }
 }
 
@@ -81,19 +101,15 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--primary));
-  border-radius: 4px;
+  background: hsl(142 14% 42% / 0.45);
+  border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.8);
-}
-
-html {
-  scroll-behavior: smooth;
+  background: hsl(142 14% 42% / 0.7);
 }
 
 ::selection {
-  background: hsl(var(--primary));
-  color: white;
+  background: hsl(142 18% 28%);
+  color: #f7f3ea;
 }

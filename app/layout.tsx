@@ -42,7 +42,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} ${literata.variable} font-sans antialiased`}
+        className={`${inter.variable} ${literata.variable} font-sans antialiased bg-cream text-ink`}
         suppressHydrationWarning
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

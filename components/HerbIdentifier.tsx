@@ -257,18 +257,18 @@ export default function HerbIdentifier() {
 
   if (!isOpen) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-6 text-center border border-[#97A97C]/20">
-        <div className="w-16 h-16 bg-[#97A97C]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Camera className="w-8 h-8 text-[#97A97C]" aria-hidden="true" />
+      <div className="bg-white rounded-3xl shadow-soft p-8 sm:p-10 text-center border border-forest/10">
+        <div className="w-16 h-16 bg-cream rounded-full flex items-center justify-center mx-auto mb-5">
+          <Camera className="w-7 h-7 text-forest" aria-hidden="true" />
         </div>
-        <h3 className="text-xl font-bold text-[#2C3E2D] mb-2">Identify Herbs</h3>
-        <p className="text-gray-600 mb-6">
-          Take a photo of any herb to identify it using AI.
+        <h3 className="font-serif text-2xl text-forest mb-2">Identify a herb</h3>
+        <p className="text-ink-muted mb-8 max-w-md mx-auto">
+          Take a photo of any plant. We will name it and show traditional African uses.
         </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-4">
-          <Button onClick={startCamera} className="bg-[#97A97C] hover:bg-[#7A8A63] text-white">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center mb-2">
+          <Button onClick={startCamera} className="bg-forest hover:bg-forest-mist text-cream">
             <Camera className="w-4 h-4 mr-2" aria-hidden="true" />
-            Open Camera
+            Open camera
           </Button>
           <label className="cursor-pointer">
             <input 
@@ -278,9 +278,9 @@ export default function HerbIdentifier() {
               onChange={handleFileUpload}
               aria-label="Upload herb photo from device"
             />
-            <Button variant="outline" className="border-[#97A97C] text-[#2C3E2D]">
+            <Button variant="outline" className="border-forest/20 text-forest w-full">
               <Upload className="w-4 h-4 mr-2" aria-hidden="true" />
-              Upload Photo
+              Upload photo
             </Button>
           </label>
         </div>

@@ -29,8 +29,8 @@ export default function LoginPage() {
   // Show loading while checking auth state
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] dark:bg-[#151f16] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#97A97C]" />
+      <div className="min-h-screen bg-cream dark:bg-forest-deep flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-forest" />
       </div>
     );
   }
@@ -56,17 +56,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] dark:bg-[#151f16] flex items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md border-[#97A97C]/20 dark:border-[#97A97C]/30 dark:bg-[#1e2b1f]">
-        <CardHeader className="text-center">
+    <div className="min-h-[80vh] bg-cream dark:bg-forest-deep flex items-center justify-center px-4 py-16">
+      <Card className="w-full max-w-md border-forest/10 shadow-lift rounded-3xl dark:border-sage/20 dark:bg-forest">
+        <CardHeader className="text-center pt-10">
           <div className="flex justify-center mb-4">
-            <div className="h-12 w-12 bg-[#97A97C] rounded-full flex items-center justify-center">
-              <Leaf className="h-7 w-7 text-white" />
+            <div className="h-12 w-12 bg-forest rounded-full flex items-center justify-center">
+              <Leaf className="h-6 w-6 text-cream" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-[#2C3E2D] dark:text-[#F5F5F0]">Welcome Back</CardTitle>
+          <p className="eyebrow mb-2">Welcome back</p>
+          <CardTitle className="font-serif text-3xl font-medium text-forest dark:text-cream">Sign in</CardTitle>
           <CardDescription className="dark:text-gray-400">
-            Sign in to access your account
+            Continue your care, on any device.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -113,7 +114,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full bg-[#97A97C] hover:bg-[#7A8A63] text-white"
+              className="w-full bg-forest hover:bg-forest-mist text-cream"
               disabled={submitting}
             >
               {submitting ? (
@@ -129,7 +130,7 @@ export default function LoginPage() {
 
           <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
             Don't have an account?{' '}
-            <Link href="/signup" className="text-[#97A97C] hover:underline font-medium">
+            <Link href="/signup" className="text-bronze hover:underline font-medium">
               Get Started
             </Link>
           </p>

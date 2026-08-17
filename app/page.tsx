@@ -3,24 +3,60 @@
 import Link from 'next/link';
 import { useAuth } from '@/providers/AuthProvider';
 import { Button } from '@/components/ui/button';
-import { 
-  Users, 
-  Calendar, 
-  MessageCircle, 
+import {
+  Users,
+  Calendar,
+  MessageCircle,
   Search,
   ArrowRight,
   Shield,
   Video,
-  Leaf
+  Leaf,
+  Camera,
+  HeartHandshake,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import HerbIdentifier from '@/components/HerbIdentifier';
+import FeaturedRemedies from '@/components/home/FeaturedRemedies';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 
+const HERO_IMAGE =
+  'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=2000&q=80';
+
+const pathways = [
+  {
+    href: '/search',
+    title: 'Ask about a symptom',
+    copy: 'Describe how you feel in plain language. We suggest traditional remedies and next steps.',
+    icon: Search,
+    action: 'Search remedies',
+  },
+  {
+    href: '/practitioners',
+    title: 'Meet a healer',
+    copy: 'Browse verified practitioners across Africa. See specialties, ratings, and availability.',
+    icon: Users,
+    action: 'Find a healer',
+  },
+  {
+    href: '/booking',
+    title: 'Book a consultation',
+    copy: 'Talk privately by video or audio. Get guidance that fits your home and your budget.',
+    icon: Calendar,
+    action: 'Book now',
+  },
+  {
+    href: '/forum',
+    title: 'Join the community',
+    copy: 'Ask questions and share experience with people walking the same path.',
+    icon: MessageCircle,
+    action: 'Open forum',
+  },
+];
+
 export default function HomePage() {
   const { user } = useAuth();
-  const [logoError, setLogoError] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -29,7 +65,6 @@ export default function HomePage() {
         setIsAdmin(false);
         return;
       }
-      
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
@@ -38,225 +73,202 @@ export default function HomePage() {
         } else {
           setIsAdmin(false);
         }
-      } catch (err) {
-        console.error('Error checking admin status:', err);
+      } catch {
         setIsAdmin(false);
       }
     };
-
     checkAdmin();
   }, [user]);
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0]">
-      {/* Hero Section */}
-      <section className="bg-[#2C3E2D] text-white py-20 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-          <div className="flex items-center justify-center gap-3 mb-6">
-            {!logoError ? (
-              <img 
-                src="/logo.png" 
-                alt="RemedyAfrica" 
-                className="h-16 w-16 object-contain drop-shadow-lg"
-                onError={() => setLogoError(true)}
-              />
-            ) : (
-              <div className="h-16 w-16 bg-[#97A97C] rounded-full flex items-center justify-center">
-                <Leaf className="h-10 w-10 text-white" />
-              </div>
-            )}
-            <h1 className="text-5xl md:text-6xl font-bold">RemedyAfrica</h1>
-          </div>
-          <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto">
-            Discover traditional African herbal remedies and connect with verified practitioners for holistic healing
+    <div className="min-h-screen bg-cream text-ink">
+      <section className="relative min-h-[88vh] flex items-end overflow-hidden">
+        <img
+          src={HERO_IMAGE}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-forest-deep/90 via-forest-deep/70 to-forest-deep/25" />
+        <div className="absolute inset-0 bg-grain opacity-[0.18] mix-blend-overlay" />
+
+        <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 pt-28 md:pb-24">
+          <p className="eyebrow text-bronze">Traditional African medicine</p>
+          <div className="hairline mt-5 mb-7 bg-bronze" />
+          <h1 className="max-w-3xl font-serif text-4xl sm:text-6xl md:text-7xl leading-[1.05] text-cream">
+            Healing, rooted in Africa — open to every home.
+          </h1>
+          <p className="mt-6 max-w-xl text-base sm:text-lg leading-relaxed text-cream/80">
+            Trusted herbal knowledge and verified healers, presented with the same care whether you are just starting or have practised for years.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="mt-10 flex flex-col sm:flex-row gap-3">
             <Link href="/practitioners">
-              <Button className="bg-[#97A97C] hover:bg-[#7A8A63] text-white px-8 py-6 text-lg">
-                <Users className="w-5 h-5 mr-2" />
-                Find a Healer
+              <Button size="lg" className="w-full sm:w-auto bg-cream text-forest hover:bg-white">
+                Find a healer
               </Button>
             </Link>
             <Link href="/search">
-              <Button variant="outline" className="border-white text-white hover:bg-white hover:text-[#2C3E2D] px-8 py-6 text-lg">
-                <Search className="w-5 h-5 mr-2" />
-                Explore Remedies
+              <Button size="lg" variant="outline" className="w-full sm:w-auto border-cream/40 text-cream hover:bg-cream hover:text-forest">
+                Explore remedies
               </Button>
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Herb Identifier Section */}
-      <section className="py-16 px-4 bg-white">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl font-bold text-[#2C3E2D] mb-4">
-              Identify Herbs Instantly
-            </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Take a photo of any herb to identify it using AI and learn about its traditional African medicinal uses.
+      <section className="border-y border-forest/10 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 sm:grid-cols-3 gap-6 text-center sm:text-left">
+          {[
+            { icon: Shield, label: 'Verified practitioners' },
+            { icon: Camera, label: 'Identify a plant in seconds' },
+            { icon: HeartHandshake, label: 'Care that stays private' },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center justify-center sm:justify-start gap-3">
+              <item.icon className="h-5 w-5 text-bronze" />
+              <p className="text-sm font-medium text-ink">{item.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="eyebrow">AI companion</p>
+            <h2 className="mt-4 text-3xl sm:text-4xl text-forest">See a plant. Know its story.</h2>
+            <p className="mt-4 text-ink-muted max-w-2xl mx-auto">
+              Photograph a leaf, a root, or a market bundle. We identify it and point you to traditional uses in our library.
             </p>
           </div>
           <HerbIdentifier />
         </div>
       </section>
 
-      {/* Quick Navigation Grid */}
-      <section className="py-16 px-4 max-w-6xl mx-auto">
-        <h2 className="text-3xl font-bold text-center mb-4 text-[#2C3E2D]">Explore Our Platform</h2>
-        <p className="text-gray-600 text-center mb-12 max-w-2xl mx-auto">
-          Access all features of RemedyAfrica - from herbal remedies to practitioner consultations
-        </p>
-        
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Link href="/search" className="group">
-            <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all hover:-translate-y-1 h-full">
-              <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-green-200 transition-colors">
-                <Search className="w-7 h-7 text-green-600" />
-              </div>
-              <h3 className="font-bold text-xl mb-2 text-[#2C3E2D]">AI Health Search</h3>
-              <p className="text-gray-600 mb-4">
-                Describe your symptoms and our AI will suggest herbal remedies and connect you with practitioners.
-              </p>
-              <span className="text-[#97A97C] font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-                Search Now <ArrowRight className="w-4 h-4" />
-              </span>
+      <section className="py-8 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
+            <div>
+              <p className="eyebrow">The library</p>
+              <h2 className="mt-4 text-3xl sm:text-4xl text-forest">Remedies from the land</h2>
             </div>
-          </Link>
+            <Link href="/search" className="inline-flex items-center gap-2 text-sm font-medium text-forest hover:text-bronze">
+              Browse all herbs <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <FeaturedRemedies />
+        </div>
+      </section>
 
-          <Link href="/practitioners" className="group">
-            <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all hover:-translate-y-1 h-full">
-              <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
-                <Users className="w-7 h-7 text-blue-600" />
-              </div>
-              <h3 className="font-bold text-xl mb-2 text-[#2C3E2D]">Find a Healer</h3>
-              <p className="text-gray-600 mb-4">
-                Connect with verified traditional medicine practitioners across Africa. View profiles, ratings, and specialties.
-              </p>
-              <span className="text-[#97A97C] font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-                View Practitioners <ArrowRight className="w-4 h-4" />
-              </span>
-            </div>
-          </Link>
-
-          <Link href="/booking" className="group">
-            <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all hover:-translate-y-1 h-full">
-              <div className="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-purple-200 transition-colors">
-                <Calendar className="w-7 h-7 text-purple-600" />
-              </div>
-              <h3 className="font-bold text-xl mb-2 text-[#2C3E2D]">Book Consultation</h3>
-              <p className="text-gray-600 mb-4">
-                Schedule video or audio consultations with practitioners. Get personalized advice and treatment plans.
-              </p>
-              <span className="text-[#97A97C] font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-                Book Now <ArrowRight className="w-4 h-4" />
-              </span>
-            </div>
-          </Link>
-
-          <Link href="/forum" className="group">
-            <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all hover:-translate-y-1 h-full">
-              <div className="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-orange-200 transition-colors">
-                <MessageCircle className="w-7 h-7 text-orange-600" />
-              </div>
-              <h3 className="font-bold text-xl mb-2 text-[#2C3E2D]">Community</h3>
-              <p className="text-gray-600 mb-4">
-                Join discussions, ask questions, and share experiences with our community of herbal wellness enthusiasts.
-              </p>
-              <span className="text-[#97A97C] font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-                Join Discussion <ArrowRight className="w-4 h-4" />
-              </span>
-            </div>
-          </Link>
-
-          <Link href="/profile" className="group">
-            <div className="bg-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all hover:-translate-y-1 h-full">
-              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mb-4 group-hover:bg-red-200 transition-colors">
-                <Video className="w-7 h-7 text-red-600" />
-              </div>
-              <h3 className="font-bold text-xl mb-2 text-[#2C3E2D]">My Consultations</h3>
-              <p className="text-gray-600 mb-4">
-                Access your scheduled consultations, join video calls, and view your consultation history.
-              </p>
-              <span className="text-[#97A97C] font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-                Go to Dashboard <ArrowRight className="w-4 h-4" />
-              </span>
-            </div>
-          </Link>
-
-          {isAdmin && (
-            <Link href="/admin" className="group">
-              <div className="bg-[#2C3E2D] text-white p-8 rounded-xl shadow-md hover:shadow-xl transition-all hover:-translate-y-1 h-full">
-                <div className="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mb-4 group-hover:bg-white/30 transition-colors">
-                  <Shield className="w-7 h-7 text-white" />
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-14">
+            <p className="eyebrow">Your path</p>
+            <h2 className="mt-4 text-3xl sm:text-4xl text-forest">Start where you are</h2>
+            <p className="mt-4 text-ink-muted max-w-2xl mx-auto">
+              No specialist language required. Choose a door, and we walk with you.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-5">
+            {pathways.map((item) => (
+              <Link key={item.href} href={item.href} className="group">
+                <div className="h-full rounded-3xl border border-forest/10 bg-white p-8 shadow-soft transition-all duration-500 hover:-translate-y-1 hover:shadow-lift">
+                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-cream">
+                    <item.icon className="h-5 w-5 text-forest" />
+                  </div>
+                  <h3 className="font-serif text-2xl text-forest">{item.title}</h3>
+                  <p className="mt-3 text-ink-muted leading-relaxed">{item.copy}</p>
+                  <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-bronze">
+                    {item.action} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </span>
                 </div>
-                <h3 className="font-bold text-xl mb-2">Admin Dashboard</h3>
-                <p className="text-gray-300 mb-4">
-                  Manage herbs, review practitioner applications, and oversee platform content.
+              </Link>
+            ))}
+
+            <Link href="/profile" className="group">
+              <div className="h-full rounded-3xl border border-forest/10 bg-white p-8 shadow-soft transition-all duration-500 hover:-translate-y-1 hover:shadow-lift">
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-cream">
+                  <Video className="h-5 w-5 text-forest" />
+                </div>
+                <h3 className="font-serif text-2xl text-forest">Your consultations</h3>
+                <p className="mt-3 text-ink-muted leading-relaxed">
+                  Join a scheduled call or review notes from past sessions — on your phone or a larger screen.
                 </p>
-                <span className="text-[#97A97C] font-medium flex items-center gap-1 group-hover:gap-2 transition-all">
-                  Access Admin <ArrowRight className="w-4 h-4" />
+                <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-bronze">
+                  Go to dashboard <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                 </span>
               </div>
             </Link>
-          )}
+
+            {isAdmin && (
+              <Link href="/admin" className="group">
+                <div className="h-full rounded-3xl bg-forest text-cream p-8 shadow-soft transition-all duration-500 hover:-translate-y-1 hover:shadow-lift">
+                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
+                    <Shield className="h-5 w-5 text-cream" />
+                  </div>
+                  <h3 className="font-serif text-2xl">Admin</h3>
+                  <p className="mt-3 text-cream/70 leading-relaxed">
+                    Manage herbs, photos, and practitioner applications.
+                  </p>
+                  <span className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-bronze">
+                    Open dashboard <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </div>
+              </Link>
+            )}
+          </div>
         </div>
       </section>
 
-      {/* For Practitioners */}
-      <section className="py-16 px-4 bg-[#97A97C]/10">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-4 text-[#2C3E2D]">Are You a Traditional Healer?</h2>
-          <p className="text-lg mb-8 text-gray-700">
-            Join our network of verified practitioners and reach patients across Africa. 
-            Offer consultations, share your knowledge, and grow your practice.
+      <section className="relative overflow-hidden py-24 px-4">
+        <div className="absolute inset-0 bg-forest" />
+        <div className="absolute inset-0 bg-grain opacity-20 mix-blend-overlay" />
+        <div className="relative max-w-3xl mx-auto text-center text-cream">
+          <p className="eyebrow text-bronze">For healers</p>
+          <h2 className="mt-4 text-3xl sm:text-5xl">Practise with dignity. Reach further.</h2>
+          <p className="mt-6 text-lg text-cream/75 leading-relaxed">
+            Join a network of verified traditional practitioners. Offer consultations, share knowledge, and grow a practice that still feels like home.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="mt-10 flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/practitioners/apply">
-              <Button className="bg-[#2C3E2D] hover:bg-[#3d523e] text-white px-8 py-6 text-lg">
-                Apply as Practitioner
+              <Button size="lg" className="w-full sm:w-auto bg-cream text-forest hover:bg-white">
+                Apply as a practitioner
               </Button>
             </Link>
-            <Link href="/pricing">
-              <Button variant="outline" className="border-[#2C3E2D] text-[#2C3E2D] hover:bg-[#2C3E2D] hover:text-white px-8 py-6 text-lg">
-                View Pricing
+            <Link href="/subscription">
+              <Button size="lg" variant="outline" className="w-full sm:w-auto border-cream/30 text-cream hover:bg-cream hover:text-forest">
+                View plans
               </Button>
             </Link>
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-16 px-4 max-w-6xl mx-auto">
-        <div className="grid md:grid-cols-3 gap-8 text-center">
-          <div>
-            <div className="w-16 h-16 bg-[#97A97C]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Leaf className="w-8 h-8 text-[#97A97C]" />
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-12">
+          {[
+            {
+              icon: Leaf,
+              title: 'Lived knowledge',
+              copy: 'Centuries of African herbal practice, written clearly so families and clinicians can both use it.',
+            },
+            {
+              icon: Video,
+              title: 'Face to face',
+              copy: 'Private video and audio rooms — no clinic travel required, no loss of respect.',
+            },
+            {
+              icon: Shield,
+              title: 'People you can trust',
+              copy: 'Every healer is reviewed before they appear. Your safety is part of the design.',
+            },
+          ].map((item) => (
+            <div key={item.title} className="text-center md:text-left">
+              <div className="mx-auto md:mx-0 mb-5 flex h-12 w-12 items-center justify-center rounded-full border border-bronze/40">
+                <item.icon className="h-5 w-5 text-bronze" />
+              </div>
+              <h3 className="font-serif text-2xl text-forest">{item.title}</h3>
+              <p className="mt-3 text-ink-muted leading-relaxed">{item.copy}</p>
             </div>
-            <h3 className="font-bold text-xl mb-2 text-[#2C3E2D]">Traditional Wisdom</h3>
-            <p className="text-gray-600">
-              Access centuries of African herbal knowledge, carefully documented and verified.
-            </p>
-          </div>
-          <div>
-            <div className="w-16 h-16 bg-[#97A97C]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Video className="w-8 h-8 text-[#97A97C]" />
-            </div>
-            <h3 className="font-bold text-xl mb-2 text-[#2C3E2D]">Video Consultations</h3>
-            <p className="text-gray-600">
-              Connect face-to-face with practitioners through secure video and audio calls.
-            </p>
-          </div>
-          <div>
-            <div className="w-16 h-16 bg-[#97A97C]/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Shield className="w-8 h-8 text-[#97A97C]" />
-            </div>
-            <h3 className="font-bold text-xl mb-2 text-[#2C3E2D]">Verified Practitioners</h3>
-            <p className="text-gray-600">
-              All healers are thoroughly vetted and verified for your safety and trust.
-            </p>
-          </div>
+          ))}
         </div>
       </section>
     </div>

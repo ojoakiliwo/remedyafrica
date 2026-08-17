@@ -82,11 +82,11 @@ export default function Navbar() {
   );
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-[#e8e4df] dark:border-[#2a3a2b] bg-white/95 dark:bg-[#1e2b1f]/95 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <nav className="sticky top-0 z-50 w-full border-b border-forest/10 bg-cream/90 dark:bg-forest-deep/90 backdrop-blur-xl">
+      <div className="mx-auto flex h-[4.25rem] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo with white background */}
-        <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white border border-gray-200 shadow-sm overflow-hidden">
+        <Link href="/" className="flex items-center gap-3 transition-opacity hover:opacity-80">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-forest overflow-hidden">
             <img 
               src="/logo.png" 
               alt="RemedyAfrica" 
@@ -97,10 +97,10 @@ export default function Navbar() {
                 target.parentElement?.querySelector('.fallback-icon')?.classList.remove('hidden');
               }}
             />
-            <Leaf className="h-6 w-6 text-[#5c7c6b] hidden fallback-icon" />
+            <Leaf className="h-5 w-5 text-cream hidden fallback-icon" />
           </div>
-          <span className="text-xl font-bold tracking-tight text-[#2c3e33] dark:text-[#F5F5F0]">
-            Remedy<span className="text-[#b89f6b]">Africa</span>
+          <span className="font-serif text-xl tracking-tight text-forest dark:text-cream">
+            Remedy<span className="text-bronze">Africa</span>
           </span>
         </Link>
 
@@ -110,10 +110,10 @@ export default function Navbar() {
             <Link
               key={link.href}
               href={link.href}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                 pathname === link.href
-                  ? 'bg-[#5c7c6b]/10 text-[#5c7c6b] dark:bg-[#97A97C]/20 dark:text-[#a3b58a]'
-                  : 'text-[#5a5a5a] hover:bg-[#5c7c6b]/5 hover:text-[#2c3e33] dark:text-gray-300 dark:hover:bg-[#97A97C]/10 dark:hover:text-[#F5F5F0]'
+                  ? 'bg-forest/10 text-forest dark:bg-sage/20 dark:text-sage-light'
+                  : 'text-ink-muted hover:bg-forest/5 hover:text-forest dark:text-gray-300 dark:hover:bg-sage/10 dark:hover:text-cream'
               }`}
             >
               {link.label}
@@ -284,7 +284,7 @@ export default function Navbar() {
                 </Button>
               </Link>
               <Link href="/signup">
-                <Button className="bg-[#5c7c6b] text-sm font-medium hover:bg-[#4a6354]">
+                <Button className="bg-forest text-cream text-sm font-medium hover:bg-forest-mist">
                   Get Started
                 </Button>
               </Link>

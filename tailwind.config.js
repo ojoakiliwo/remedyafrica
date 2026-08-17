@@ -20,6 +20,10 @@ module.exports = {
         sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
         serif: ['var(--font-literata)', 'ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'Times', 'serif'],
       },
+      boxShadow: {
+        soft: '0 10px 40px -18px rgba(28, 41, 32, 0.18)',
+        lift: '0 22px 50px -24px rgba(28, 41, 32, 0.28)',
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -58,6 +62,23 @@ module.exports = {
           DEFAULT: "#97A97C",
           dark: "#7A8A63",
           light: "#B8C4A7",
+        },
+        forest: {
+          DEFAULT: "#1C2920",
+          deep: "#141C16",
+          mist: "#2C3E2D",
+        },
+        cream: {
+          DEFAULT: "#F7F3EA",
+          dark: "#EDE6D6",
+        },
+        bronze: {
+          DEFAULT: "#A68446",
+          dark: "#8B6C38",
+        },
+        ink: {
+          DEFAULT: "#1A221C",
+          muted: "#5C675F",
         },
         beige: {
           DEFAULT: "#F5F5DC",
