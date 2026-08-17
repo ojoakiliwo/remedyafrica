@@ -3,59 +3,57 @@
  * Handles: imageUrl string, images: string[], images: {url: string}[]
  */
 
+export interface HerbImageRecord {
+  url: string;
+  path?: string;
+  name?: string;
+}
+
+export const MAX_HERB_IMAGES = 4;
+
+/** Canonical list: the images[] array is the source of truth when present. */
+export function normalizeHerbImageRecords(herb: any): HerbImageRecord[] {
+  if (!herb) return [];
+
+  const out: HerbImageRecord[] = [];
+  const seen = new Set<string>();
+
+  const push = (url?: unknown, extra?: Partial<HerbImageRecord>) => {
+    if (typeof url !== 'string' || !url.trim()) return;
+    const cleaned = ensureValidImageUrl(url.trim());
+    if (!cleaned || seen.has(cleaned)) return;
+    seen.add(cleaned);
+    out.push({ url: cleaned, ...extra });
+  };
+
+  if (Array.isArray(herb.images)) {
+    for (const item of herb.images) {
+      if (typeof item === 'string') {
+        push(item);
+      } else if (item && typeof item === 'object' && item.url) {
+        push(item.url, {
+          path: typeof item.path === 'string' ? item.path : undefined,
+          name: typeof item.name === 'string' ? item.name : undefined,
+        });
+      }
+    }
+  }
+
+  // Fall back to legacy fields only when images[] is empty
+  if (out.length === 0) {
+    push(herb.imageUrl);
+    push(herb.image);
+  }
+
+  return out;
+}
+
 export function getHerbPrimaryImage(herb: any): string | undefined {
-  if (!herb) return undefined;
-  
-  // Single imageUrl field (most common for simple uploads)
-  if (herb.imageUrl && typeof herb.imageUrl === 'string') {
-    return ensureValidImageUrl(herb.imageUrl);
-  }
-  
-  // images array
-  if (Array.isArray(herb.images) && herb.images.length > 0) {
-    const first = herb.images[0];
-    // Array of strings
-    if (typeof first === 'string') return ensureValidImageUrl(first);
-    // Array of objects with url property
-    if (first && typeof first === 'object' && first.url) return ensureValidImageUrl(first.url);
-  }
-  
-  // Legacy image field
-  if (herb.image && typeof herb.image === 'string') {
-    return ensureValidImageUrl(herb.image);
-  }
-  
-  return undefined;
+  return normalizeHerbImageRecords(herb)[0]?.url;
 }
 
 export function getHerbImages(herb: any): string[] {
-  if (!herb) return [];
-  
-  const images: string[] = [];
-  
-  // Single imageUrl
-  if (herb.imageUrl && typeof herb.imageUrl === 'string') {
-    images.push(ensureValidImageUrl(herb.imageUrl));
-  }
-  
-  // images array
-  if (Array.isArray(herb.images) && herb.images.length > 0) {
-    herb.images.forEach((item: any) => {
-      if (typeof item === 'string') {
-        images.push(ensureValidImageUrl(item));
-      } else if (item && typeof item === 'object' && item.url) {
-        images.push(ensureValidImageUrl(item.url));
-      }
-    });
-  }
-  
-  // Legacy image field
-  if (herb.image && typeof herb.image === 'string') {
-    images.push(ensureValidImageUrl(herb.image));
-  }
-  
-  // Deduplicate
-  return Array.from(new Set(images));
+  return normalizeHerbImageRecords(herb).map((img) => img.url);
 }
 
 export function getHerbImageCount(herb: any): number {

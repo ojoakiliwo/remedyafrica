@@ -93,8 +93,8 @@ export default function UploadHerbPage() {
         setError(`${file.name} is not an image`);
         return false;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        setError(`${file.name} is larger than 5MB`);
+      if (file.size > 10 * 1024 * 1024) {
+        setError(`${file.name} is larger than 10MB`);
         return false;
       }
       return true;
@@ -189,7 +189,8 @@ export default function UploadHerbPage() {
       }
 
       await updateDoc(doc(db, 'herbs', herbRef.id), {
-        images: imageUrls
+        images: imageUrls,
+        imageUrl: imageUrls[0]?.url || null,
       });
 
       setSuccess(true);
@@ -345,7 +346,7 @@ export default function UploadHerbPage() {
             />
             
             <p className="text-sm text-gray-500">
-              Upload images directly to Firebase Storage. Max 5MB per image. Supported: JPG, PNG, WebP.
+              Upload images directly to Firebase Storage. Max 10MB per image. Supported: JPG, PNG, WebP.
             </p>
           </div>
 

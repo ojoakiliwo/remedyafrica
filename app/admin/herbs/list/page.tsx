@@ -25,10 +25,11 @@ import {
   Eye, 
   AlertCircle,
   Search,
-  Leaf
+  Leaf,
+  Image as ImageIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getHerbPrimaryImage } from '@/lib/herb-images';
+import { getHerbPrimaryImage, getHerbImageCount } from '@/lib/herb-images';
 
 interface Herb {
   id: string;
@@ -221,7 +222,7 @@ export default function HerbsListPage() {
             <div>
               <h1 className="text-2xl font-bold">Herb Management</h1>
               <p className="text-gray-300 text-sm">
-                {herbs.length} herb{herbs.length !== 1 ? 's' : ''} in database
+                {herbs.length} herb{herbs.length !== 1 ? 's' : ''} in database — use Photos to upload pictures yourself
               </p>
             </div>
           </div>
@@ -295,7 +296,7 @@ export default function HerbsListPage() {
                     <th className="text-left p-4 font-semibold text-gray-700">Category</th>
                     <th className="text-left p-4 font-semibold text-gray-700 hidden md:table-cell">Origin</th>
                     <th className="text-left p-4 font-semibold text-gray-700 hidden lg:table-cell">Parts Used</th>
-                    <th className="text-left p-4 font-semibold text-gray-700 hidden lg:table-cell">Benefits</th>
+                    <th className="text-left p-4 font-semibold text-gray-700 hidden lg:table-cell">Photos</th>
                     <th className="text-right p-4 font-semibold text-gray-700">Actions</th>
                   </tr>
                 </thead>
@@ -336,21 +337,30 @@ export default function HerbsListPage() {
                         {herb.partsUsed || '-'}
                       </td>
                       <td className="p-4 hidden lg:table-cell">
-                        <div className="flex flex-wrap gap-1">
-                          {(Array.isArray(herb.benefits) ? herb.benefits : []).slice(0, 3).map((benefit, i) => (
-                            <span key={i} className="inline-flex px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                              {benefit}
+                        {(() => {
+                          const count = getHerbImageCount(herb);
+                          return (
+                            <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${count === 0 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}`}>
+                              {count === 0 ? 'No photos' : `${count} photo${count === 1 ? '' : 's'}`}
                             </span>
-                          ))}
-                          {(Array.isArray(herb.benefits) ? herb.benefits : []).length > 3 && (
-                            <span className="inline-flex px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-xs">
-                              +{(Array.isArray(herb.benefits) ? herb.benefits : []).length - 3} more
-                            </span>
-                          )}
-                        </div>
+                          );
+                        })()}
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <Link href={`/admin/herbs/photos/${herb.id}`}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 border-[#97A97C] text-[#2C3E2D] hover:bg-[#97A97C]/10"
+                              title="Upload photos"
+                              aria-label={`Upload photos for ${herb.name}`}
+                            >
+                              <ImageIcon className="w-4 h-4 mr-1" />
+                              Photos
+                            </Button>
+                          </Link>
+
                           <Link href={`/herb/${herb.id}`} target="_blank">
                             <Button 
                               variant="ghost" 

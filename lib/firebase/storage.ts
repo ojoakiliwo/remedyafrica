@@ -7,6 +7,8 @@ export interface UploadResult {
   name: string;
 }
 
+export const MAX_HERB_IMAGE_BYTES = 10 * 1024 * 1024;
+
 export async function uploadHerbImage(
   file: File, 
   herbId: string, 
@@ -17,8 +19,8 @@ export async function uploadHerbImage(
     throw new Error('File must be an image');
   }
   
-  if (file.size > 5 * 1024 * 1024) { // 5MB limit
-    throw new Error('Image must be less than 5MB');
+  if (file.size > MAX_HERB_IMAGE_BYTES) {
+    throw new Error('Image must be less than 10MB');
   }
 
   const timestamp = Date.now();

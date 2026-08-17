@@ -15,7 +15,8 @@ import {
   TrendingUp, 
   Shield,
   ArrowRight,
-  Loader2
+  Loader2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -211,6 +212,12 @@ export default function AdminDashboard() {
               <CardTitle className="text-lg">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <Link href="/admin/herbs/list">
+                <Button variant="outline" className="w-full justify-start">
+                  <ImageIcon className="h-4 w-4 mr-2" />
+                  Upload herb photos
+                </Button>
+              </Link>
               <Link href="/admin/herbs/bulk">
                 <Button variant="outline" className="w-full justify-start">
                   <Leaf className="h-4 w-4 mr-2" />

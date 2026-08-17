@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { uploadHerbImage } from '@/lib/firebase/storage';
+import { uploadHerbImage, deleteHerbImage, MAX_HERB_IMAGE_BYTES } from '@/lib/firebase/storage';
+import { normalizeHerbImageRecords } from '@/lib/herb-images';
 import { 
   Plus, 
   AlertCircle, 
@@ -155,7 +156,7 @@ export default function EditHerbPage() {
           images: Array.isArray(data.images) ? data.images : []
         });
         
-        setExistingImages(Array.isArray(data.images) ? data.images : []);
+        setExistingImages(normalizeHerbImageRecords(data));
       } catch (err) {
         console.error('Error fetching herb:', err);
         setError('Failed to load herb data');
@@ -191,8 +192,8 @@ export default function EditHerbPage() {
         setError(`${file.name} is not an image`);
         return false;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        setError(`${file.name} is larger than 5MB`);
+      if (file.size > MAX_HERB_IMAGE_BYTES) {
+        setError(`${file.name} is larger than 10MB`);
         return false;
       }
       return true;
@@ -272,6 +273,13 @@ export default function EditHerbPage() {
 
       const finalImages = [...existingImages, ...uploadedImageUrls];
 
+      for (const img of formData.images) {
+        const stillKept = finalImages.some((f) => f.url === img.url);
+        if (!stillKept && img.path) {
+          try { await deleteHerbImage(img.path); } catch { /* already gone */ }
+        }
+      }
+
       const updateData = {
         name: formData.name.trim(),
         scientificName: formData.scientificName.trim(),
@@ -287,6 +295,7 @@ export default function EditHerbPage() {
         warnings: formData.warnings,
         ailments: formData.ailments,
         images: finalImages,
+        imageUrl: finalImages[0]?.url || null,
         status: formData.status,
         updatedAt: serverTimestamp(),
         searchKeywords: [
@@ -385,12 +394,19 @@ export default function EditHerbPage() {
               <p className="text-gray-300 text-sm">Update {formData.name || 'herb'} details and images</p>
             </div>
           </div>
-          <Link href="/admin/herbs/list">
-            <Button variant="outline" className="border-white/30 text-white hover:bg-white/10">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to List
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href={`/admin/herbs/photos/${herbId}`}>
+              <Button variant="outline" className="border-white/30 text-white hover:bg-white/10">
+                Upload photos
+              </Button>
+            </Link>
+            <Link href="/admin/herbs/list">
+              <Button variant="outline" className="border-white/30 text-white hover:bg-white/10">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to List
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -495,10 +511,16 @@ export default function EditHerbPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  Paste a direct image link from Wikipedia, Wikimedia Commons, or Unsplash
+                  Paste a direct image URL, or upload files from your computer above (max 10MB).
                 </p>
               </div>
             )}
+            <p className="text-sm text-gray-500 mt-3">
+              Prefer to manage photos only?{' '}
+              <Link href={`/admin/herbs/photos/${herbId}`} className="text-[#97A97C] underline">
+                Open the photo uploader
+              </Link>
+            </p>
           </div>
 
           {/* Basic Info */}
