@@ -704,7 +704,7 @@ function SearchPageContent() {
                       >
                         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-cream-dark">
                           {person.photoURL ? (
-                            <img src={person.photoURL} alt="" className="h-full w-full object-cover" />
+                            <img src={person.photoURL} alt={person.name} className="h-full w-full object-cover" />
                           ) : (
                             <div className="flex h-full items-center justify-center">
                               <User className="h-8 w-8 text-forest/30" aria-hidden="true" />
