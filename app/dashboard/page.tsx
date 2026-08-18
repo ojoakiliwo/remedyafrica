@@ -225,7 +225,7 @@ export default function DashboardPage() {
               <Link href="/subscription">
                 <Button variant="outline" className="border-amber-400 text-amber-400 hover:bg-amber-400/10">
                   <Crown className="w-4 h-4 mr-2" />
-                  Upgrade to Premium
+                  Upgrade
                 </Button>
               </Link>
             )}

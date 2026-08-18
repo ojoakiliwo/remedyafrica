@@ -240,6 +240,21 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white">
+        <div className="max-w-3xl mx-auto text-center">
+          <p className="eyebrow">For the household</p>
+          <h2 className="mt-4 text-3xl sm:text-4xl text-forest">Talk to a healer. The library stays free.</h2>
+          <p className="mt-4 text-ink-muted leading-relaxed">
+            Premium is two private sessions a month, billed as a three-month season. You already read bitter leaf, scent leaf, and the cautions without paying.
+          </p>
+          <Link href="/subscription" className="mt-8 inline-flex">
+            <Button size="lg" className="bg-forest text-cream hover:bg-forest-mist">
+              See care plans
+            </Button>
+          </Link>
+        </div>
+      </section>
+
       <section className="relative overflow-hidden py-24 px-4">
         <div className="absolute inset-0 bg-forest" />
         <div className="absolute inset-0 bg-grain opacity-20 mix-blend-overlay" />
@@ -253,11 +268,6 @@ export default function HomePage() {
             <Link href="/practitioners/apply">
               <Button size="lg" className="w-full sm:w-auto bg-cream text-forest hover:bg-white">
                 Apply as a practitioner
-              </Button>
-            </Link>
-            <Link href="/subscription">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto border-cream/30 text-cream hover:bg-cream hover:text-forest">
-                View plans
               </Button>
             </Link>
           </div>

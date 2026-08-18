@@ -26,7 +26,7 @@ interface Topic {
 
 export default function ForumPage() {
   const { user, userData } = useAuth();
-  const { tier, isPremiumPro } = useSubscription();
+  const { tier, canAccessForum: isPaidMember } = useSubscription();
   const router = useRouter();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +36,7 @@ export default function ForumPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const isAdmin = userData?.role === 'admin';
-  const canAccessForum = isPremiumPro || isAdmin;
+  const canAccessForum = isPaidMember || isAdmin;
 
   useEffect(() => {
     if (canAccessForum) {
@@ -107,7 +107,7 @@ export default function ForumPage() {
     ? topics 
     : topics.filter(t => t.category === activeCategory);
 
-  // PAYWALL for non-Premium Pro and non-admin users
+  // Paywall for visitors who have not taken a paid plan
   if (!canAccessForum) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center px-4 py-20">
@@ -115,9 +115,9 @@ export default function ForumPage() {
           <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Lock className="w-10 h-10 text-amber-600" />
           </div>
-          <h2 className="text-3xl font-bold text-forest mb-3">Premium Pro Access Required</h2>
+          <h2 className="text-3xl font-bold text-forest mb-3">Members talk here</h2>
           <p className="text-gray-600 mb-2">
-            The Community Forum is exclusively available for <strong>Premium Pro</strong> subscribers.
+            The community is included with any paid plan — Basic, Premium, or Household.
           </p>
           <p className="text-sm text-gray-500 mb-8">
             Your current plan: <span className="font-semibold capitalize">{tier}</span>
@@ -126,12 +126,12 @@ export default function ForumPage() {
             <Link href="/subscription">
               <Button className="bg-forest hover:bg-forest-mist text-white px-8">
                 <Crown className="w-4 h-4 mr-2" />
-                Upgrade to Premium Pro
+                See plans
               </Button>
             </Link>
           </div>
           <p className="text-xs text-gray-400 mt-6">
-            Premium Pro includes: Forum access, unlimited consultations, priority booking, and exclusive herb guides.
+            You can still read the herb library without paying.
           </p>
         </div>
       </div>

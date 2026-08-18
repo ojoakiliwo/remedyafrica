@@ -27,7 +27,7 @@ import { db } from '@/lib/firebase/client';
 export default function HerbDetailPage() {
   const params = useParams();
   const slug = params.slug as string;
-  const { canAccessPrescription, canAccessSideEffects, tier } = useSubscription();
+  const { canAccessPrescription, tier } = useSubscription();
   const [herb, setHerb] = useState<any>(null);
   const [relatedHerbs, setRelatedHerbs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -355,7 +355,7 @@ export default function HerbDetailPage() {
                     <Lock className="h-8 w-8 text-amber-600 dark:text-amber-400 mx-auto mb-3" />
                     <h3 className="font-semibold text-forest dark:text-[#F5F5F0] mb-2">Prescription Guide Locked</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      Detailed prescription and usage guidelines are available for Premium subscribers.
+                      Detailed prescription and usage guidelines are included with a care plan.
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
                       Your current plan: <span className="font-semibold capitalize">{tier}</span>
@@ -363,7 +363,7 @@ export default function HerbDetailPage() {
                     <Link href="/subscription">
                       <Button className="bg-forest hover:bg-forest-mist text-white">
                         <Crown className="h-4 w-4 mr-2" />
-                        Upgrade to Premium
+                        See care plans
                       </Button>
                     </Link>
                   </CardContent>
@@ -371,9 +371,8 @@ export default function HerbDetailPage() {
               )
             )}
 
-            {/* Side Effects - GATED */}
+            {/* Side Effects — always visible. Safety is not a paywall. */}
             {herb.warnings && herb.warnings.length > 0 && (
-              canAccessSideEffects ? (
                 <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
                   <CardHeader>
                     <CardTitle className="text-red-800 dark:text-red-300 flex items-center">
@@ -404,26 +403,6 @@ export default function HerbDetailPage() {
                     )}
                   </CardContent>
                 </Card>
-              ) : (
-                <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
-                  <CardContent className="p-6 text-center">
-                    <Lock className="h-8 w-8 text-amber-600 dark:text-amber-400 mx-auto mb-3" />
-                    <h3 className="font-semibold text-forest dark:text-[#F5F5F0] mb-2">Safety Information Locked</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                      Side effects, precautions, and drug interaction data are available for Premium subscribers.
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
-                      Your current plan: <span className="font-semibold capitalize">{tier}</span>
-                    </p>
-                    <Link href="/subscription">
-                      <Button className="bg-forest hover:bg-forest-mist text-white">
-                        <Crown className="h-4 w-4 mr-2" />
-                        Upgrade to Premium
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              )
             )}
 
             {/* Related Herbs */}

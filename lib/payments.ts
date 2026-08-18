@@ -22,6 +22,11 @@ export interface PaymentPlan {
   id: string;
   name: string;
   description: string;
+  /** One-line offer. This is what the card is actually selling. */
+  headline: string;
+  /** Who should feel this plan is “for me”. */
+  whoItsFor: string;
+  cta: string;
   priceUSD: number; // Base price in USD — NGN calculated live
   interval: 'quarterly';
   features: string[];
@@ -68,58 +73,83 @@ export const SUBSCRIPTION_PLANS: PaymentPlan[] = [
   {
     id: 'basic',
     name: 'Basic',
-    description: 'Start your healing journey',
+    description: 'For when you already know the plants — and just need a second look.',
+    headline: '5 photo identifications each month',
+    whoItsFor: 'You cook with these plants. You want the camera to confirm what you picked.',
+    cta: 'Identify plants',
     priceUSD: 9,
     interval: 'quarterly',
     consultationsPerMonth: 0,
     plantIdsPerMonth: 5,
     features: [
-      'Browse all herbs and remedies',
-      'AI-powered symptom search',
-      'Save up to 10 favorite herbs',
-      'Community forum access',
-      'Basic plant identification (5/month)'
+      'Photograph a leaf or market bundle — 5 identifications a month',
+      'Keep a kitchen list of 10 plants',
+      'Ask and answer in the community',
+      'Herb library and safety notes stay free for everyone'
     ]
   },
   {
     id: 'premium',
     name: 'Premium',
-    description: 'Full access + practitioner support',
+    description: 'A healer who knows your plants — not an app that guesses.',
+    headline: '2 private healer sessions every month',
+    whoItsFor: 'You want a person to listen, then tell you what to do at home.',
+    cta: 'Begin 3 months of care',
     priceUSD: 24,
     interval: 'quarterly',
     consultationsPerMonth: 2,
     plantIdsPerMonth: 20,
     popular: true,
     features: [
-      'Everything in Basic',
-      'Unlimited herb saves',
-      '2 practitioner consultations/month (INCLUDED)',
-      'Plant identification (20/month)',
-      'Personalized wellness protocols',
-      'Priority support',
-      'Direct chat with practitioners'
+      'Two included consultations every month — no extra sitting fee',
+      'Message a practitioner between sessions',
+      'A protocol written for your home, not a generic list',
+      '20 plant identifications a month',
+      'Unlimited saved plants',
+      'Community included'
     ]
   },
   {
     id: 'healer',
-    name: 'Healer',
-    description: 'Unlimited access for families',
+    name: 'Household',
+    description: 'One roof. One plan. The family does not take turns for care.',
+    headline: 'Unlimited sessions for the home',
+    whoItsFor: 'Parents, elders, and children sharing one compound.',
+    cta: 'Cover the family',
     priceUSD: 54,
     interval: 'quarterly',
     consultationsPerMonth: 999, // unlimited
     plantIdsPerMonth: 999, // unlimited
     familyMembers: 3,
     features: [
-      'Everything in Premium',
-      'Unlimited consultations (INCLUDED)',
+      'Unlimited consultations, included',
+      'Share with two other people under your roof',
       'Unlimited plant identifications',
-      'Quarterly wellness report',
-      'Family sharing (up to 3 members)',
-      'Early access to new features',
-      'Exclusive practitioner webinars'
+      'A quarterly note on how the household is using the plants',
+      'Everything in Premium'
     ]
   }
 ];
+
+/** Maps a paid plan id onto the user document field used by the app. */
+export function subscriptionTierFromPlanId(planId: string): string {
+  if (planId === 'basic' || planId === 'premium' || planId === 'healer') {
+    return planId;
+  }
+  if (planId === 'premium_pro') return 'healer';
+  return 'premium';
+}
+
+export async function markUserSubscriptionTier(userId: string, planId: string): Promise<void> {
+  await setDoc(
+    doc(db, 'users', userId),
+    {
+      subscriptionTier: subscriptionTierFromPlanId(planId),
+      updatedAt: serverTimestamp()
+    },
+    { merge: true }
+  );
+}
 
 /* ─────────────── Dynamic Pricing ─────────────── */
 
