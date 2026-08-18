@@ -33,7 +33,7 @@ export default function SubscriptionPage() {
   const [selectedGateway, setSelectedGateway] = useState<PaymentGateway>('paystack');
   const [processing, setProcessing] = useState(false);
   const [currentSub, setCurrentSub] = useState<any>(null);
-  const [checkingSub, setCheckingSub] = useState(true);
+  const [checkingSub, setCheckingSub] = useState(false);
   const [exchangeRate, setExchangeRate] = useState<number>(1600);
   const [ngnPrices, setNgnPrices] = useState<Record<string, number>>(() => {
     const prices: Record<string, number> = {};
@@ -71,9 +71,11 @@ export default function SubscriptionPage() {
   useEffect(() => {
     const loadSub = async () => {
       if (!user) {
+        setCurrentSub(null);
         setCheckingSub(false);
         return;
       }
+      setCheckingSub(true);
       try {
         const sub = await getSubscriptionStatus(user.uid);
         setCurrentSub(sub);
@@ -87,18 +89,12 @@ export default function SubscriptionPage() {
   }, [user]);
 
   useEffect(() => {
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const africanTimezones = [
-      'Africa/Lagos',
-      'Africa/Accra',
-      'Africa/Nairobi',
-      'Africa/Johannesburg',
-      'Africa/Abidjan',
-    ];
-    if (africanTimezones.some((tz) => timezone.includes(tz))) {
-      setSelectedGateway('paystack');
-    } else {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    const overseas = ['America/', 'Europe/', 'Australia/', 'Pacific/', 'Atlantic/'];
+    if (overseas.some((prefix) => timezone.startsWith(prefix))) {
       setSelectedGateway('flutterwave');
+    } else {
+      setSelectedGateway('paystack');
     }
   }, []);
 
@@ -160,7 +156,7 @@ export default function SubscriptionPage() {
     }
   };
 
-  if (authLoading || checkingSub) {
+  if (authLoading || (user && checkingSub)) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
         <Loader2 className="w-12 h-12 text-bronze animate-spin" />
