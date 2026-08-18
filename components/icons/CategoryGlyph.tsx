@@ -90,6 +90,27 @@ function RespiratoryGlyph({ className }: GlyphProps) {
   );
 }
 
+function WomensGlyph({ className }: GlyphProps) {
+  return (
+    <Svg className={className}>
+      <circle cx="24" cy="18" r="7" {...stroke} />
+      <path d="M24 25v13" {...stroke} />
+      <path d="M18.5 32.5h11" {...stroke} />
+      <path d="M20 12.5c1.4-1.8 2.7-2.6 4-2.6s2.6.8 4 2.6" {...stroke} />
+    </Svg>
+  );
+}
+
+function MensGlyph({ className }: GlyphProps) {
+  return (
+    <Svg className={className}>
+      <path d="M24 8c-4.6 4.8-8 11-8 18.5C16 34 19.6 40 24 40s8-6 8-13.5C32 19 28.6 12.8 24 8Z" {...stroke} />
+      <path d="M24 16v16" {...stroke} />
+      <path d="M20 24h8" {...stroke} />
+    </Svg>
+  );
+}
+
 const GLYPHS: Record<CategorySlug, (props: GlyphProps) => ReactNode> = {
   'mental-wellness': MentalGlyph,
   'pain-relief': PainGlyph,
@@ -97,6 +118,8 @@ const GLYPHS: Record<CategorySlug, (props: GlyphProps) => ReactNode> = {
   'immune-support': ImmuneGlyph,
   'skin-care': SkinGlyph,
   respiratory: RespiratoryGlyph,
+  'womens-health': WomensGlyph,
+  'mens-health': MensGlyph,
 };
 
 export function CategoryGlyph({

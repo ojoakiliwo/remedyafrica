@@ -59,7 +59,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Depression is a serious medical condition. If you experience thoughts of self-harm, seek immediate medical help. Professional diagnosis and treatment are essential.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['depression', 'depressive', 'antidepressant', 'low mood']
+    searchKeywords: ['depression', 'depressive', 'antidepressant', 'low mood', 'mood support', 'depression support']
   },
   {
     id: 'adhd',
@@ -207,7 +207,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Ulcers require medical diagnosis (endoscopy) and treatment. H. pylori infection is a common cause requiring antibiotics.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['ulcer', 'gastritis', 'stomach ulcer']
+    searchKeywords: ['ulcer', 'ulcers', 'gastritis', 'stomach ulcer']
   },
   {
     id: 'hemorrhoids',
@@ -219,7 +219,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Rectal bleeding can indicate more serious conditions like colorectal cancer. Bleeding should always be evaluated by a doctor.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['hemorrhoid', 'haemorrhoid', 'piles', 'rectal']
+    searchKeywords: ['hemorrhoid', 'haemorrhoid', 'piles', 'rectal', 'hemorrhoid support']
   },
 
   // IMMUNE SUPPORT
@@ -257,7 +257,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Typhoid requires antibiotics and medical supervision. Blood culture is needed for diagnosis. Do not rely solely on herbal remedies.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['typhoid']
+    searchKeywords: ['typhoid', 'typhoid support', 'enteric fever']
   },
   {
     id: 'hiv-support',
@@ -269,7 +269,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'HIV requires antiretroviral therapy (ART). Never stop or replace ARVs with herbal remedies. Herbs should only support overall health under doctor supervision.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['hiv', 'aids']
+    searchKeywords: ['hiv', 'aids', 'hiv support']
   },
   {
     id: 'weak-immunity',
@@ -295,7 +295,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Eczema can be confused with psoriasis or fungal infections. Persistent skin changes should be evaluated by a dermatologist.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['eczema', 'dermatitis']
+    searchKeywords: ['eczema', 'dermatitis', 'eczema support']
   },
   {
     id: 'acne',
@@ -406,6 +406,106 @@ export const ailmentsData: AilmentData[] = [
     commonInAfrica: true,
     associatedHerbs: [],
     searchKeywords: ['allergy', 'allergies', 'hay fever', 'antihistamine', 'sneeze']
+  },
+
+  // WOMEN'S HEALTH
+  {
+    id: 'hormone-balance',
+    name: 'Hormone Balance',
+    category: 'womens-health',
+    categoryLabel: "Women's Health",
+    description: 'Traditional tonics used when the cycle feels uneven — PMS, perimenopause, and everyday hormonal shifts.',
+    symptoms: ['Irregular cycle', 'Mood swings', 'Breast tenderness', 'Bloating', 'Fatigue around menses'],
+    medicalDisclaimer: 'Persistent cycle changes, heavy bleeding, or severe pain should be evaluated. Herbs do not replace hormone testing or prescribed treatment.',
+    commonInAfrica: true,
+    associatedHerbs: [],
+    searchKeywords: ['hormone balance', 'hormone support', 'hormonal balance', 'hormonal support']
+  },
+  {
+    id: 'fertility',
+    name: 'Fertility Support',
+    category: 'womens-health',
+    categoryLabel: "Women's Health",
+    description: 'Herbs traditionally used to nourish reproductive health. They complement, never replace, clinical fertility care.',
+    symptoms: ['Difficulty conceiving', 'Irregular ovulation', 'Low luteal support', 'Cycle irregularity'],
+    medicalDisclaimer: 'Infertility needs medical evaluation for both partners. Do not use fertility herbs in pregnancy unless a clinician agrees.',
+    commonInAfrica: true,
+    associatedHerbs: [],
+    searchKeywords: ['fertility', 'fertility support', 'conception']
+  },
+  {
+    id: 'menopause',
+    name: 'Menopause',
+    category: 'womens-health',
+    categoryLabel: "Women's Health",
+    description: 'Hot flushes, sleep changes, and shifting hormones. African and global herbal practice uses cooling and phytoestrogen-rich plants.',
+    symptoms: ['Hot flushes', 'Night sweats', 'Sleep disturbance', 'Mood changes', 'Vaginal dryness'],
+    medicalDisclaimer: 'Sudden bleeding after menopause needs urgent evaluation. Discuss herbs with a clinician if you use HRT.',
+    commonInAfrica: true,
+    associatedHerbs: [],
+    searchKeywords: ['menopause', 'menopause relief', 'hot flush', 'hot flash']
+  },
+  {
+    id: 'pms',
+    name: 'PMS',
+    category: 'womens-health',
+    categoryLabel: "Women's Health",
+    description: 'Premenstrual tension, breast tenderness, and irritability in the days before bleeding.',
+    symptoms: ['Irritability', 'Bloating', 'Breast tenderness', 'Cravings', 'Low mood before menses'],
+    medicalDisclaimer: 'Severe PMS or PMDD may need clinical care. Herbs are complementary.',
+    commonInAfrica: true,
+    associatedHerbs: [],
+    searchKeywords: ['pms', 'pms support', 'pms aid', 'premenstrual']
+  },
+  {
+    id: 'pregnancy-postpartum',
+    name: 'Pregnancy & Postpartum',
+    category: 'womens-health',
+    categoryLabel: "Women's Health",
+    description: 'Uterine tonics and recovery herbs used around birth in many African households. Use only with a midwife or clinician.',
+    symptoms: ['Birth recovery', 'Afterpains', 'Low milk supply concerns', 'Pelvic heaviness'],
+    medicalDisclaimer: 'Many herbs are unsafe in pregnancy. Confirm every plant with a qualified practitioner before use.',
+    commonInAfrica: true,
+    associatedHerbs: [],
+    searchKeywords: ['pregnancy', 'postpartum', 'uterine tonic', 'pregnancy aid', 'pregnancy support']
+  },
+
+  // MEN'S HEALTH
+  {
+    id: 'prostate-health',
+    name: 'Prostate Health',
+    category: 'mens-health',
+    categoryLabel: "Men's Health",
+    description: 'Urinary flow and prostate comfort. Pygeum (African cherry) and related plants are widely used in African and European herbal practice.',
+    symptoms: ['Weak urinary stream', 'Night-time urination', 'Hesitancy', 'Pelvic pressure'],
+    medicalDisclaimer: 'Prostate symptoms can signal infection or cancer. PSA testing and a clinician visit come first. Herbs are supportive only.',
+    commonInAfrica: true,
+    associatedHerbs: [],
+    searchKeywords: ['prostate', 'prostate support', 'prostate health', 'bph']
+  },
+  {
+    id: 'libido',
+    name: 'Libido',
+    category: 'mens-health',
+    categoryLabel: "Men's Health",
+    description: 'Traditional aphrodisiacs and circulation herbs used for desire and performance. Not a substitute for assessing heart health or hormones.',
+    symptoms: ['Low desire', 'Erectile difficulty', 'Fatigue affecting intimacy'],
+    medicalDisclaimer: 'Sudden erectile change can be a heart-disease warning. Seek medical care. Yohimbe and similar stimulants need professional supervision.',
+    commonInAfrica: true,
+    associatedHerbs: [],
+    searchKeywords: ['libido', 'libido support', 'aphrodisiac', 'sexual vitality']
+  },
+  {
+    id: 'male-vitality',
+    name: 'Male Vitality',
+    category: 'mens-health',
+    categoryLabel: "Men's Health",
+    description: 'Stamina, strength, and everyday vitality — the way many library herbs are actually recorded.',
+    symptoms: ['Low stamina', 'Fatigue', 'Reduced drive', 'Recovery after illness'],
+    medicalDisclaimer: 'Unexplained fatigue needs medical evaluation. Vitality herbs are not a diagnosis of hormone deficiency.',
+    commonInAfrica: true,
+    associatedHerbs: [],
+    searchKeywords: ['vitality', 'vitality support', 'stamina', 'male vitality', 'testosterone']
   }
 ];
 
@@ -427,6 +527,11 @@ export const relatedAilmentIds: Record<string, string[]> = {
   'stomach-ulcer': ['indigestion'],
   asthma: ['bronchitis', 'allergies'],
   'common-cold': ['bronchitis', 'sinusitis', 'sore-throat'],
+  pms: ['hormone-balance', 'menstrual-cramps'],
+  menopause: ['hormone-balance'],
+  fertility: ['hormone-balance', 'pregnancy-postpartum'],
+  libido: ['male-vitality', 'prostate-health'],
+  'prostate-health': ['male-vitality'],
 };
 
 export const getAllCategories = () => {

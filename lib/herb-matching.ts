@@ -57,11 +57,21 @@ export function normalizeForMatch(value: string): string {
  * True when `phrase` appears as whole words in `haystack`.
  * "pain" will not match "spain"; "memory" will match "memory support".
  */
+function simplePlurals(phrase: string): string[] {
+  const p = normalizeForMatch(phrase);
+  if (p.length < 3) return [];
+  const variants = [p];
+  if (!p.endsWith('s') && !p.endsWith('x') && !p.endsWith('ch')) {
+    variants.push(`${p}s`);
+  }
+  return variants;
+}
+
 export function containsPhrase(haystack: string, phrase: string): boolean {
   const h = normalizeForMatch(haystack);
-  const p = normalizeForMatch(phrase);
-  if (!h || p.length < 3) return false;
-  return ` ${h} `.includes(` ${p} `);
+  if (!h) return false;
+  const padded = ` ${h} `;
+  return simplePlurals(phrase).some((variant) => padded.includes(` ${variant} `));
 }
 
 export function herbSearchText(herb: MatchableHerb): string {

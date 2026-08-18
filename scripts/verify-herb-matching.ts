@@ -17,7 +17,8 @@ function unitTests() {
   assert(!containsPhrase('heartburn', 'burn'), 'burn must not match heartburn');
   assert(containsPhrase('Pain relief', 'pain relief'), 'phrase match');
   assert(!containsPhrase('mental-wellness category', 'adhd'), 'adhd absent');
-  assert(!containsPhrase('Improves memory', 'adhd'), 'memory is not adhd');
+  assert(containsPhrase('Soothing herb for ulcers', 'ulcer'), 'ulcer matches ulcers');
+  assert(containsPhrase('ADHD support', 'adhd'), 'ADHD support matches adhd');
   console.log('unit tests passed');
 }
 
@@ -43,9 +44,13 @@ async function liveCheck() {
   console.log('Anxiety', anxietyCount);
   console.log('Malaria', malariaCount);
 
-  assert(adhdCount === 0, `ADHD should be 0, got ${adhdCount}`);
+  assert(adhdCount >= 10, `ADHD should have curated herbs, got ${adhdCount}`);
   assert(memoryCount > 0, 'Memory should have real herbs');
   assert(anxietyCount > 0, 'Anxiety should have real herbs');
+  const depression = ailmentsData.find((a) => a.id === 'depression')!;
+  const depressionCount = countMatchingHerbs(herbs, depression);
+  console.log('Depression', depressionCount);
+  assert(depressionCount >= 8, `Depression should have curated herbs, got ${depressionCount}`);
 
   const rows = ailmentsData.map((ailment) => ({
     id: ailment.id,

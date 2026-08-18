@@ -4,7 +4,9 @@ export type CategorySlug =
   | 'digestive-health'
   | 'immune-support'
   | 'skin-care'
-  | 'respiratory';
+  | 'respiratory'
+  | 'womens-health'
+  | 'mens-health';
 
 export type CategoryVisual = {
   slug: CategorySlug;
@@ -49,6 +51,18 @@ export const CATEGORY_CATALOG: CategoryVisual[] = [
     name: 'Respiratory Health',
     shortLabel: 'Breath',
     description: 'Cough, congestion, and breathing support from kitchen and clinic herbs.',
+  },
+  {
+    slug: 'womens-health',
+    name: "Women's Health",
+    shortLabel: 'Cycle',
+    description: 'Hormone balance, fertility, menopause, and pregnancy support from the library.',
+  },
+  {
+    slug: 'mens-health',
+    name: "Men's Health",
+    shortLabel: 'Vitality',
+    description: 'Prostate care, stamina, and vitality herbs used across African and global practice.',
   },
 ];
 
