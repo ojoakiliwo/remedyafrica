@@ -163,11 +163,13 @@ export default function ConsultationRoom() {
 
   const getDailyUrl = () => {
     if (!consultation?.dailyRoomUrl) return '';
-    // Add parameters for audio-only mode if needed
-    if (isAudioOnly) {
-      return `${consultation.dailyRoomUrl}?video=off&audio=on`;
+    // Keep any meeting token already on the room URL (`?t=...`).
+    // Audio vs video is configured on the Daily room/token (start_video_off).
+    try {
+      return new URL(consultation.dailyRoomUrl).toString();
+    } catch {
+      return consultation.dailyRoomUrl;
     }
-    return consultation.dailyRoomUrl;
   };
 
   if (loading) {
