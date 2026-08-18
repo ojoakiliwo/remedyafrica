@@ -6,6 +6,7 @@ import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { ailmentsData } from '../lib/data/ailments';
 import { containsPhrase, countMatchingHerbs, findMatchingHerbs } from '../lib/herb-matching';
+import { isAnimalDerivedHerb, isPublicCatalogHerb, pickFeaturedHerbs } from '../lib/herb-trust';
 
 function assert(cond: boolean, message: string) {
   if (!cond) throw new Error(message);
@@ -19,6 +20,25 @@ function unitTests() {
   assert(!containsPhrase('mental-wellness category', 'adhd'), 'adhd absent');
   assert(containsPhrase('Soothing herb for ulcers', 'ulcer'), 'ulcer matches ulcers');
   assert(containsPhrase('ADHD support', 'adhd'), 'ADHD support matches adhd');
+  assert(
+    isAnimalDerivedHerb({ name: 'Ji Nei Jin', scientificName: 'Gallus gallus', description: 'Chicken gizzard lining for digestion', partsUsed: 'Gizzard lining' }),
+    'Ji Nei Jin is animal-derived'
+  );
+  assert(
+    isPublicCatalogHerb({ name: 'Moringa', scientificName: 'Moringa oleifera' }),
+    'Moringa stays public'
+  );
+  assert(
+    !pickFeaturedHerbs(
+      [
+        { id: '1', name: 'Ji Nei Jin', scientificName: 'Gallus gallus', description: 'Chicken gizzard lining' },
+        { id: '2', name: 'Sutherlandia', scientificName: 'Lessertia frutescens', origin: 'South Africa' },
+      ],
+      6,
+      () => true
+    ).some((h) => h.name === 'Ji Nei Jin'),
+    'featured list never includes Ji Nei Jin'
+  );
   console.log('unit tests passed');
 }
 
@@ -51,6 +71,13 @@ async function liveCheck() {
   const depressionCount = countMatchingHerbs(herbs, depression);
   console.log('Depression', depressionCount);
   assert(depressionCount >= 8, `Depression should have curated herbs, got ${depressionCount}`);
+
+  const indigestion = ailmentsData.find((a) => a.id === 'indigestion')!;
+  const digestNames = findMatchingHerbs(herbs, indigestion).map((h: any) => h.name);
+  assert(!digestNames.includes('Ji Nei Jin'), 'Ji Nei Jin must not appear in public digestive matches');
+  const featured = pickFeaturedHerbs(herbs as any, 6, () => true).map((h: any) => h.name);
+  console.log('Featured picks', featured);
+  assert(!featured.includes('Ji Nei Jin'), 'featured picks exclude chicken gizzard');
 
   const rows = ailmentsData.map((ailment) => ({
     id: ailment.id,

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { ArrowRight, Leaf } from 'lucide-react';
 import { getHerbPrimaryImage } from '@/lib/herb-images';
+import { herbOriginLabel } from '@/lib/herb-trust';
 
 export type PreviewHerb = {
   id: string;
@@ -54,7 +55,7 @@ export function HerbPreviewCard({ herb }: { herb: PreviewHerb }) {
       </div>
       <div className="flex flex-1 flex-col p-6">
         <p className="text-[11px] tracking-[0.2em] uppercase text-bronze">
-          {herb.origin || 'African tradition'}
+          {herbOriginLabel(herb.origin)}
         </p>
         <h3 className="mt-2 font-serif text-2xl text-forest leading-tight">{herb.name}</h3>
         {herb.scientificName && (

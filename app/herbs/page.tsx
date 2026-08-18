@@ -7,6 +7,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { getAilmentById } from '@/lib/data/ailments';
 import { findMatchingHerbs } from '@/lib/herb-matching';
+import { isPublicCatalogHerb } from '@/lib/herb-trust';
 import { HerbPreviewCard, PreviewHerb } from '@/components/editorial/HerbPreviewCard';
 import { EditorialPage, PageHero, LoadingScreen, DisclaimerNote } from '@/components/editorial/PageHero';
 
@@ -38,7 +39,7 @@ export default function HerbsListingPage() {
             })
           );
         } else {
-          setHerbs(herbsData);
+          setHerbs(herbsData.filter((herb) => isPublicCatalogHerb(herb)));
         }
       } catch (error) {
         console.error('Error loading herbs:', error);

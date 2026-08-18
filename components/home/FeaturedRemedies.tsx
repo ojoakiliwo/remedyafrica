@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { collection, getDocs, limit, query } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { getHerbPrimaryImage } from '@/lib/herb-images';
+import { herbOriginLabel, pickFeaturedHerbs } from '@/lib/herb-trust';
 import { ArrowRight, Leaf } from 'lucide-react';
 
 type FeaturedHerb = {
@@ -13,6 +14,7 @@ type FeaturedHerb = {
   scientificName?: string;
   origin?: string;
   image?: string;
+  description?: string;
 };
 
 function RemedyCard({ herb }: { herb: FeaturedHerb }) {
@@ -40,7 +42,7 @@ function RemedyCard({ herb }: { herb: FeaturedHerb }) {
         <div className="absolute inset-0 bg-gradient-to-t from-forest-deep/85 via-forest-deep/20 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-6 text-cream">
           <p className="text-[11px] tracking-[0.22em] uppercase text-bronze mb-2">
-            {herb.origin || 'African tradition'}
+            {herbOriginLabel(herb.origin)}
           </p>
           <h3 className="font-serif text-2xl leading-tight">{herb.name}</h3>
           {herb.scientificName && (
@@ -62,19 +64,23 @@ export default function FeaturedRemedies() {
   useEffect(() => {
     const load = async () => {
       try {
-        const snap = await getDocs(query(collection(db, 'herbs'), limit(48)));
-        const mapped: FeaturedHerb[] = snap.docs.map((d) => {
-          const data = d.data() as any;
-          return {
-            id: d.id,
-            name: data.name || 'Herb',
-            scientificName: data.scientificName,
-            origin: data.origin,
-            image: getHerbPrimaryImage(data),
-          };
+        const snap = await getDocs(collection(db, 'herbs'));
+        const records = snap.docs.map((d) => {
+          const data = d.data() as Record<string, unknown>;
+          return { id: d.id, ...data };
         });
-        const withPhotos = mapped.filter((h) => h.image);
-        setHerbs((withPhotos.length ? withPhotos : mapped).slice(0, 6));
+        const picked = pickFeaturedHerbs(records as any, 6, (herb) =>
+          Boolean(getHerbPrimaryImage(herb))
+        );
+        setHerbs(
+          picked.map((herb: any) => ({
+            id: herb.id,
+            name: herb.name || 'Herb',
+            scientificName: herb.scientificName,
+            origin: herb.origin,
+            image: getHerbPrimaryImage(herb),
+          }))
+        );
       } catch {
         setHerbs([]);
       } finally {

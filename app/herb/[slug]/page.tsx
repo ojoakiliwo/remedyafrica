@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getHerbById, getAllHerbs } from '@/lib/firebase/herbs';
+import { isAnimalDerivedHerb, isPublicCatalogHerb } from '@/lib/herb-trust';
 import { useSubscription } from '@/providers/SubscriptionProvider';
 import { getHerbImages, getHerbPrimaryImage } from '@/lib/herb-images';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
@@ -88,11 +89,15 @@ export default function HerbDetailPage() {
         }
         
         if (data) {
+          if (isAnimalDerivedHerb(data)) {
+            setError('Herb not found');
+            return;
+          }
           setHerb(data);
           
           const allHerbs = await getAllHerbs();
           const related = allHerbs
-            .filter((h: any) => h.category === data.category && h.id !== data.id)
+            .filter((h: any) => isPublicCatalogHerb(h) && h.category === data.category && h.id !== data.id)
             .slice(0, 3);
           setRelatedHerbs(related);
         } else {

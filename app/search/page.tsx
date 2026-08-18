@@ -51,6 +51,7 @@ import {
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { publicCatalogHerbs } from '@/lib/herb-trust';
 
 /* ─────────── Types ─────────── */
 interface Herb {
@@ -228,7 +229,7 @@ function SearchPageContent() {
   /* ── Load all herbs once ── */
   useEffect(() => {
     getDocs(collection(db, 'herbs')).then(snap => {
-      setAllHerbs(snap.docs.map(d => ({ id: d.id, ...d.data() } as Herb)));
+      setAllHerbs(publicCatalogHerbs(snap.docs.map(d => ({ id: d.id, ...d.data() } as Herb))));
     });
   }, []);
 

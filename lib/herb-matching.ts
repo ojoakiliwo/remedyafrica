@@ -6,6 +6,8 @@
  * or from hardcoded placeholders.
  */
 
+import { isPublicCatalogHerb } from '@/lib/herb-trust';
+
 export type MatchableHerb = {
   id?: string;
   name?: string;
@@ -118,7 +120,9 @@ export function findMatchingHerbs<T extends MatchableHerb>(
   herbs: T[],
   ailment: AilmentMatchInput
 ): T[] {
-  return herbs.filter((herb) => herbMatchesAilment(herb, ailment));
+  return herbs.filter(
+    (herb) => isPublicCatalogHerb(herb) && herbMatchesAilment(herb, ailment)
+  );
 }
 
 export function countMatchingHerbs(herbs: MatchableHerb[], ailment: AilmentMatchInput): number {
@@ -132,6 +136,7 @@ export function uniqueHerbsMatchingAnyAilment<T extends MatchableHerb>(
   const seen = new Set<string>();
   const matched: T[] = [];
   for (const herb of herbs) {
+    if (!isPublicCatalogHerb(herb)) continue;
     if (!ailments.some((ailment) => herbMatchesAilment(herb, ailment))) continue;
     const key = herb.id || herb.name || String(matched.length);
     if (seen.has(key)) continue;
