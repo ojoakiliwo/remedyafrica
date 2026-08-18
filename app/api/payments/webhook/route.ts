@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
 import { db } from '@/lib/firebase/client';
 import { doc, getDoc, setDoc, serverTimestamp, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { markUserSubscriptionTier } from '@/lib/payments';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -124,6 +125,8 @@ async function handlePaystackChargeSuccess(data: any) {
 
     console.log(`[Paystack] Created quarterly subscription for ${userId}`);
   }
+
+  await markUserSubscriptionTier(userId, planId);
 
   await setDoc(
     doc(db, 'payments', data.reference),
@@ -337,6 +340,8 @@ async function handleFlutterwaveChargeCompleted(data: any) {
 
     console.log(`[Flutterwave] Created quarterly subscription for ${userId}`);
   }
+
+  await markUserSubscriptionTier(userId, planId);
 
   await setDoc(
     doc(db, 'payments', txRef),

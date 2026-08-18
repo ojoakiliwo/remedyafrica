@@ -1,6 +1,6 @@
 // app/api/payments/initiate/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { SUBSCRIPTION_PLANS } from '@/lib/payments';
+import { SUBSCRIPTION_PLANS, getPlanPriceNGN } from '@/lib/payments';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -92,8 +92,9 @@ async function initiatePaystack(
   }
 
   const txRef = `remedy-${userId.slice(0, 8)}-${Date.now()}`;
+  const ngnAmount = await getPlanPriceNGN(plan.id);
 
-  console.log('[Initiate] Calling Paystack with:', { email, amount: plan.priceNGN * 100, txRef });
+  console.log('[Initiate] Calling Paystack with:', { email, amount: ngnAmount * 100, txRef });
 
   let response;
   try {
@@ -105,7 +106,7 @@ async function initiatePaystack(
       },
       body: JSON.stringify({
         email,
-        amount: plan.priceNGN * 100, // kobo
+        amount: ngnAmount * 100, // kobo
         reference: txRef,
         callback_url: callback,
         metadata: {
@@ -194,7 +195,7 @@ async function initiateFlutterwave(
         },
         customizations: {
           title: 'RemedyAfrica — 3 Month Subscription',
-          description: `${plan.name} Plan — ${plan.description}`,
+          description: `${plan.name} — ${plan.headline}`,
           logo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://your-app.vercel.app'}/logo.png`
         },
         meta: {

@@ -3,76 +3,66 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { getSubscriptionStatus } from '@/lib/payments';
-import { 
-  SUBSCRIPTION_PLANS, 
+import {
+  SUBSCRIPTION_PLANS,
   PaymentGateway,
-  getPlanPriceNGN
+  getSubscriptionStatus,
 } from '@/lib/payments';
 import { getExchangeRate } from '@/lib/exchange-rate';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Check, 
-  Loader2, 
-  Globe, 
-  CreditCard, 
-  Zap, 
-  Crown, 
+import {
+  Check,
+  Loader2,
   Shield,
-  ArrowLeft,
-  TrendingUp,
-  MessageSquare,
   Calendar,
-  RefreshCw
+  Leaf,
+  Users,
+  MessageSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { EditorialPage, PageHero, DisclaimerNote } from '@/components/editorial/PageHero';
 
 export default function SubscriptionPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(
+    searchParams.get('plan')
+  );
   const [selectedGateway, setSelectedGateway] = useState<PaymentGateway>('paystack');
   const [processing, setProcessing] = useState(false);
   const [currentSub, setCurrentSub] = useState<any>(null);
-  const [checkingSub, setCheckingSub] = useState(true);
+  const [checkingSub, setCheckingSub] = useState(false);
   const [exchangeRate, setExchangeRate] = useState<number>(1600);
-  const [loadingRate, setLoadingRate] = useState(true);
-  const [ngnPrices, setNgnPrices] = useState<Record<string, number>>({});
+  const [ngnPrices, setNgnPrices] = useState<Record<string, number>>(() => {
+    const prices: Record<string, number> = {};
+    for (const plan of SUBSCRIPTION_PLANS) {
+      prices[plan.id] = Math.round(plan.priceUSD * 1600);
+    }
+    return prices;
+  });
 
   const canceled = searchParams.get('canceled') === 'true';
   const verified = searchParams.get('verified') === 'true';
 
   useEffect(() => {
     if (canceled) toast.error('Payment was canceled. You can try again.');
-    if (verified) toast.success('Payment successful! Your 3-month subscription is now active.');
+    if (verified) toast.success('You are covered for the next three months.');
   }, [canceled, verified]);
 
-  // Load exchange rate and calculate NGN prices
   useEffect(() => {
     const loadRates = async () => {
       try {
         const rate = await getExchangeRate();
         setExchangeRate(rate);
-        
         const prices: Record<string, number> = {};
         for (const plan of SUBSCRIPTION_PLANS) {
           prices[plan.id] = Math.round(plan.priceUSD * rate);
         }
         setNgnPrices(prices);
-      } catch (err) {
-        console.error('Failed to load exchange rate:', err);
-        // Fallback: use hardcoded calculations
-        const prices: Record<string, number> = {};
-        for (const plan of SUBSCRIPTION_PLANS) {
-          prices[plan.id] = Math.round(plan.priceUSD * 1600);
-        }
-        setNgnPrices(prices);
-      } finally {
-        setLoadingRate(false);
+      } catch {
+        // Keep the fallback already on screen.
       }
     };
     loadRates();
@@ -81,9 +71,11 @@ export default function SubscriptionPage() {
   useEffect(() => {
     const loadSub = async () => {
       if (!user) {
+        setCurrentSub(null);
         setCheckingSub(false);
         return;
       }
+      setCheckingSub(true);
       try {
         const sub = await getSubscriptionStatus(user.uid);
         setCurrentSub(sub);
@@ -97,12 +89,12 @@ export default function SubscriptionPage() {
   }, [user]);
 
   useEffect(() => {
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const africanTimezones = ['Africa/Lagos', 'Africa/Accra', 'Africa/Nairobi', 'Africa/Johannesburg', 'Africa/Abidjan'];
-    if (africanTimezones.some(tz => timezone.includes(tz))) {
-      setSelectedGateway('paystack');
-    } else {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    const overseas = ['America/', 'Europe/', 'Australia/', 'Pacific/', 'Atlantic/'];
+    if (overseas.some((prefix) => timezone.startsWith(prefix))) {
       setSelectedGateway('flutterwave');
+    } else {
+      setSelectedGateway('paystack');
     }
   }, []);
 
@@ -122,7 +114,7 @@ export default function SubscriptionPage() {
     setProcessing(true);
 
     try {
-      const plan = SUBSCRIPTION_PLANS.find(p => p.id === planId);
+      const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId);
       if (!plan) throw new Error('Plan not found');
 
       const payload = {
@@ -130,13 +122,13 @@ export default function SubscriptionPage() {
         userId: user.uid,
         planId,
         gateway: selectedGateway,
-        callbackUrl: `${window.location.origin}/subscription`
+        callbackUrl: `${window.location.origin}/subscription`,
       };
 
       const response = await fetch('/api/payments/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
 
       const text = await response.text();
@@ -164,7 +156,7 @@ export default function SubscriptionPage() {
     }
   };
 
-  if (authLoading || checkingSub || loadingRate) {
+  if (authLoading || (user && checkingSub)) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
         <Loader2 className="w-12 h-12 text-bronze animate-spin" />
@@ -174,326 +166,245 @@ export default function SubscriptionPage() {
 
   const isActive = currentSub?.status === 'active';
   const activePlanId = currentSub?.plan;
+  const payInNaira = selectedGateway === 'paystack';
 
-  const getPrice = (planId: string): number => {
-    const plan = SUBSCRIPTION_PLANS.find(p => p.id === planId)!;
-    if (selectedGateway === 'paystack') {
+  const quarterlyPrice = (planId: string): number => {
+    const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId)!;
+    if (payInNaira) {
       return ngnPrices[planId] || Math.round(plan.priceUSD * exchangeRate);
     }
     return plan.priceUSD;
   };
 
-  const getCurrency = () => selectedGateway === 'paystack' ? '₦' : '$';
+  const formatMoney = (amount: number) =>
+    payInNaira ? `₦${amount.toLocaleString()}` : `$${amount.toLocaleString()}`;
+
+  const monthlyLabel = (planId: string) => {
+    const q = quarterlyPrice(planId);
+    if (payInNaira) return `₦${Math.round(q / 3).toLocaleString()}`;
+    return `$${(q / 3).toFixed(0)}`;
+  };
 
   return (
-    <div className="min-h-screen bg-cream">
-      {/* Hero */}
-      <div className="bg-forest text-white py-16 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Choose Your Path to Wellness</h1>
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Access traditional African healing wisdom. Connect with verified practitioners. 
-            Join a community on the journey to natural wellness.
-          </p>
-          <p className="text-bronze mt-3 font-medium">
-            <Calendar className="w-4 h-4 inline mr-1" />
-            All plans cover 3 months — consultations INCLUDED, no extra fees
-          </p>
-        </div>
-      </div>
+    <EditorialPage>
+      <PageHero
+        eyebrow="Care, not a software license"
+        title="A healer for the house — for three months at a time."
+        subtitle="Healing is not a monthly app. You talk, you follow a protocol, you come back. That is why every plan covers a season, not a week."
+      />
 
-      <div className="max-w-6xl mx-auto px-4 py-12">
-        {/* Exchange Rate Badge */}
-        <div className="flex justify-center mb-6">
-          <Badge variant="outline" className="text-xs text-gray-500 bg-white">
-            <RefreshCw className="w-3 h-3 mr-1" />
-            Live rate: $1 = ₦{exchangeRate.toLocaleString()}
-          </Badge>
-        </div>
-
-        {/* Current Subscription */}
+      <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
         {isActive && (
-          <Card className="mb-8 border-green-200 bg-green-50">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <Check className="w-6 h-6 text-green-600" />
-                <div>
-                  <h3 className="font-bold text-green-900">
-                    Active {currentSub.planName} — {currentSub.consultationsPerMonth >= 999 ? 'Unlimited' : currentSub.consultationsPerMonth} consultations/month
-                  </h3>
-                  <p className="text-sm text-green-700">
-                    Valid until {currentSub.expiresAt?.toDate?.().toLocaleDateString?.() || '3 months from start'}
-                  </p>
-                </div>
-                <Link href="/subscription/manage" className="ml-auto">
-                  <Button variant="outline" size="sm" className="border-green-600 text-green-700">
-                    Manage
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="mb-12 rounded-[2rem] border border-forest/15 bg-white px-6 py-5 sm:px-8 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-forest/10">
+              <Check className="h-5 w-5 text-forest" />
+            </div>
+            <div className="flex-1">
+              <p className="font-serif text-xl text-forest">
+                You are on {currentSub.planName}
+              </p>
+              <p className="mt-1 text-sm text-ink-muted">
+                Covered until{' '}
+                {currentSub.expiresAt?.toDate?.().toLocaleDateString?.() ||
+                  'the end of this season'}
+              </p>
+            </div>
+            <Link
+              href="/subscription/manage"
+              className="inline-flex rounded-full border border-forest/20 px-5 py-2 text-sm font-medium text-forest hover:bg-cream"
+            >
+              Manage
+            </Link>
+          </div>
         )}
 
-        {/* Gateway Selector */}
-        <div className="flex justify-center mb-10">
-          <div className="bg-white rounded-lg p-1 shadow-sm border inline-flex">
-            <button
-              type="button"
-              onClick={() => setSelectedGateway('paystack')}
-              className={`px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                selectedGateway === 'paystack'
-                  ? 'bg-forest text-white shadow'
-                  : 'text-gray-600 hover:text-forest'
-              }`}
-            >
-              <CreditCard className="w-4 h-4" />
-              Paystack (NGN)
-              <Badge variant="outline" className="text-[10px] ml-1 bg-white/20">Africa</Badge>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedGateway('flutterwave')}
-              className={`px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
-                selectedGateway === 'flutterwave'
-                  ? 'bg-forest text-white shadow'
-                  : 'text-gray-600 hover:text-forest'
-              }`}
-            >
-              <Globe className="w-4 h-4" />
-              Flutterwave (USD)
-              <Badge variant="outline" className="text-[10px] ml-1 bg-white/20">Global</Badge>
-            </button>
+        <div className="mb-14 grid gap-6 md:grid-cols-2">
+          <div className="rounded-[2rem] border border-forest/10 bg-white p-8">
+            <p className="eyebrow">Always free</p>
+            <h2 className="mt-3 font-serif text-2xl text-forest">Read first. Pay only to talk.</h2>
+            <ul className="mt-6 space-y-3 text-sm leading-relaxed text-ink">
+              {[
+                'Search how you feel in your own words',
+                'Read the herb library, including local names',
+                'See cautions and side effects — we do not lock safety',
+              ].map((item) => (
+                <li key={item} className="flex gap-3">
+                  <Leaf className="mt-0.5 h-4 w-4 shrink-0 text-bronze" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-[2rem] border border-bronze/30 bg-forest p-8 text-cream">
+            <p className="eyebrow text-bronze">What you actually buy</p>
+            <h2 className="mt-3 font-serif text-2xl">A person who has used these plants.</h2>
+            <p className="mt-4 text-sm leading-relaxed text-cream/75">
+              A private visit to a healer often costs more than one month here. Premium is two
+              conversations a month, included. You are not paying to browse bitter leaf.
+            </p>
           </div>
         </div>
 
-        {/* Plans */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
+        <p className="mb-8 text-center text-sm text-ink-muted">
+          {payInNaira
+            ? 'You will pay in naira. Cards and transfers from Nigeria are accepted.'
+            : 'International cards are charged in US dollars.'}
+        </p>
+
+        <div className="grid items-stretch gap-8 lg:grid-cols-3 mb-16">
           {SUBSCRIPTION_PLANS.map((plan) => {
-            const price = getPrice(plan.id);
-            const currency = getCurrency();
+            const price = quarterlyPrice(plan.id);
             const isSelected = selectedPlan === plan.id;
             const isCurrentPlan = activePlanId === plan.id;
             const isButtonDisabled = processing || (isActive && isCurrentPlan);
-            const monthlyEquiv = selectedGateway === 'paystack' 
-              ? Math.round(price / 3).toLocaleString()
-              : (price / 3).toFixed(2);
 
             return (
-              <Card 
+              <article
                 key={plan.id}
-                className={`relative transition-all hover:shadow-xl ${
-                  plan.popular ? 'border-forest border-2 shadow-lg md:scale-105' : 'border-gray-200'
-                } ${isSelected ? 'ring-2 ring-[#97A97C]' : ''}`}
+                className={`relative flex flex-col rounded-[2rem] border bg-white p-8 shadow-soft ${
+                  plan.popular
+                    ? 'border-bronze/50 lg:-mt-4 lg:mb-[-1rem] lg:pt-10'
+                    : 'border-forest/10'
+                } ${isSelected ? 'ring-2 ring-bronze/40' : ''}`}
               >
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-[#B8860B] text-white px-4 py-1">
-                      <Zap className="w-3 h-3 mr-1" />
-                      Most Popular
-                    </Badge>
-                  </div>
+                  <p className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-bronze px-4 py-1 text-[11px] font-medium uppercase tracking-wider text-cream">
+                    Most families choose this
+                  </p>
                 )}
 
-                <CardHeader className="text-center pb-4">
-                  <CardTitle className="text-2xl font-bold text-forest">
-                    {plan.name}
-                  </CardTitle>
-                  <p className="text-sm text-gray-500 mt-1">{plan.description}</p>
-                </CardHeader>
+                <p className="eyebrow text-bronze">{plan.name}</p>
+                <h3 className="mt-3 font-serif text-2xl leading-snug text-forest">
+                  {plan.headline}
+                </h3>
+                <p className="mt-3 text-sm leading-relaxed text-ink-muted">{plan.whoItsFor}</p>
 
-                <CardContent className="text-center pb-6">
-                  <div className="mb-1">
-                    <span className="text-4xl font-bold text-forest">
-                      {currency}{price.toLocaleString()}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 mb-1">Every 3 months</p>
-                  <p className="text-xs text-bronze mb-2">
-                    ~{currency}{monthlyEquiv}/month
+                <div className="mt-8">
+                  <p className="font-serif text-4xl text-forest">{monthlyLabel(plan.id)}</p>
+                  <p className="mt-1 text-sm text-ink-muted">a month</p>
+                  <p className="mt-2 text-xs text-ink-muted">
+                    Billed {formatMoney(price)} every 3 months
                   </p>
-                  
-                  {/* Consultation badge */}
-                  <div className="mb-4">
-                    <Badge className="bg-blue-50 text-blue-700 border-blue-200">
-                      {plan.consultationsPerMonth >= 999 
-                        ? 'Unlimited consultations' 
-                        : `${plan.consultationsPerMonth} consultations/month INCLUDED`
-                      }
-                    </Badge>
-                  </div>
+                </div>
 
-                  <ul className="space-y-3 text-left mb-8">
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-3 text-sm">
-                        <Check className="w-5 h-5 text-bronze shrink-0 mt-0.5" />
-                        <span className="text-gray-700">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <ul className="mt-8 flex-1 space-y-3">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-3 text-sm text-ink">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-bronze" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
 
+                <div className="mt-8">
                   {!user ? (
                     <Button
                       type="button"
                       onClick={() => router.push('/login?redirect=/subscription')}
-                      className={`w-full h-12 text-base ${
+                      className={`h-12 w-full rounded-full text-base ${
                         plan.popular
-                          ? 'bg-forest hover:bg-forest-mist text-white'
-                          : 'bg-forest hover:bg-forest-mist text-white'
+                          ? 'bg-forest text-cream hover:bg-forest-mist'
+                          : 'bg-cream text-forest hover:bg-white border border-forest/15'
                       }`}
                     >
-                      Sign In to Subscribe
+                      Sign in to continue
                     </Button>
                   ) : (
                     <Button
                       type="button"
                       onClick={() => handleSubscribe(plan.id)}
                       disabled={isButtonDisabled}
-                      className={`w-full h-12 text-base ${
+                      className={`h-12 w-full rounded-full text-base ${
                         plan.popular
-                          ? 'bg-forest hover:bg-forest-mist text-white'
-                          : 'bg-forest hover:bg-forest-mist text-white'
+                          ? 'bg-forest text-cream hover:bg-forest-mist'
+                          : 'bg-cream text-forest hover:bg-white border border-forest/15'
                       }`}
                     >
                       {processing && isSelected ? (
                         <>
-                          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                          Processing...
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          Opening payment…
                         </>
                       ) : isActive && isCurrentPlan ? (
-                        <>
-                          <Check className="w-5 h-5 mr-2" />
-                          Current Plan
-                        </>
+                        'Your current plan'
                       ) : isActive ? (
-                        <>
-                          <TrendingUp className="w-5 h-5 mr-2" />
-                          Switch to {plan.name}
-                        </>
+                        `Switch to ${plan.name}`
                       ) : (
-                        <>
-                          <Crown className="w-5 h-5 mr-2" />
-                          Subscribe Now
-                        </>
+                        plan.cta
                       )}
                     </Button>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </article>
             );
           })}
         </div>
 
-        {/* For Practitioners */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 mb-16">
-          <div className="md:flex items-center gap-12">
-            <div className="md:w-1/2 mb-8 md:mb-0">
-              <h2 className="text-3xl font-bold text-forest mb-4">
-                Are You a Traditional Healer?
-              </h2>
-              <p className="text-gray-700 mb-6 leading-relaxed">
-                Join our network of verified African traditional medicine practitioners. 
-                Get paid monthly based on how many subscribers you serve. Sell your herbal products directly.
-              </p>
-              <ul className="space-y-3 mb-6">
-                {[
-                  'Paid monthly based on subscriber consultations served',
-                  'Sell your personal herbal products to users',
-                  'No per-consultation fees — subscribers access you directly',
-                  'We handle scheduling and payments',
-                  'Build your reputation with reviews'
-                ].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3">
-                    <Check className="w-4 h-4 text-bronze" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link 
-                href="/practitioners/apply"
-                className="inline-block bg-forest text-white px-8 py-3 rounded-lg font-bold hover:bg-forest-mist transition-colors"
-              >
-                Apply as Practitioner
-              </Link>
+        <div className="mb-16 grid grid-cols-2 gap-8 md:grid-cols-4 text-center">
+          {[
+            { icon: Shield, label: 'Secure payments' },
+            { icon: Users, label: 'Verified healers' },
+            { icon: Calendar, label: 'A season of care' },
+            { icon: MessageSquare, label: 'African owned' },
+          ].map((badge) => (
+            <div key={badge.label}>
+              <badge.icon className="mx-auto mb-2 h-6 w-6 text-bronze" />
+              <p className="text-sm font-medium text-forest">{badge.label}</p>
             </div>
-            <div className="md:w-1/2">
-              <div className="bg-cream p-6 rounded-lg">
-                <h3 className="font-bold text-forest mb-4">How Practitioner Earnings Work</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center pb-2 border-b">
-                    <span className="text-gray-600">Subscribers you served this month</span>
-                    <span className="font-bold">42 users</span>
-                  </div>
-                  <div className="flex justify-between items-center pb-2 border-b">
-                    <span className="text-gray-600">Base pay per subscriber</span>
-                    <span className="font-bold">$2.00</span>
-                  </div>
-                  <div className="flex justify-between items-center pb-2 border-b">
-                    <span className="text-gray-600">Product sales (85% to you)</span>
-                    <span className="font-bold text-bronze">+$127.50</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-gray-600 font-semibold">Your monthly payout</span>
-                    <span className="text-bronze font-bold text-lg">$211.50</span>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500 mt-4">
-                  *Actual earnings vary based on subscriber volume and product sales.
-                </p>
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
 
-        {/* FAQ */}
-        <div className="max-w-3xl mx-auto mb-16">
-          <h2 className="text-3xl font-bold text-center text-forest mb-8">Common Questions</h2>
+        <div className="mx-auto max-w-3xl mb-16">
+          <p className="eyebrow text-center">Common questions</p>
+          <h2 className="mt-3 mb-8 text-center font-serif text-3xl text-forest">
+            Before you pay
+          </h2>
           <div className="space-y-4">
             {[
               {
-                q: 'Why 3 months?',
-                a: 'Traditional healing takes time. A 3-month subscription gives you enough time to work with a practitioner, follow a protocol, and see real results.'
+                q: 'Why three months, not one?',
+                a: 'A herb protocol is not a ringtone. You need time to talk, follow through, and come back. One month trains you to quit. A season is how traditional care actually works.',
               },
               {
-                q: 'Are consultations really included?',
-                a: 'Yes! Your subscription includes consultations with practitioners. Basic has none, Premium has 2/month, Healer has unlimited. No hidden fees.'
+                q: 'Is Premium expensive?',
+                a: 'If you wanted a wellness app, yes — $8 a month is a lot for a plant list. If you wanted two private conversations with a healer, it is often less than a single clinic visit. That is the product. Basic exists only if you need the camera, not the person.',
               },
               {
-                q: 'Can I switch plans?',
-                a: 'Yes. Upgrade anytime — takes effect immediately. Downgrades apply at your next renewal.'
+                q: 'Are the consultations really included?',
+                a: 'Yes. Premium includes two sessions every month. Household includes as many as the home needs. There is no sitting fee on top. Basic does not include a healer — that is on purpose, so you do not pay for a person you will not meet.',
               },
               {
-                q: 'How do practitioners get paid?',
-                a: 'Practitioners receive monthly payouts based on how many subscribers they served, plus 85% of any herbal products they sell through the platform.'
+                q: 'Can I switch later?',
+                a: 'Yes. Move up whenever you are ready; it starts at once. Moving down waits until this season ends.',
               },
               {
-                q: 'Can I pay from outside Africa?',
-                a: 'Yes! Select "Flutterwave (USD)" to pay with any international card. The NGN amount is calculated at the live exchange rate.'
-              }
-            ].map((faq, idx) => (
-              <div key={idx} className="bg-white rounded-lg shadow p-6">
-                <h3 className="font-bold text-forest mb-2">{faq.q}</h3>
-                <p className="text-gray-600">{faq.a}</p>
+                q: 'I live outside Nigeria.',
+                a: 'Use an international card. We charge dollars. If you are paying from Africa, we take naira so you are not doing the conversion in your head at the till.',
+              },
+            ].map((faq) => (
+              <div key={faq.q} className="rounded-[1.5rem] border border-forest/10 bg-white p-6">
+                <h3 className="font-serif text-xl text-forest">{faq.q}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-ink-muted">{faq.a}</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Trust Badges */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-          {[
-            { icon: <Shield className="w-8 h-8 text-bronze mx-auto mb-2" />, label: 'Secure Payments' },
-            { icon: <Check className="w-8 h-8 text-bronze mx-auto mb-2" />, label: 'Verified Healers' },
-            { icon: <MessageSquare className="w-8 h-8 text-bronze mx-auto mb-2" />, label: '24/7 Support' },
-            { icon: <Globe className="w-8 h-8 text-bronze mx-auto mb-2" />, label: 'African Owned' }
-          ].map((badge, i) => (
-            <div key={i}>
-              {badge.icon}
-              <p className="text-sm font-semibold text-forest">{badge.label}</p>
-            </div>
-          ))}
-        </div>
+        <DisclaimerNote>
+          <p>
+            RemedyAfrica is not a hospital. A subscription is access to traditional practitioners
+            and a library — not a diagnosis. If someone is in danger, go to emergency care first.
+          </p>
+          <p className="mt-4">
+            Are you a healer?{' '}
+            <Link href="/practitioners/apply" className="text-forest underline underline-offset-4">
+              Apply to practise here
+            </Link>
+            . We keep that conversation off this page so families are not shopping while reading
+            someone else’s pay.
+          </p>
+        </DisclaimerNote>
       </div>
-    </div>
+    </EditorialPage>
   );
 }

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase/client';
 import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { markUserSubscriptionTier } from '@/lib/payments';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -75,9 +76,9 @@ async function verifyPaystack(reference: string) {
     );
   }
 
-  // Update subscription
+  // Update subscription — every plan is a 3-month season
   const expiresAt = new Date();
-  expiresAt.setMonth(expiresAt.getMonth() + 1);
+  expiresAt.setMonth(expiresAt.getMonth() + 3);
 
   await setDoc(doc(db, 'users', userId, 'subscription', 'current'), {
     plan: planId,
@@ -87,9 +88,9 @@ async function verifyPaystack(reference: string) {
     reference,
     amount: data.data.amount / 100,
     currency: data.data.currency,
-    interval: 'monthly',
+    interval: 'quarterly',
     startedAt: serverTimestamp(),
-    expiresAt: serverTimestamp(),
+    expiresAt,
     updatedAt: serverTimestamp(),
     paystackData: {
       channel: data.data.channel,
@@ -115,6 +116,10 @@ async function verifyPaystack(reference: string) {
     },
     { merge: true }
   );
+
+  if (planId) {
+    await markUserSubscriptionTier(userId, planId);
+  }
 
   return NextResponse.json({
     success: true,
@@ -175,7 +180,9 @@ async function verifyFlutterwave(txRef: string, transactionId: string, status?: 
     );
   }
 
-  // Update subscription
+  const expiresAt = new Date();
+  expiresAt.setMonth(expiresAt.getMonth() + 3);
+
   await setDoc(doc(db, 'users', userId, 'subscription', 'current'), {
     plan: planId,
     planName: planName || planId,
@@ -185,9 +192,9 @@ async function verifyFlutterwave(txRef: string, transactionId: string, status?: 
     transactionId,
     amount: data.data.amount,
     currency: data.data.currency,
-    interval: 'monthly',
+    interval: 'quarterly',
     startedAt: serverTimestamp(),
-    expiresAt: serverTimestamp(),
+    expiresAt,
     updatedAt: serverTimestamp(),
     flutterwaveData: {
       processorResponse: data.data.processor_response,
@@ -214,6 +221,10 @@ async function verifyFlutterwave(txRef: string, transactionId: string, status?: 
     },
     { merge: true }
   );
+
+  if (planId) {
+    await markUserSubscriptionTier(userId, planId);
+  }
 
   return NextResponse.json({
     success: true,

@@ -665,16 +665,16 @@ function SearchPageContent() {
             {showHealers && needsSubscription && (
               <div className="rounded-[2rem] border border-bronze/25 bg-white px-8 py-12 text-center shadow-soft">
                 <Crown className="mx-auto mb-4 h-8 w-8 text-bronze" aria-hidden="true" />
-                <h3 className="font-serif text-2xl text-forest">Practitioner access is for members</h3>
+                <h3 className="font-serif text-2xl text-forest">A healer is included with care plans</h3>
                 <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-muted">
-                  Subscribe to book verified healers. You can still read every public herb without an account.
+                  Premium is two conversations a month. You can still read every public herb without an account.
                 </p>
                 <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                   <Link
                     href="/subscription"
                     className="inline-flex rounded-full bg-forest px-6 py-3 text-sm font-medium text-cream hover:bg-forest-mist"
                   >
-                    View plans
+                    See care plans
                   </Link>
                   {!user && (
                     <Link

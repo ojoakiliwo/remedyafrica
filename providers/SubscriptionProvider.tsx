@@ -3,7 +3,7 @@
 import { createContext, useContext, ReactNode } from 'react';
 import { useAuth } from './AuthProvider';
 
-export type SubscriptionTier = 'free' | 'premium' | 'premium_pro';
+export type SubscriptionTier = 'free' | 'basic' | 'premium' | 'healer' | 'premium_pro';
 
 export interface SubscriptionContextType {
   tier: SubscriptionTier;
@@ -17,18 +17,26 @@ export interface SubscriptionContextType {
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
+function normalizeTier(raw?: string): SubscriptionTier {
+  if (raw === 'basic' || raw === 'premium' || raw === 'healer' || raw === 'premium_pro') {
+    return raw;
+  }
+  return 'free';
+}
+
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
   const { profile } = useAuth();
-  
-  const tier = (profile?.subscriptionTier as SubscriptionTier) || 'free';
-  const isPremium = tier === 'premium' || tier === 'premium_pro';
-  const isPremiumPro = tier === 'premium_pro';
-  
-  // Gate prescription and side effects behind ANY paid tier (premium or premium_pro)
+
+  const tier = normalizeTier(profile?.subscriptionTier);
+  const isPremium =
+    tier === 'basic' || tier === 'premium' || tier === 'healer' || tier === 'premium_pro';
+  const isPremiumPro = tier === 'healer' || tier === 'premium_pro';
+
   const canAccessPrescription = isPremium;
-  const canAccessSideEffects = isPremium;
-  const canAccessForum = isPremiumPro;
-  const canAccessPractitioners = isPremium; // Also gate practitioner directory
+  // Safety notes are never a paywall. Locking cautions trains people to guess.
+  const canAccessSideEffects = true;
+  const canAccessForum = isPremium;
+  const canAccessPractitioners = isPremium;
 
   return (
     <SubscriptionContext.Provider value={{
