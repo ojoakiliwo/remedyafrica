@@ -53,6 +53,7 @@ export default function ConsultationRoom() {
   const [consultation, setConsultation] = useState<Consultation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [roomError, setRoomError] = useState('');
   const [creatingRoom, setCreatingRoom] = useState(false);
   const [callActive, setCallActive] = useState(false);
   const [isAudioOnly, setIsAudioOnly] = useState(false);
@@ -87,6 +88,7 @@ export default function ConsultationRoom() {
 
   const createDailyRoom = async (consultationData: Consultation) => {
     setCreatingRoom(true);
+    setRoomError('');
     try {
       const response = await fetch('/api/daily/create-room', {
         method: 'POST',
@@ -97,14 +99,16 @@ export default function ConsultationRoom() {
         })
       });
 
-      if (!response.ok) throw new Error('Failed to create room');
+      const roomData = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(roomData.error || 'Failed to create room');
+      }
       
-      const roomData = await response.json();
-      
-      // Update consultation with room URL
+      // Update consultation with room URL (also written server-side when admin is configured)
       await updateDoc(doc(db, 'consultations', consultationId), {
         dailyRoomUrl: roomData.roomUrl,
         dailyRoomName: roomData.roomName,
+        roomName: roomData.roomName,
         updatedAt: serverTimestamp()
       });
       
@@ -115,9 +119,9 @@ export default function ConsultationRoom() {
         dailyRoomName: roomData.roomName
       } : null);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating room:', error);
-      setError('Failed to create meeting room. Please refresh to try again.');
+      setRoomError(error.message || 'Failed to create meeting room. Please refresh to try again.');
     } finally {
       setCreatingRoom(false);
     }
@@ -325,7 +329,7 @@ export default function ConsultationRoom() {
                 <div className="text-center p-8">
                   <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-[#2C3E2D] mb-2">Meeting Room Not Available</h3>
-                  <p className="text-gray-600 mb-4">We couldn't create the meeting room. Please try again.</p>
+                  <p className="text-gray-600 mb-4">{roomError || "We couldn't create the meeting room. Please try again."}</p>
                   <Button onClick={() => createDailyRoom(consultation)} className="bg-[#97A97C] hover:bg-[#7A8A63]">
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Retry
