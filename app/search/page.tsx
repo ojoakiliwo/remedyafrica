@@ -68,6 +68,8 @@ interface Herb {
   preparation?: string;
   partsUsed?: string;
   warnings?: string;
+  commonNames?: string[];
+  searchKeywords?: string[];
 }
 
 interface Practitioner {
@@ -315,6 +317,12 @@ function SearchPageContent() {
       const originText = (herb.origin || '').toLowerCase();
       const partsText = (herb.partsUsed || '').toLowerCase();
       const prepText = (herb.preparation || '').toLowerCase();
+      const localNamesText = Array.isArray(herb.commonNames)
+        ? herb.commonNames.join(' ').toLowerCase()
+        : String(herb.commonNames || '').toLowerCase();
+      const keywordsText = Array.isArray(herb.searchKeywords)
+        ? herb.searchKeywords.join(' ').toLowerCase()
+        : String(herb.searchKeywords || '').toLowerCase();
 
       let score = 0;
       const matchedTerms: string[] = [];
@@ -322,6 +330,8 @@ function SearchPageContent() {
       searchTerms.forEach(term => {
         if (nameText.includes(term)) { score += 10; matchedTerms.push(term); }
         if (scientificText.includes(term)) { score += 8; matchedTerms.push(term); }
+        if (localNamesText.includes(term)) { score += 9; matchedTerms.push(term); }
+        if (keywordsText.includes(term)) { score += 6; matchedTerms.push(term); }
         if (usesText.includes(term)) { score += 7; matchedTerms.push(term); }
         if (benefitsText.includes(term)) { score += 6; matchedTerms.push(term); }
         if (descText.includes(term)) { score += 5; matchedTerms.push(term); }

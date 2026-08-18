@@ -148,8 +148,11 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
             <div>
-              <p className="eyebrow">The library</p>
-              <h2 className="mt-4 text-3xl sm:text-4xl text-forest">Remedies from the land</h2>
+              <p className="eyebrow">From the compound</p>
+              <h2 className="mt-4 text-3xl sm:text-4xl text-forest">Plants you already know</h2>
+              <p className="mt-4 text-ink-muted max-w-xl">
+                Bitter leaf, scent leaf, dogoyaro, ginger, zobo — everyday plants from Nigerian gardens, markets, and roadside hedges.
+              </p>
             </div>
             <Link href="/search" className="inline-flex items-center gap-2 text-sm font-medium text-forest hover:text-bronze">
               Browse all herbs <ArrowRight className="h-4 w-4" />

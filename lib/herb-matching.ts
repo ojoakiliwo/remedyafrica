@@ -20,6 +20,8 @@ export type MatchableHerb = {
   ailments?: string[] | string;
   preparation?: string;
   partsUsed?: string;
+  commonNames?: string[] | string;
+  searchKeywords?: string[] | string;
 };
 
 export type AilmentMatchInput = {
@@ -88,6 +90,8 @@ export function herbSearchText(herb: MatchableHerb): string {
     ...flattenField(herb.ailments),
     herb.preparation,
     herb.partsUsed,
+    ...flattenField(herb.commonNames),
+    ...flattenField(herb.searchKeywords),
   ].filter(Boolean) as string[];
 
   return parts.join(' ');

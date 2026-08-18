@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { getHerbPrimaryImage } from '@/lib/herb-images';
-import { herbOriginLabel, pickFeaturedHerbs } from '@/lib/herb-trust';
+import { herbLocalNamesLabel, herbOriginLabel, pickFeaturedHerbs } from '@/lib/herb-trust';
 import { ArrowRight, Leaf } from 'lucide-react';
 
 type FeaturedHerb = {
@@ -15,6 +15,7 @@ type FeaturedHerb = {
   origin?: string;
   image?: string;
   description?: string;
+  localNames?: string;
 };
 
 function RemedyCard({ herb }: { herb: FeaturedHerb }) {
@@ -45,6 +46,9 @@ function RemedyCard({ herb }: { herb: FeaturedHerb }) {
             {herbOriginLabel(herb.origin)}
           </p>
           <h3 className="font-serif text-2xl leading-tight">{herb.name}</h3>
+          {herb.localNames && (
+            <p className="mt-1 text-sm text-cream/80">{herb.localNames}</p>
+          )}
           {herb.scientificName && (
             <p className="mt-1 text-sm italic text-cream/70">{herb.scientificName}</p>
           )}
@@ -79,6 +83,7 @@ export default function FeaturedRemedies() {
             scientificName: herb.scientificName,
             origin: herb.origin,
             image: getHerbPrimaryImage(herb),
+            localNames: herbLocalNamesLabel(herb),
           }))
         );
       } catch {

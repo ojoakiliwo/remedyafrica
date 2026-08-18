@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { ArrowRight, Leaf } from 'lucide-react';
 import { getHerbPrimaryImage } from '@/lib/herb-images';
-import { herbOriginLabel } from '@/lib/herb-trust';
+import { herbLocalNamesLabel, herbOriginLabel } from '@/lib/herb-trust';
 
 export type PreviewHerb = {
   id: string;
@@ -16,6 +16,7 @@ export type PreviewHerb = {
   imageUrl?: string;
   benefits?: string[] | string;
   slug?: string;
+  commonNames?: string[] | string;
 };
 
 function benefitList(herb: PreviewHerb): string[] {
@@ -32,6 +33,7 @@ export function HerbPreviewCard({ herb }: { herb: PreviewHerb }) {
   const showPhoto = Boolean(image) && !imgFailed;
   const href = `/herb/${herb.slug || herb.id}`;
   const tags = benefitList(herb).slice(0, 3);
+  const localNames = herbLocalNamesLabel(herb);
 
   return (
     <Link
@@ -58,6 +60,9 @@ export function HerbPreviewCard({ herb }: { herb: PreviewHerb }) {
           {herbOriginLabel(herb.origin)}
         </p>
         <h3 className="mt-2 font-serif text-2xl text-forest leading-tight">{herb.name}</h3>
+        {localNames && (
+          <p className="mt-1 text-sm text-forest/80">{localNames}</p>
+        )}
         {herb.scientificName && (
           <p className="mt-1 text-sm italic text-ink-muted">{herb.scientificName}</p>
         )}

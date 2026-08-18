@@ -39,6 +39,26 @@ function unitTests() {
     ).some((h) => h.name === 'Ji Nei Jin'),
     'featured list never includes Ji Nei Jin'
   );
+  const householdPreview = pickFeaturedHerbs(
+    [
+      { id: 's', name: 'Sutherlandia', scientificName: 'Lessertia frutescens', origin: 'South Africa' },
+      { id: 'b', name: 'Bitter Leaf', scientificName: 'Vernonia amygdalina', origin: 'West Africa' },
+      { id: 'm', name: 'Moringa', scientificName: 'Moringa oleifera', origin: 'Africa and India' },
+      { id: 'n', name: 'Neem', scientificName: 'Azadirachta indica', origin: 'India Ayurveda' },
+    ],
+    3,
+    (herb) => herb.name === 'Sutherlandia'
+  ).map((h) => h.name);
+  assert(
+    householdPreview.join(',') === 'Bitter Leaf,Moringa,Neem',
+    `household plants outrank photographed South African herbs, got ${householdPreview.join(',')}`
+  );
+  const renamedScent = pickFeaturedHerbs(
+    [{ id: '1', name: 'African Basil (Scent Leaf)', scientificName: 'Ocimum gratissimum', origin: 'Africa' }],
+    1,
+    () => false
+  );
+  assert(renamedScent[0]?.name === 'African Basil (Scent Leaf)', 'featured matcher still finds scent leaf under the old name');
   console.log('unit tests passed');
 }
 
@@ -75,9 +95,24 @@ async function liveCheck() {
   const indigestion = ailmentsData.find((a) => a.id === 'indigestion')!;
   const digestNames = findMatchingHerbs(herbs, indigestion).map((h: any) => h.name);
   assert(!digestNames.includes('Ji Nei Jin'), 'Ji Nei Jin must not appear in public digestive matches');
-  const featured = pickFeaturedHerbs(herbs as any, 6, () => true).map((h: any) => h.name);
+  const featured = pickFeaturedHerbs(herbs as any, 6, () => false).map((h: any) => h.name);
   console.log('Featured picks', featured);
   assert(!featured.includes('Ji Nei Jin'), 'featured picks exclude chicken gizzard');
+  const household = new Set([
+    'Bitter Leaf',
+    'Scent Leaf',
+    'African Basil (Scent Leaf)',
+    'Moringa',
+    'Neem',
+    'Ginger',
+    'Zobo',
+    'Roselle',
+    'Lemon Grass',
+  ]);
+  assert(
+    featured.every((name: string) => household.has(name)),
+    `featured preview should be household Nigerian plants, got ${featured.join(', ')}`
+  );
 
   const rows = ailmentsData.map((ailment) => ({
     id: ailment.id,

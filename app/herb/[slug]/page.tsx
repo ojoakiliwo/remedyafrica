@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { getHerbById, getAllHerbs } from '@/lib/firebase/herbs';
-import { isAnimalDerivedHerb, isPublicCatalogHerb } from '@/lib/herb-trust';
+import { isAnimalDerivedHerb, isPublicCatalogHerb, herbLocalNamesLabel } from '@/lib/herb-trust';
 import { useSubscription } from '@/providers/SubscriptionProvider';
 import { getHerbImages, getHerbPrimaryImage } from '@/lib/herb-images';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
@@ -258,6 +258,9 @@ export default function HerbDetailPage() {
           <div className="space-y-6">
             <div>
               <h1 className="font-serif text-4xl text-forest dark:text-[#F5F5F0] mb-2">{herb.name}</h1>
+              {herbLocalNamesLabel(herb) && (
+                <p className="text-sm text-bronze mb-1">{herbLocalNamesLabel(herb)}</p>
+              )}
               <p className="text-lg text-gray-500 dark:text-gray-400 italic">{herb.scientificName}</p>
             </div>
 

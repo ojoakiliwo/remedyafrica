@@ -1,0 +1,335 @@
+{
+  "existingByScientificName": {
+    "Vernonia amygdalina": {
+      "name": "Bitter Leaf",
+      "commonNames": ["Ewuro", "Onugbu", "Shiwaka"],
+      "origin": "West Africa",
+      "description": "A compound and market staple across Nigeria — Ewuro in Yoruba, Onugbu in Igbo, Shiwaka in Hausa. Fresh leaves go into soups, or are squeezed and boiled as a bitter tonic in traditional malaria, digestion, and cleansing practice.",
+      "searchKeywords": ["ewuro", "onugbu", "shiwaka", "olugbu", "bitterleaf", "nigeria"]
+    },
+    "Ocimum gratissimum": {
+      "name": "Scent Leaf",
+      "commonNames": ["Efirin", "Nchuanwu", "Daidoya"],
+      "origin": "West Africa",
+      "description": "The fragrant kitchen leaf grown in almost every Nigerian compound. Called Efirin (Yoruba), Nchuanwu (Igbo), and Daidoya (Hausa). Families add it to pepper soup and brew the leaves for cough, fever, and stomach upset.",
+      "searchKeywords": ["efirin", "nchuanwu", "daidoya", "scent leaf", "african basil", "nigeria"]
+    },
+    "Moringa oleifera": {
+      "name": "Moringa",
+      "commonNames": ["Ewe Ile", "Zogale", "Okwe oyibo"],
+      "origin": "West Africa",
+      "description": "Drumstick tree leaves sold in markets and grown in yards as Ewe ile (Yoruba) and Zogale (Hausa). A everyday nutrition leaf used as soup green, powder, or tea for strength, immunity, and recovery.",
+      "searchKeywords": ["ewe ile", "zogale", "okwe oyibo", "drumstick tree", "nigeria"]
+    },
+    "Azadirachta indica": {
+      "name": "Neem",
+      "commonNames": ["Dogoyaro", "Dongoyaro"],
+      "origin": "West Africa",
+      "description": "Dogoyaro — the neem tree lining streets and compounds across Nigeria. People boil the bitter leaves or bark for fever, malaria, and wash skin complaints. Easy to find; almost every neighbourhood has a tree.",
+      "searchKeywords": ["dogoyaro", "dongoyaro", "neem", "nigeria"]
+    },
+    "Zingiber officinale": {
+      "name": "Ginger",
+      "commonNames": ["Ata Ile", "Jinja"],
+      "origin": "West Africa",
+      "description": "Ata ile — fresh ginger from every Nigerian market and many home gardens. Pounded into tea or pepper soup for colds, nausea, digestion, and body aches.",
+      "searchKeywords": ["ata ile", "jinja", "ginger", "nigeria"]
+    },
+    "Hibiscus sabdariffa": {
+      "name": "Zobo",
+      "commonNames": ["Zobo", "Isapa", "Sorrel", "Roselle"],
+      "origin": "West Africa",
+      "description": "The red calyces behind zobo drink, sold in every market as dry hibiscus. Steeped as a cold or hot drink for refreshment; traditionally used around blood pressure and as a cooling tea.",
+      "searchKeywords": ["zobo", "isapa", "sorrel", "roselle", "hibiscus tea", "nigeria"]
+    },
+    "Allium sativum": {
+      "name": "Garlic",
+      "commonNames": ["Ayu", "Ayo-ishi"],
+      "origin": "West Africa",
+      "description": "Kitchen garlic (Ayu in Yoruba) found in every stew pot. Crushed raw or boiled in traditional practice for colds, blood pressure, and infections.",
+      "searchKeywords": ["ayu", "ayo-ishi", "garlic", "nigeria"]
+    },
+    "Curcuma longa": {
+      "name": "Turmeric",
+      "commonNames": ["Ata-ile pupa", "La'al turmi"],
+      "origin": "West Africa",
+      "description": "The yellow kitchen rhizome sold beside ginger in Nigerian markets. Used in food and as a warm tea for inflammation, digestion, and skin.",
+      "searchKeywords": ["ata-ile pupa", "laal turmi", "turmeric", "nigeria"]
+    },
+    "Psidium guajava": {
+      "name": "Guava Leaf",
+      "commonNames": ["Gova", "Gwaaba"],
+      "origin": "West Africa",
+      "description": "Guava trees grow in compounds and along roads. Young leaves are boiled for diarrhoea, stomach upset, and as a mouthwash — a first-aid tree many households already have.",
+      "searchKeywords": ["gova", "gwaaba", "guava", "nigeria"]
+    },
+    "Carica papaya": {
+      "name": "Pawpaw Leaf",
+      "commonNames": ["Ibepe", "Okwuru ezi", "Gwanda"],
+      "origin": "West Africa",
+      "description": "Pawpaw grows in almost every Nigerian yard. The unripe fruit and leaves are used in traditional practice for digestion, skin, and recovery drinks.",
+      "searchKeywords": ["pawpaw", "ibepe", "okwuru ezi", "gwanda", "papaya", "nigeria"]
+    },
+    "Garcinia kola": {
+      "name": "Bitter Kola",
+      "commonNames": ["Orogbo", "Aku-ilu", "Namijin goro"],
+      "origin": "West Africa",
+      "description": "Orogbo — chewed at ceremonies and sold on every roadside tray. Traditional use for cough, throat, and as a bitter stimulant; a nut people already keep at home.",
+      "searchKeywords": ["orogbo", "aku-ilu", "namijin goro", "bitter kola", "nigeria"]
+    },
+    "Gongronema latifolium": {
+      "name": "Utazi",
+      "commonNames": ["Utazi", "Arokeke"],
+      "origin": "West Africa",
+      "description": "The bitter soup leaf in Igbo kitchens, sold in every fresh-produce stall. Chewed or added to pepper soup for digestion and blood-sugar traditional use.",
+      "searchKeywords": ["utazi", "arokeke", "nigeria"]
+    },
+    "Piper guineense": {
+      "name": "Uziza",
+      "commonNames": ["Uziza", "Iyere", "Masoro"],
+      "origin": "West Africa",
+      "description": "West African black pepper — uziza leaves and seeds in soups and stews. A market spice used for postpartum recovery, digestion, and colds in traditional kitchens.",
+      "searchKeywords": ["uziza", "iyere", "masoro", "ashanti pepper", "nigeria"]
+    },
+    "Aframomum melegueta": {
+      "name": "Alligator Pepper",
+      "commonNames": ["Atare", "Ose oji", "Citta"],
+      "origin": "West Africa",
+      "description": "Atare — the spice in naming ceremonies and herbal mixtures, sold in every market. Seeds are chewed or boiled for digestion, colds, and as a warming tonic.",
+      "searchKeywords": ["atare", "ose oji", "citta", "alligator pepper", "grains of paradise", "nigeria"]
+    },
+    "Aloe vera": {
+      "name": "Aloe Vera",
+      "commonNames": ["Aloe"],
+      "origin": "West Africa",
+      "description": "Potted on balconies and in compounds across Nigeria. The inner gel is used on burns, cuts, and dry skin; a plant many people already grow at the door.",
+      "searchKeywords": ["aloe", "aloe vera", "nigeria"]
+    },
+    "Tamarindus indica": {
+      "name": "Tamarind",
+      "commonNames": ["Tsamiya", "Ajagbon"],
+      "origin": "West Africa",
+      "description": "Tsamiya — the sour fruit pulp sold in northern and southern markets. Used in drinks and porridges, and in traditional practice for fever, digestion, and as a mild laxative.",
+      "searchKeywords": ["tsamiya", "ajagbon", "tamarind", "nigeria"]
+    },
+    "Vitellaria paradoxa": {
+      "name": "Shea Butter",
+      "commonNames": ["Ori", "Okume", "Kadanya"],
+      "origin": "West Africa",
+      "description": "Ori — raw shea from the savanna belt, in every Nigerian soap and skin stall. Rubbed on dry skin, stretch marks, and minor burns.",
+      "searchKeywords": ["ori", "okume", "kadanya", "shea", "nigeria"]
+    },
+    "Adansonia digitata": {
+      "name": "Baobab",
+      "commonNames": ["Ose", "Kuka"],
+      "origin": "West Africa",
+      "description": "The baobab of the Sahel and northern Nigeria. Dried leaves (kuka) thicken soup; the sour pulp is a market drink and traditional fever and nutrition food.",
+      "searchKeywords": ["ose", "kuka", "baobab", "nigeria"]
+    },
+    "Tetrapleura tetraptera": {
+      "name": "Aidan Fruit",
+      "commonNames": ["Aridan", "Uyayak", "Dawo"],
+      "origin": "West Africa",
+      "description": "The ridged dry fruit in pepper soup and postpartum stews. Sold in spice sections of every southern market; traditionally used after childbirth and for body aches.",
+      "searchKeywords": ["aridan", "uyayak", "dawo", "aidan", "nigeria"]
+    },
+    "Allium cepa": {
+      "name": "Onion",
+      "commonNames": ["Alubosa", "Yabasi"],
+      "origin": "West Africa",
+      "description": "Everyday onion from the kitchen. Warm onion drinks and poultices appear in home care for coughs and colds.",
+      "searchKeywords": ["alubosa", "yabasi", "onion", "nigeria"]
+    },
+    "Syzygium aromaticum": {
+      "name": "Clove",
+      "commonNames": ["Kanafuru"],
+      "origin": "West Africa",
+      "description": "Kanafuru — cloves in every spice box. Chewed or steeped for toothache, cough, and as a warming tea.",
+      "searchKeywords": ["kanafuru", "clove", "nigeria"]
+    },
+    "Monodora myristica": {
+      "name": "Ehuru",
+      "commonNames": ["Ehuru", "Ehiri", "African nutmeg"],
+      "origin": "West Africa",
+      "description": "African nutmeg toasted into soups and pepper soup. A kitchen spice used traditionally for digestion and as a warming postpartum ingredient.",
+      "searchKeywords": ["ehuru", "ehiri", "african nutmeg", "nigeria"]
+    },
+    "Nauclea latifolia": {
+      "name": "African Peach",
+      "commonNames": ["Opon", "Ubulu", "Tafashiya"],
+      "origin": "West Africa",
+      "description": "Opon / Tafashiya — roots and bark sold in herbal stalls for fever and malaria traditional use. A well-known West African fever tree.",
+      "searchKeywords": ["opon", "ubulu", "tafashiya", "nauclea", "african peach", "nigeria"]
+    }
+  },
+  "newHerbs": [
+    {
+      "name": "Lemon Grass",
+      "scientificName": "Cymbopogon citratus",
+      "category": "respiratory",
+      "origin": "West Africa",
+      "partsUsed": "Leaves and stalks",
+      "commonNames": ["Tea bush", "Ewe tea", "Lemon grass"],
+      "description": "The lemon-scented grass planted along fences and in pots across Nigeria. Families boil a handful as tea for fever, colds, stomach upset, and as a daily evening drink.",
+      "preparation": "Wash a few fresh stalks, bruise them, and simmer in water 8–10 minutes. Drink as tea, with or without ginger.",
+      "benefits": ["malaria", "common cold", "digestive aid", "fever", "calming"],
+      "warnings": ["Generally used as food tea; large medicinal doses are not a substitute for malaria treatment.", "Stop if you feel dizzy or nauseous."]
+    },
+    {
+      "name": "Lime",
+      "scientificName": "Citrus aurantifolia",
+      "category": "immune-support",
+      "origin": "West Africa",
+      "partsUsed": "Fruit and leaves",
+      "commonNames": ["Osan wewe", "Orombo", "Alemo"],
+      "description": "Small green limes from compound trees and every fruit stall. The juice and leaf tea are home care for colds, cough, and as a vitamin-C drink with honey or ginger.",
+      "preparation": "Squeeze fresh juice into warm water with honey, or boil a few leaves for a short tea.",
+      "benefits": ["common cold", "cough", "immune support", "sore throat"],
+      "warnings": ["Acidic juice can irritate ulcers and tooth enamel.", "Avoid undiluted juice on empty stomach if you have gastritis."]
+    },
+    {
+      "name": "Cashew Leaf",
+      "scientificName": "Anacardium occidentale",
+      "category": "digestive-health",
+      "origin": "West Africa",
+      "partsUsed": "Leaves, bark, and fruit",
+      "commonNames": ["Kaju", "Cashew"],
+      "description": "Cashew trees are common in yards and along roads in southern Nigeria. Young leaves and bark are boiled in traditional practice for diarrhoea, toothache, and blood-sugar support.",
+      "preparation": "Simmer washed young leaves or a small piece of bark 10–15 minutes. Use as a short course tea, not a daily drink.",
+      "benefits": ["diarrhea", "toothache", "digestive aid"],
+      "warnings": ["Bark teas are astringent — do not use long term.", "Nut shell oil is caustic and is not a medicine."]
+    },
+    {
+      "name": "Miracle Leaf",
+      "scientificName": "Kalanchoe pinnata",
+      "category": "respiratory",
+      "origin": "West Africa",
+      "partsUsed": "Leaves",
+      "commonNames": ["Abamoda", "Never die", "Life plant", "Ewe abamoda"],
+      "description": "Abamoda — the fleshy ‘never die’ plant that roots from a fallen leaf on walls, pots, and dumps. A household first-aid leaf for cough, wounds, and ear discomfort in traditional use.",
+      "preparation": "Warm a washed leaf and apply as a poultice on minor wounds, or squeeze juice for traditional cough use. Do not put leaf juice into the ear if the drum may be damaged.",
+      "benefits": ["cough", "wound healing", "respiratory relief"],
+      "warnings": ["Not for pregnancy in medicinal amounts.", "Contains cardiac glycosides — do not ingest large quantities.", "Seek care for deep wounds or persistent cough."]
+    },
+    {
+      "name": "Ringworm Plant",
+      "scientificName": "Senna alata",
+      "category": "skin-care",
+      "origin": "West Africa",
+      "partsUsed": "Leaves",
+      "commonNames": ["Asunwon", "Nelkhi", "Candle bush"],
+      "description": "Asunwon — the yellow-candle shrub along roads and behind houses. Crushed fresh leaves are a well-known traditional wash for ringworm and other fungal skin spots.",
+      "preparation": "Crush fresh leaves and rub the juice on the affected skin after washing, once or twice daily. Do not eat the leaves as a laxative without guidance.",
+      "benefits": ["ringworm", "antifungal", "eczema support"],
+      "warnings": ["Can irritate broken skin.", "Internal use is strongly laxative and unsafe in pregnancy.", "See a clinic if the rash spreads or looks infected."]
+    },
+    {
+      "name": "Awolowo Leaf",
+      "scientificName": "Chromolaena odorata",
+      "category": "skin-care",
+      "origin": "West Africa",
+      "partsUsed": "Leaves",
+      "commonNames": ["Awolowo", "Siam weed", "Independence leaf", "Obiarakara"],
+      "description": "The common roadside weed many Nigerians call Awolowo leaf. Fresh crushed leaves are pressed on cuts because they are believed to slow bleeding — a plant you can find on almost any path.",
+      "preparation": "Wash young leaves, crush, and press on a cleaned minor cut. This is first aid only.",
+      "benefits": ["wound healing", "cuts"],
+      "warnings": ["Use only on minor surface cuts after cleaning.", "This plant can cause allergy in some people.", "Get medical care for deep wounds, animal bites, or heavy bleeding."]
+    },
+    {
+      "name": "Eyin Olobe",
+      "scientificName": "Phyllanthus amarus",
+      "category": "digestive-health",
+      "origin": "West Africa",
+      "partsUsed": "Whole aerial plant",
+      "commonNames": ["Eyin olobe", "Stone breaker", "Oyomokeiso-amanke edem"],
+      "description": "A small garden and farmland weed used across West Africa as stone breaker. Traditional healers boil the whole plant for kidney discomfort, liver complaints, and fever — easy to pick around homes in the rains.",
+      "preparation": "Wash a small handful of the fresh plant and simmer 10 minutes. Traditional use is short courses, not endless daily tea.",
+      "benefits": ["malaria", "digestive aid", "liver support"],
+      "warnings": ["Not proven to dissolve kidney stones — seek clinical care for loin pain or blood in urine.", "Avoid in pregnancy.", "May affect blood sugar."]
+    },
+    {
+      "name": "Fluted Pumpkin",
+      "scientificName": "Telfairia occidentalis",
+      "category": "immune-support",
+      "origin": "West Africa",
+      "partsUsed": "Leaves and seeds",
+      "commonNames": ["Ugu", "Iroko", "Fluted pumpkin"],
+      "description": "Ugu — the climbing soup vegetable in eastern and southern kitchens, sold in every fresh market. Leaves are eaten as a blood-building green; traditional use also includes recovery after illness.",
+      "preparation": "Add washed leaves to soup at the end of cooking, or blend a small handful into a short-boiled drink. Food use is the usual path.",
+      "benefits": ["immune support", "anemia support", "nutrition"],
+      "warnings": ["Seeds must be cooked; raw bitter seeds can be toxic in quantity.", "This is food, not a treatment for diagnosed anaemia without medical care."]
+    },
+    {
+      "name": "Bitter Melon",
+      "scientificName": "Momordica charantia",
+      "category": "digestive-health",
+      "origin": "West Africa",
+      "partsUsed": "Leaves and fruit",
+      "commonNames": ["Ejirin", "African cucumber", "Balsam pear"],
+      "description": "Ejirin — the bitter climbing gourd on fences and dumps. Leaves and young fruit are used in traditional practice for blood sugar, skin, and malaria support.",
+      "preparation": "Boil a few washed leaves briefly, or cook the young fruit as a vegetable. Keep portions small — it is very bitter.",
+      "benefits": ["digestive aid", "malaria", "skin healing"],
+      "warnings": ["Can lower blood sugar — unsafe with diabetes medicine unless a clinician agrees.", "Avoid in pregnancy.", "Excess can cause stomach cramps."]
+    },
+    {
+      "name": "Bush Mango",
+      "scientificName": "Irvingia gabonensis",
+      "category": "digestive-health",
+      "origin": "West Africa",
+      "partsUsed": "Seeds and fruit",
+      "commonNames": ["Ogbono", "Apon", "Dika"],
+      "description": "Ogbono — the soup-thickening kernel in Igbo and southern kitchens, sold in every condiment stall. Food first; traditional talk also covers fullness and body weight.",
+      "preparation": "Dry-roast and grind the kernels into ogbono soup as usual kitchen practice.",
+      "benefits": ["digestive aid", "nutrition"],
+      "warnings": ["Food allergen for some people.", "Ground seed drinks sold as slimming products are not a medical treatment."]
+    },
+    {
+      "name": "African Yellow Wood",
+      "scientificName": "Enantia chlorantha",
+      "category": "immune-support",
+      "origin": "West Africa",
+      "partsUsed": "Stem bark",
+      "commonNames": ["Awopa", "Osopa", "Yellow bark"],
+      "description": "The bright yellow bark sold in almost every southern herbal market as Awopa. Traditional use is fever, typhoid, and malaria support — a stall herb, not a backyard tree, but easy to find.",
+      "preparation": "A small sliver of bark is simmered 10–15 minutes. Traditional use is short courses under a practitioner.",
+      "benefits": ["malaria", "typhoid support", "fever"],
+      "warnings": ["Bitter bark is potent — do not self-dose high amounts.", "Not a substitute for laboratory-confirmed typhoid or malaria treatment.", "Avoid in pregnancy."]
+    },
+    {
+      "name": "Sandpaper Leaf",
+      "scientificName": "Ficus exasperata",
+      "category": "digestive-health",
+      "origin": "West Africa",
+      "partsUsed": "Leaves",
+      "commonNames": ["Ewe ipin", "Sandpaper leaf"],
+      "description": "The rough fig leaf used to wash pots and calabashes in many compounds. The same leaf is boiled in traditional practice for ulcers, stomach discomfort, and as a wash.",
+      "preparation": "Simmer 3–4 washed young leaves 10 minutes. Traditional ulcer teas are short courses.",
+      "benefits": ["ulcer", "digestive aid", "stomach ulcer"],
+      "warnings": ["Do not scrape skin with the rough leaf as treatment.", "Persistent ulcer symptoms need clinical care."]
+    },
+    {
+      "name": "Waterleaf",
+      "scientificName": "Talinum triangulare",
+      "category": "digestive-health",
+      "origin": "West Africa",
+      "partsUsed": "Leaves and stems",
+      "commonNames": ["Gbure", "Waterleaf", "Gure"],
+      "description": "Gbure — the succulent vegetable in markets every morning, also growing wild in damp yards. Eaten in soup; traditionally talked about as a cooling, gentle diuretic green.",
+      "preparation": "Cook as a vegetable in soup or stew. Light cooking keeps it as food rather than a strong medicine.",
+      "benefits": ["digestive aid", "nutrition"],
+      "warnings": ["High oxalate if eaten raw in large amounts.", "This is food, not a treatment for kidney disease."]
+    },
+    {
+      "name": "Kola Nut",
+      "scientificName": "Cola nitida",
+      "category": "mental-wellness",
+      "origin": "West Africa",
+      "partsUsed": "Seeds (nuts)",
+      "commonNames": ["Obi", "Oji", "Goro"],
+      "description": "Obi / Oji / Goro — the hospitality nut broken at greetings and sold on every tray. Chewed as a bitter stimulant for alertness; traditional use also for digestion and as a social medicine.",
+      "preparation": "A small piece is chewed, as in customary hospitality. This is not a children’s snack.",
+      "benefits": ["focus", "digestive aid", "energy"],
+      "warnings": ["Contains caffeine-like stimulants — avoid in pregnancy, in children, and with heart rhythm problems.", "Can disturb sleep.", "Not for people avoiding stimulants."]
+    }
+  ]
+}
