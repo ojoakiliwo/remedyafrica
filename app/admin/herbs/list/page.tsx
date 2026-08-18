@@ -252,7 +252,7 @@ export default function HerbsListPage() {
               placeholder="Search herbs by name, scientific name, category, origin, or benefits..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 w-full"
+              className="pl-10 w-full bg-white text-ink placeholder:text-ink-muted caret-ink"
             />
           </div>
           {searchQuery && (

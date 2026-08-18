@@ -151,7 +151,7 @@ export default function HomePage() {
               <p className="eyebrow">From the compound</p>
               <h2 className="mt-4 text-3xl sm:text-4xl text-forest">Plants you already know</h2>
               <p className="mt-4 text-ink-muted max-w-xl">
-                Bitter leaf, scent leaf, dogoyaro, ginger, zobo — everyday plants from Nigerian gardens, markets, and roadside hedges.
+                Everyday Nigerian plants first — bitter leaf, scent leaf, dogoyaro, zobo — then well-known African remedies from across the continent.
               </p>
             </div>
             <Link href="/search" className="inline-flex items-center gap-2 text-sm font-medium text-forest hover:text-bronze">

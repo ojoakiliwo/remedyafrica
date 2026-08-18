@@ -6,7 +6,7 @@ import { initializeApp, cert, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { ailmentsData } from '../lib/data/ailments';
 import { containsPhrase, countMatchingHerbs, findMatchingHerbs } from '../lib/herb-matching';
-import { isAnimalDerivedHerb, isPublicCatalogHerb, pickFeaturedHerbs } from '../lib/herb-trust';
+import { isAnimalDerivedHerb, isPublicCatalogHerb, pickFeaturedHerbs, FEATURED_PREVIEW_COUNT } from '../lib/herb-trust';
 
 function assert(cond: boolean, message: string) {
   if (!cond) throw new Error(message);
@@ -53,6 +53,20 @@ function unitTests() {
     householdPreview.join(',') === 'Bitter Leaf,Moringa,Neem',
     `household plants outrank photographed South African herbs, got ${householdPreview.join(',')}`
   );
+  const combinedPreview = pickFeaturedHerbs(
+    [
+      { id: 's', name: 'Sutherlandia', scientificName: 'Lessertia frutescens', origin: 'South Africa' },
+      { id: 'b', name: 'Bitter Leaf', scientificName: 'Vernonia amygdalina', origin: 'West Africa' },
+      { id: 'w', name: 'African Wormwood', scientificName: 'Artemisia afra', origin: 'Southern Africa' },
+      { id: 'm', name: 'Moringa', scientificName: 'Moringa oleifera', origin: 'Africa' },
+    ],
+    4,
+    () => false
+  ).map((h) => h.name);
+  assert(
+    combinedPreview.join(',') === 'Bitter Leaf,Moringa,Sutherlandia,African Wormwood',
+    `preview should mix household then original African herbs, got ${combinedPreview.join(',')}`
+  );
   const renamedScent = pickFeaturedHerbs(
     [{ id: '1', name: 'African Basil (Scent Leaf)', scientificName: 'Ocimum gratissimum', origin: 'Africa' }],
     1,
@@ -95,10 +109,10 @@ async function liveCheck() {
   const indigestion = ailmentsData.find((a) => a.id === 'indigestion')!;
   const digestNames = findMatchingHerbs(herbs, indigestion).map((h: any) => h.name);
   assert(!digestNames.includes('Ji Nei Jin'), 'Ji Nei Jin must not appear in public digestive matches');
-  const featured = pickFeaturedHerbs(herbs as any, 6, () => false).map((h: any) => h.name);
+  const featured = pickFeaturedHerbs(herbs as any, FEATURED_PREVIEW_COUNT, () => false).map((h: any) => h.name);
   console.log('Featured picks', featured);
   assert(!featured.includes('Ji Nei Jin'), 'featured picks exclude chicken gizzard');
-  const household = new Set([
+  const householdLead = new Set([
     'Bitter Leaf',
     'Scent Leaf',
     'African Basil (Scent Leaf)',
@@ -109,9 +123,16 @@ async function liveCheck() {
     'Roselle',
     'Lemon Grass',
   ]);
+  assert(featured.length >= 12, `preview should show household plus original African herbs, got ${featured.length}`);
   assert(
-    featured.every((name: string) => household.has(name)),
-    `featured preview should be household Nigerian plants, got ${featured.join(', ')}`
+    featured.slice(0, 6).every((name: string) => householdLead.has(name)),
+    `first six preview cards should be household Nigerian plants, got ${featured.slice(0, 6).join(', ')}`
+  );
+  assert(
+    featured.some((name: string) =>
+      ['Sutherlandia', 'African Wormwood', 'Pelargonium', 'Buchu', 'African Ginger', 'Imphepho'].includes(name)
+    ),
+    `preview should also include original African botanicals, got ${featured.join(', ')}`
   );
 
   const rows = ailmentsData.map((ailment) => ({

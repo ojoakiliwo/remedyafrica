@@ -5,7 +5,12 @@ import Link from 'next/link';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { getHerbPrimaryImage } from '@/lib/herb-images';
-import { herbLocalNamesLabel, herbOriginLabel, pickFeaturedHerbs } from '@/lib/herb-trust';
+import {
+  FEATURED_PREVIEW_COUNT,
+  herbLocalNamesLabel,
+  herbOriginLabel,
+  pickFeaturedHerbs,
+} from '@/lib/herb-trust';
 import { ArrowRight, Leaf } from 'lucide-react';
 
 type FeaturedHerb = {
@@ -73,7 +78,7 @@ export default function FeaturedRemedies() {
           const data = d.data() as Record<string, unknown>;
           return { id: d.id, ...data };
         });
-        const picked = pickFeaturedHerbs(records as any, 6, (herb) =>
+        const picked = pickFeaturedHerbs(records as any, FEATURED_PREVIEW_COUNT, (herb) =>
           Boolean(getHerbPrimaryImage(herb))
         );
         setHerbs(
@@ -98,7 +103,7 @@ export default function FeaturedRemedies() {
   if (loading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array.from({ length: 6 }).map((_, i) => (
+        {Array.from({ length: FEATURED_PREVIEW_COUNT }).map((_, i) => (
           <div key={i} className="aspect-[4/5] rounded-3xl bg-cream-dark/60 animate-pulse" />
         ))}
       </div>

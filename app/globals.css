@@ -71,6 +71,11 @@
 }
 
 @layer components {
+  /* Admin screens stay on a light canvas; force dark type so search/edit fields stay readable in dark mode. */
+  .admin-input {
+    @apply bg-white text-ink caret-ink placeholder:text-ink-muted;
+    color-scheme: light;
+  }
   .eyebrow {
     @apply text-[11px] sm:text-xs font-semibold uppercase tracking-[0.28em] text-bronze;
   }

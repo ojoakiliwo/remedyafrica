@@ -68,6 +68,33 @@ export const FEATURED_HOUSEHOLD_HERBS: FeaturedHerbSpec[] = [
   { name: 'Tamarind', scientificName: 'Tamarindus indica' },
 ];
 
+/** Well-known African botanicals that were on the original homepage preview. */
+export const FEATURED_CONTINENTAL_HERBS: FeaturedHerbSpec[] = [
+  { name: 'Sutherlandia', scientificName: 'Lessertia frutescens' },
+  { name: 'African Wormwood', scientificName: 'Artemisia afra' },
+  { name: 'Pelargonium', scientificName: 'Pelargonium sidoides' },
+  { name: 'Buchu', scientificName: 'Agathosma betulina' },
+  { name: 'African Ginger', scientificName: 'Siphonochilus aethiopicus' },
+  { name: 'Imphepho', scientificName: 'Helichrysum odoratissimum' },
+  { name: 'African Potato', scientificName: 'Hypoxis hemerocallidea' },
+  { name: 'Cryptolepis', scientificName: 'Cryptolepis sanguinolenta' },
+  { name: 'Honeybush', scientificName: 'Cyclopia intermedia', aliases: ['Cyclopia genistoides'] },
+  { name: 'African Cherry', scientificName: 'Prunus africana' },
+  { name: 'White Ginger', scientificName: 'Mondia whitei' },
+];
+
+export const FEATURED_HOUSEHOLD_LEAD_COUNT = 6;
+
+/** Nigerian household plants first, then the original African preview set. */
+export const FEATURED_HERB_SEQUENCE = [
+  ...FEATURED_HOUSEHOLD_HERBS.slice(0, FEATURED_HOUSEHOLD_LEAD_COUNT),
+  ...FEATURED_CONTINENTAL_HERBS,
+  ...FEATURED_HOUSEHOLD_HERBS.slice(FEATURED_HOUSEHOLD_LEAD_COUNT),
+];
+
+/** Six compound plants plus the original African six. */
+export const FEATURED_PREVIEW_COUNT = 12;
+
 /** @deprecated Use FEATURED_HOUSEHOLD_HERBS. Kept for older call sites. */
 export const FEATURED_HERB_NAMES = FEATURED_HOUSEHOLD_HERBS.map((spec) => spec.name);
 
@@ -153,7 +180,7 @@ export function pickFeaturedHerbs<T extends TrustHerb>(
     ranked.push(herb);
   };
 
-  for (const spec of FEATURED_HOUSEHOLD_HERBS) {
+  for (const spec of FEATURED_HERB_SEQUENCE) {
     const match = publicHerbs.find((herb) => matchesFeaturedSpec(herb, spec));
     push(match);
     if (ranked.length >= count) return ranked.slice(0, count);

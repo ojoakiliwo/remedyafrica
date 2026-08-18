@@ -60,6 +60,9 @@ const VALID_CATEGORIES = [
   { value: 'uncategorized', label: 'Uncategorized' }
 ];
 
+const ADMIN_FIELD =
+  'admin-input w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none';
+
 export default function EditHerbPage() {
   const router = useRouter();
   const params = useParams();
@@ -496,7 +499,7 @@ export default function EditHerbPage() {
                     value={imageUrlInput}
                     onChange={(e) => setImageUrlInput(e.target.value)}
                     placeholder="https://example.com/herb-image.jpg"
-                    className="flex-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none text-sm"
+                    className={`${ADMIN_FIELD} flex-1 text-sm`}
                     aria-label="Image URL"
                   />
                   <Button
@@ -537,7 +540,7 @@ export default function EditHerbPage() {
                   value={formData.name}
                   onChange={handleInputChange}
                   placeholder="e.g., Ashwagandha"
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
+                  className={ADMIN_FIELD}
                 />
               </div>
               <div>
@@ -549,7 +552,7 @@ export default function EditHerbPage() {
                   value={formData.scientificName}
                   onChange={handleInputChange}
                   placeholder="e.g., Withania somnifera"
-                  className="w-full p-2 border border-gray-300 rounded italic focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
+                  className={`${ADMIN_FIELD} italic`}
                 />
               </div>
             </div>
@@ -560,7 +563,7 @@ export default function EditHerbPage() {
                 name="category"
                 value={formData.category}
                 onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
+                className={ADMIN_FIELD}
                 aria-label="Herb category"
                 title="Select herb category"
               >
@@ -578,7 +581,7 @@ export default function EditHerbPage() {
                 value={formData.description}
                 onChange={handleInputChange}
                 placeholder="Brief description for cards and listings"
-                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
+                className={ADMIN_FIELD}
                 rows={2}
               />
             </div>
@@ -590,7 +593,7 @@ export default function EditHerbPage() {
                 value={formData.longDescription}
                 onChange={handleInputChange}
                 placeholder="Detailed description of the herb"
-                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
+                className={ADMIN_FIELD}
                 rows={4}
               />
             </div>
@@ -609,7 +612,7 @@ export default function EditHerbPage() {
                   value={formData.origin}
                   onChange={handleInputChange}
                   placeholder="e.g., India, Ayurveda"
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
+                  className={ADMIN_FIELD}
                 />
               </div>
               <div>
@@ -620,7 +623,7 @@ export default function EditHerbPage() {
                   value={formData.partsUsed}
                   onChange={handleInputChange}
                   placeholder="e.g., Root, Leaves"
-                  className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
+                  className={ADMIN_FIELD}
                 />
               </div>
             </div>
@@ -632,7 +635,7 @@ export default function EditHerbPage() {
                 value={formData.preparation}
                 onChange={handleInputChange}
                 placeholder="How to prepare the herb"
-                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
+                className={ADMIN_FIELD}
                 rows={3}
               />
             </div>
@@ -645,7 +648,7 @@ export default function EditHerbPage() {
                 value={formData.dosage}
                 onChange={handleInputChange}
                 placeholder="e.g., 1-2 cups daily, 500mg capsules"
-                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
+                className={ADMIN_FIELD}
               />
             </div>
 
@@ -656,7 +659,7 @@ export default function EditHerbPage() {
                 value={formData.benefits.join(', ')}
                 onChange={(e) => handleArrayInputChange('benefits', e.target.value)}
                 placeholder="e.g., Reduces stress, Better sleep, Mental clarity"
-                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
+                className={ADMIN_FIELD}
               />
               <p className="text-xs text-gray-500 mt-1">{formData.benefits.length} benefit(s) saved</p>
             </div>
@@ -668,7 +671,7 @@ export default function EditHerbPage() {
                 value={formData.uses.join(', ')}
                 onChange={(e) => handleArrayInputChange('uses', e.target.value)}
                 placeholder="e.g., Anxiety, Insomnia, Stress"
-                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
+                className={ADMIN_FIELD}
               />
             </div>
 
@@ -681,7 +684,7 @@ export default function EditHerbPage() {
                 value={formData.ailments.join(', ')}
                 onChange={(e) => handleArrayInputChange('ailments', e.target.value)}
                 placeholder="e.g., Anxiety, Stress, Insomnia, Depression"
-                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
+                className={ADMIN_FIELD}
               />
             </div>
 
@@ -692,7 +695,7 @@ export default function EditHerbPage() {
                 value={formData.warnings.join(', ')}
                 onChange={(e) => handleArrayInputChange('warnings', e.target.value)}
                 placeholder="e.g., Avoid during pregnancy, May cause drowsiness"
-                className="w-full p-2 border border-red-300 rounded bg-red-50 focus:ring-2 focus:ring-red-300 focus:border-transparent outline-none"
+                className={`${ADMIN_FIELD} border-red-300 bg-red-50`}
               />
             </div>
 
@@ -702,7 +705,7 @@ export default function EditHerbPage() {
                 name="status"
                 value={formData.status}
                 onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-[#97A97C] focus:border-transparent outline-none"
+                className={ADMIN_FIELD}
                 aria-label="Publication status"
                 title="Select publication status"
               >

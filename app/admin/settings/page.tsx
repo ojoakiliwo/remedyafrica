@@ -205,6 +205,7 @@ export default function AdminSettingsPage() {
                     id="siteName"
                     value={settings.siteName}
                     onChange={(e) => handleChange('siteName', e.target.value)}
+                    className="bg-white text-ink placeholder:text-ink-muted caret-ink"
                   />
                 </div>
 

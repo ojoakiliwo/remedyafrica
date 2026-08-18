@@ -262,7 +262,7 @@ export default function AdminPractitionersPage() {
               placeholder="Search practitioners by name, email, specialty, or location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 bg-white text-ink placeholder:text-ink-muted caret-ink"
             />
           </div>
         </div>
