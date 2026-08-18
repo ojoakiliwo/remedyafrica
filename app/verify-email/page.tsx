@@ -60,9 +60,9 @@ export default function VerifyEmailPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
+      <div className="min-h-screen bg-cream flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#97A97C] mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 animate-spin text-bronze mx-auto mb-4" />
           <p className="text-gray-600">Verifying your email...</p>
         </div>
       </div>
@@ -71,17 +71,17 @@ export default function VerifyEmailPage() {
 
   if (status === 'success') {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-cream flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-[#2C3E2D] mb-2">Email Verified!</h2>
+          <h2 className="text-2xl font-bold text-forest mb-2">Email Verified!</h2>
           <p className="text-gray-600 mb-6">
             Your email has been verified. Redirecting you to your dashboard...
           </p>
           <Link href="/dashboard">
-            <Button className="bg-[#97A97C] hover:bg-[#7A8A63]">
+            <Button className="bg-forest hover:bg-forest-mist">
               Go to Dashboard
             </Button>
           </Link>
@@ -91,12 +91,12 @@ export default function VerifyEmailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-cream flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
-        <div className="w-16 h-16 bg-[#97A97C]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Mail className="w-8 h-8 text-[#97A97C]" />
+        <div className="w-16 h-16 bg-forest/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Mail className="w-8 h-8 text-bronze" />
         </div>
-        <h2 className="text-2xl font-bold text-[#2C3E2D] mb-2">Verify Your Email</h2>
+        <h2 className="text-2xl font-bold text-forest mb-2">Verify Your Email</h2>
         <p className="text-gray-600 mb-2">
           We've sent a verification link to your email address.
         </p>
@@ -131,7 +131,7 @@ export default function VerifyEmailPage() {
             )}
           </Button>
           <Link href="/login">
-            <Button className="w-full bg-[#97A97C] hover:bg-[#7A8A63]">
+            <Button className="w-full bg-forest hover:bg-forest-mist">
               Back to Login
             </Button>
           </Link>

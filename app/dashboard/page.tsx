@@ -179,19 +179,19 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F5F5DC]">
-        <Loader2 className="w-12 h-12 text-[#97A97C] animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-cream">
+        <Loader2 className="w-12 h-12 text-bronze animate-spin" />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F5F5DC]">
+      <div className="min-h-screen flex items-center justify-center bg-cream">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold mb-4">Please sign in</h1>
-          <Button onClick={() => router.push('/login')} className="bg-[#97A97C]">
+          <Button onClick={() => router.push('/login')} className="bg-forest">
             Go to Login
           </Button>
         </div>
@@ -203,17 +203,17 @@ export default function DashboardPage() {
   const isSubActive = subscription?.status === 'active' && subscription?.expiresAt && subscription.expiresAt > new Date();
 
   return (
-    <div className="min-h-screen bg-[#F5F5DC]">
-      <div className="bg-[#2C3E2D] text-[#F5F5DC] py-12">
+    <div className="min-h-screen bg-cream">
+      <div className="bg-forest text-[#F5F5DC] py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-4 justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-[#97A97C] rounded-full">
-                <User className="w-8 h-8 text-[#2C3E2D]" />
+              <div className="p-3 bg-forest rounded-full">
+                <User className="w-8 h-8 text-forest" />
               </div>
               <div>
                 <h1 className="text-3xl font-bold">Welcome back, {displayName}</h1>
-                <p className="text-[#97A97C] mt-1">Manage your herbal journey and consultations</p>
+                <p className="text-bronze mt-1">Manage your herbal journey and consultations</p>
               </div>
             </div>
             {isSubActive ? (
@@ -236,14 +236,14 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Link href="/identify">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-[#97A97C]/20 bg-white">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-forest/20 bg-white">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-[#97A97C]/20 rounded-lg">
-                    <Sparkles className="w-6 h-6 text-[#97A97C]" />
+                  <div className="p-3 bg-forest/20 rounded-lg">
+                    <Sparkles className="w-6 h-6 text-bronze" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-[#2C3E2D]">Identify Plant</h3>
+                    <h3 className="font-semibold text-forest">Identify Plant</h3>
                     <p className="text-sm text-stone-600">Upload a photo to identify</p>
                   </div>
                 </div>
@@ -252,14 +252,14 @@ export default function DashboardPage() {
           </Link>
 
           <Link href="/practitioners">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-[#97A97C]/20 bg-white">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-forest/20 bg-white">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-[#97A97C]/20 rounded-lg">
-                    <Calendar className="w-6 h-6 text-[#97A97C]" />
+                  <div className="p-3 bg-forest/20 rounded-lg">
+                    <Calendar className="w-6 h-6 text-bronze" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-[#2C3E2D]">Book Consultation</h3>
+                    <h3 className="font-semibold text-forest">Book Consultation</h3>
                     <p className="text-sm text-stone-600">Find a practitioner</p>
                   </div>
                 </div>
@@ -268,14 +268,14 @@ export default function DashboardPage() {
           </Link>
 
           <Link href="/forum">
-            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-[#97A97C]/20 bg-white">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-forest/20 bg-white">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-[#97A97C]/20 rounded-lg">
-                    <MessageSquare className="w-6 h-6 text-[#97A97C]" />
+                  <div className="p-3 bg-forest/20 rounded-lg">
+                    <MessageSquare className="w-6 h-6 text-bronze" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-[#2C3E2D]">Community</h3>
+                    <h3 className="font-semibold text-forest">Community</h3>
                     <p className="text-sm text-stone-600">Join the discussion</p>
                   </div>
                 </div>
@@ -285,14 +285,14 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card className="border-[#97A97C]/20 bg-white">
+          <Card className="border-forest/20 bg-white">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-[#2C3E2D]">
+              <CardTitle className="flex items-center gap-2 text-forest">
                 <Heart className="w-5 h-5 text-red-500" />
                 Saved Herbs
               </CardTitle>
               <Link href="/herbs">
-                <Button variant="ghost" size="sm" className="text-[#97A97C]">
+                <Button variant="ghost" size="sm" className="text-bronze">
                   View All <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
@@ -303,7 +303,7 @@ export default function DashboardPage() {
                   <Leaf className="w-12 h-12 mx-auto mb-3 opacity-30" />
                   <p>No saved herbs yet</p>
                   <Link href="/herbs">
-                    <Button variant="outline" className="mt-4 border-[#97A97C] text-[#97A97C]" size="sm">
+                    <Button variant="outline" className="mt-4 border-forest text-bronze" size="sm">
                       Browse Herbs
                     </Button>
                   </Link>
@@ -311,15 +311,15 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-3">
                   {savedHerbs.map((herb) => (
-                    <div key={herb.id} className="flex items-center justify-between p-3 bg-[#F5F5DC] rounded-lg">
+                    <div key={herb.id} className="flex items-center justify-between p-3 bg-cream rounded-lg">
                       <div>
-                        <p className="font-medium text-[#2C3E2D]">{herb.herbName}</p>
+                        <p className="font-medium text-forest">{herb.herbName}</p>
                         <p className="text-xs text-stone-500">
                           Saved {herb.savedAt?.toLocaleDateString()}
                         </p>
                       </div>
                       <Link href={`/herb/${herb.herbId}`}>
-                        <Button variant="ghost" size="sm" className="text-[#97A97C]">
+                        <Button variant="ghost" size="sm" className="text-bronze">
                           View
                         </Button>
                       </Link>
@@ -330,14 +330,14 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-[#97A97C]/20 bg-white">
+          <Card className="border-forest/20 bg-white">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-[#2C3E2D]">
-                <Calendar className="w-5 h-5 text-[#97A97C]" />
+              <CardTitle className="flex items-center gap-2 text-forest">
+                <Calendar className="w-5 h-5 text-bronze" />
                 My Consultations
               </CardTitle>
               <Link href="/consultations">
-                <Button variant="ghost" size="sm" className="text-[#97A97C]">
+                <Button variant="ghost" size="sm" className="text-bronze">
                   View All <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
@@ -348,7 +348,7 @@ export default function DashboardPage() {
                   <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
                   <p>No consultations yet</p>
                   <Link href="/practitioners">
-                    <Button variant="outline" className="mt-4 border-[#97A97C] text-[#97A97C]" size="sm">
+                    <Button variant="outline" className="mt-4 border-forest text-bronze" size="sm">
                       Find Practitioner
                     </Button>
                   </Link>
@@ -356,15 +356,15 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-3">
                   {consultations.map((consultation) => (
-                    <div key={consultation.id} className="flex items-center justify-between p-3 bg-[#F5F5DC] rounded-lg">
+                    <div key={consultation.id} className="flex items-center justify-between p-3 bg-cream rounded-lg">
                       <div>
-                        <p className="font-medium text-[#2C3E2D]">{consultation.practitionerName}</p>
+                        <p className="font-medium text-forest">{consultation.practitionerName}</p>
                         <p className="text-xs text-stone-500 capitalize">
                           {consultation.status} • {consultation.scheduledDate?.toLocaleDateString() || 'Not scheduled'}
                         </p>
                       </div>
                       <Link href={`/consultation/${consultation.id}`}>
-                        <Button variant="ghost" size="sm" className="text-[#97A97C]">
+                        <Button variant="ghost" size="sm" className="text-bronze">
                           {consultation.status === 'active' ? 'Join' : 'View'}
                         </Button>
                       </Link>
@@ -375,14 +375,14 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2 border-[#97A97C]/20 bg-white">
+          <Card className="lg:col-span-2 border-forest/20 bg-white">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-[#2C3E2D]">
+              <CardTitle className="flex items-center gap-2 text-forest">
                 <History className="w-5 h-5 text-amber-600" />
                 Plant Identification History
               </CardTitle>
               <Link href="/history">
-                <Button variant="ghost" size="sm" className="text-[#97A97C]">
+                <Button variant="ghost" size="sm" className="text-bronze">
                   View All <ArrowRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
@@ -393,7 +393,7 @@ export default function DashboardPage() {
                   <History className="w-12 h-12 mx-auto mb-3 opacity-30" />
                   <p>No identifications yet</p>
                   <Link href="/identify">
-                    <Button variant="outline" className="mt-4 border-[#97A97C] text-[#97A97C]" size="sm">
+                    <Button variant="outline" className="mt-4 border-forest text-bronze" size="sm">
                       Identify a Plant
                     </Button>
                   </Link>
@@ -401,7 +401,7 @@ export default function DashboardPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   {plantHistory.map((item) => (
-                    <div key={item.id} className="border border-[#97A97C]/20 rounded-lg overflow-hidden bg-[#F5F5DC]">
+                    <div key={item.id} className="border border-forest/20 rounded-lg overflow-hidden bg-cream">
                       <div className="aspect-video bg-stone-100 relative">
                         {item.imageUrl && (
                           <img 
@@ -412,7 +412,7 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <div className="p-3">
-                        <p className="font-medium text-[#2C3E2D]">{item.plantName}</p>
+                        <p className="font-medium text-forest">{item.plantName}</p>
                         <p className="text-xs text-stone-500">
                           {Math.round(item.confidence * 100)}% confidence
                         </p>

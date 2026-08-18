@@ -23,7 +23,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'While occasional anxiety is normal, persistent anxiety may indicate Generalized Anxiety Disorder (GAD), Panic Disorder, or Social Anxiety Disorder. Professional diagnosis and laboratory tests are recommended.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['anxiety', 'stress', 'calm', 'relax', 'nervous', 'worry', 'tension', 'mood']
+    searchKeywords: ['anxiety', 'anxious', 'anxiolytic', 'anxiety relief', 'anxiety reduction', 'calming', 'relax', 'relaxation']
   },
   {
     id: 'stress',
@@ -35,7 +35,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Chronic stress can lead to serious health problems including heart disease, high blood pressure, diabetes, and mental health disorders. Please consult a healthcare provider.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['stress', 'anxiety', 'calm', 'relax', 'tension', 'adaptogen', 'cortisol', 'overwhelm']
+    searchKeywords: ['stress', 'stress relief', 'stress reduction', 'stress support', 'adaptogen', 'overwhelm', 'tension']
   },
   {
     id: 'insomnia',
@@ -47,7 +47,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Insomnia may be a symptom of underlying medical conditions such as sleep apnea, restless leg syndrome, or thyroid problems. Medical evaluation is recommended.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['sleep', 'insomnia', 'calm', 'relax', 'sedative', 'rest', 'night']
+    searchKeywords: ['insomnia', 'sleep support', 'sleep aid', 'better sleep', 'sedative', 'sleep']
   },
   {
     id: 'depression',
@@ -59,7 +59,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Depression is a serious medical condition. If you experience thoughts of self-harm, seek immediate medical help. Professional diagnosis and treatment are essential.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['depression', 'mood', 'anxiety', 'stress', 'mental', 'sad', 'emotional']
+    searchKeywords: ['depression', 'depressive', 'antidepressant', 'low mood']
   },
   {
     id: 'adhd',
@@ -71,7 +71,19 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'ADHD requires professional diagnosis, typically involving behavioral assessments and medical history review. Herbal remedies should complement, not replace, prescribed treatments.',
     commonInAfrica: false,
     associatedHerbs: [],
-    searchKeywords: ['focus', 'concentration', 'memory', 'mental', 'cognitive', 'brain', 'attention']
+    searchKeywords: ['adhd', 'attention deficit', 'hyperactivity', 'hyperactive', 'inattentive']
+  },
+  {
+    id: 'memory-cognition',
+    name: 'Memory & Focus',
+    category: 'mental-wellness',
+    categoryLabel: 'Mental Wellness',
+    description: 'Support for memory, concentration, and mental clarity. Traditional African and global herbal practice uses specific plants as brain tonics — distinct from ADHD, which is a clinical diagnosis.',
+    symptoms: ['Forgetfulness', 'Difficulty concentrating', 'Mental fatigue', 'Brain fog', 'Slow recall'],
+    medicalDisclaimer: 'Persistent memory loss may indicate a medical condition and should be evaluated by a clinician. Herbs are complementary, not a diagnosis or treatment for ADHD or dementia.',
+    commonInAfrica: true,
+    associatedHerbs: [],
+    searchKeywords: ['memory', 'cognition', 'cognitive', 'nootropic', 'brain tonic', 'focus', 'concentration']
   },
 
   // PAIN RELIEF
@@ -85,7 +97,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Migraines can be debilitating and may require prescription medication. Severe or sudden headaches should be evaluated by a doctor to rule out other conditions.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['pain', 'headache', 'migraine', 'inflammation', 'tension', 'relief']
+    searchKeywords: ['migraine', 'headache', 'headaches']
   },
   {
     id: 'arthritis',
@@ -97,7 +109,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Arthritis includes various types (osteoarthritis, rheumatoid arthritis) requiring different treatments. X-rays and blood tests are needed for proper diagnosis.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['pain', 'inflammation', 'joint', 'arthritis', 'rheumatism', 'stiffness', 'swelling']
+    searchKeywords: ['arthritis', 'rheumatism', 'joint support', 'joint pain', 'stiffness']
   },
   {
     id: 'menstrual-cramps',
@@ -109,7 +121,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Severe menstrual pain may indicate underlying conditions like endometriosis or fibroids. If pain is debilitating, seek medical evaluation.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['pain', 'cramp', 'menstrual', 'period', 'women', 'hormone', 'uterine']
+    searchKeywords: ['menstrual', 'menstrual cramps', 'menstrual aid', 'menstrual support', 'period pain', 'dysmenorrhea', 'cramp']
   },
   {
     id: 'back-pain',
@@ -121,7 +133,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Persistent back pain may indicate herniated discs, kidney problems, or other serious conditions. Imaging tests (X-ray, MRI) may be necessary.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['pain', 'inflammation', 'muscle', 'joint', 'back', 'ache', 'relief']
+    searchKeywords: ['back pain', 'backache', 'muscle pain', 'muscle ache']
   },
   {
     id: 'toothache',
@@ -133,7 +145,19 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Toothaches often indicate cavities, infections, or abscesses requiring dental treatment. Herbal remedies provide temporary relief only.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['pain', 'tooth', 'dental', 'oral', 'antimicrobial', 'infection', 'relief']
+    searchKeywords: ['toothache', 'dental', 'gum', 'oral health', 'gingivitis']
+  },
+  {
+    id: 'general-aches',
+    name: 'Aches & General Pain',
+    category: 'pain-relief',
+    categoryLabel: 'Pain Relief',
+    description: 'Everyday aches where traditional practice uses general analgesic and anti-inflammatory plants. Use this when a herb is recorded for pain relief without a more specific condition.',
+    symptoms: ['General body aches', 'Soreness', 'Mild inflammation', 'Discomfort after labour or travel'],
+    medicalDisclaimer: 'Sudden, severe, or unexplained pain needs medical evaluation. Herbal pain relief is complementary and not a substitute for diagnosis.',
+    commonInAfrica: true,
+    associatedHerbs: [],
+    searchKeywords: ['pain relief', 'analgesic', 'body ache']
   },
 
   // DIGESTIVE HEALTH
@@ -147,7 +171,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Chronic constipation may indicate thyroid issues, diabetes, or neurological conditions. Sudden changes in bowel habits require medical attention.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['digestive', 'constipation', 'bowel', 'gut', 'stomach', 'laxative', 'fiber']
+    searchKeywords: ['constipation', 'laxative', 'regularity']
   },
   {
     id: 'diarrhea',
@@ -159,7 +183,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Persistent diarrhea can cause dangerous dehydration, especially in children and elderly. Seek immediate care if blood present or fever high.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['digestive', 'diarrhea', 'gut', 'stomach', 'antimicrobial', 'infection', 'bowel']
+    searchKeywords: ['diarrhea', 'diarrhoea', 'dysentery', 'loose stool']
   },
   {
     id: 'indigestion',
@@ -171,7 +195,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Persistent indigestion may indicate ulcers, GERD, or gallbladder disease. Endoscopy may be needed for diagnosis.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['digestive', 'indigestion', 'bloating', 'stomach', 'gut', 'nausea', 'gas']
+    searchKeywords: ['indigestion', 'bloating', 'dyspepsia', 'digestive aid', 'digestive support', 'digestion', 'nausea', 'gas']
   },
   {
     id: 'stomach-ulcer',
@@ -183,7 +207,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Ulcers require medical diagnosis (endoscopy) and treatment. H. pylori infection is a common cause requiring antibiotics.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['digestive', 'ulcer', 'stomach', 'gut', 'healing', 'inflammation', 'pain']
+    searchKeywords: ['ulcer', 'gastritis', 'stomach ulcer']
   },
   {
     id: 'hemorrhoids',
@@ -195,7 +219,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Rectal bleeding can indicate more serious conditions like colorectal cancer. Bleeding should always be evaluated by a doctor.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['pain', 'inflammation', 'swelling', 'healing', 'digestive', 'rectal']
+    searchKeywords: ['hemorrhoid', 'haemorrhoid', 'piles', 'rectal']
   },
 
   // IMMUNE SUPPORT
@@ -209,7 +233,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'While colds are usually harmless, similar symptoms can indicate flu or COVID-19. Seek testing if symptoms are severe.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['immune', 'cold', 'flu', 'cough', 'infection', 'antimicrobial', 'fever', 'respiratory']
+    searchKeywords: ['common cold', 'cold and flu', 'flu', 'colds']
   },
   {
     id: 'malaria-fever',
@@ -221,7 +245,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'MALARIA IS A MEDICAL EMERGENCY. This platform provides only supportive information. You MUST seek immediate medical care and take prescribed antimalarial drugs. Herbal remedies are supplementary only.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['malaria', 'fever', 'immune', 'infection', 'antimalarial', 'chills', 'sweating']
+    searchKeywords: ['malaria', 'antimalarial']
   },
   {
     id: 'typhoid',
@@ -233,7 +257,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Typhoid requires antibiotics and medical supervision. Blood culture is needed for diagnosis. Do not rely solely on herbal remedies.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['fever', 'immune', 'infection', 'antimicrobial', 'stomach', 'digestive', 'bacterial']
+    searchKeywords: ['typhoid']
   },
   {
     id: 'hiv-support',
@@ -245,7 +269,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'HIV requires antiretroviral therapy (ART). Never stop or replace ARVs with herbal remedies. Herbs should only support overall health under doctor supervision.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['immune', 'infection', 'fatigue', 'antioxidant', 'nutrient', 'support']
+    searchKeywords: ['hiv', 'aids']
   },
   {
     id: 'weak-immunity',
@@ -257,7 +281,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Frequent illness may indicate underlying conditions like diabetes, anemia, or immune disorders. Blood tests are recommended.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['immune', 'infection', 'fatigue', 'antioxidant', 'nutrient', 'support', 'energy']
+    searchKeywords: ['immune support', 'immune boost', 'immunity']
   },
 
   // SKIN CARE
@@ -271,7 +295,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Eczema can be confused with psoriasis or fungal infections. Persistent skin changes should be evaluated by a dermatologist.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['skin', 'eczema', 'itch', 'inflammation', 'healing', 'soothing', 'rash']
+    searchKeywords: ['eczema', 'dermatitis']
   },
   {
     id: 'acne',
@@ -283,7 +307,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Severe acne can cause permanent scarring. Hormonal testing may be needed for persistent adult acne.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['skin', 'acne', 'antimicrobial', 'infection', 'inflammation', 'healing', 'oil']
+    searchKeywords: ['acne', 'pimple', 'pimples']
   },
   {
     id: 'fungal-infection',
@@ -295,7 +319,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Fungal infections require antifungal treatment. KOH preparation test confirms diagnosis. Diabetes can predispose to recurrent fungal infections.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['skin', 'fungal', 'antifungal', 'antimicrobial', 'infection', 'itch', 'rash']
+    searchKeywords: ['fungal', 'antifungal', 'ringworm', 'tinea']
   },
   {
     id: 'burns',
@@ -307,7 +331,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Third-degree burns and large burn areas require emergency medical care. Infection is a major risk with burns.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['skin', 'burn', 'healing', 'soothing', 'pain', 'inflammation', 'wound']
+    searchKeywords: ['burn', 'burns', 'scald']
   },
   {
     id: 'wounds',
@@ -319,7 +343,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Deep wounds, animal bites, or heavily contaminated wounds require medical attention and possibly tetanus shots.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['skin', 'wound', 'healing', 'antimicrobial', 'infection', 'pain', 'soothing']
+    searchKeywords: ['wound', 'wounds', 'wound healing', 'cuts', 'skin healing']
   },
 
   // RESPIRATORY
@@ -333,7 +357,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Asthma can be life-threatening. Always carry prescribed inhalers. Herbal remedies are supplementary only.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['respiratory', 'asthma', 'cough', 'lung', 'breathing', 'bronchitis', 'wheeze', 'chest']
+    searchKeywords: ['asthma', 'wheeze', 'wheezing']
   },
   {
     id: 'bronchitis',
@@ -345,7 +369,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Chronic bronchitis may indicate COPD. Chest X-ray and pulmonary function tests may be needed.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['respiratory', 'bronchitis', 'cough', 'lung', 'phlegm', 'chest', 'mucus']
+    searchKeywords: ['bronchitis', 'phlegm', 'expectorant', 'respiratory aid', 'respiratory relief', 'respiratory support', 'cough']
   },
   {
     id: 'sinusitis',
@@ -357,7 +381,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Chronic sinusitis may require antibiotics or surgery. CT scan may be needed for recurrent cases.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['respiratory', 'sinus', 'congestion', 'cough', 'cold', 'infection', 'headache']
+    searchKeywords: ['sinus', 'sinusitis', 'congestion', 'decongestant']
   },
   {
     id: 'sore-throat',
@@ -369,7 +393,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Strep throat requires antibiotics to prevent rheumatic fever. Throat culture confirms diagnosis.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['respiratory', 'throat', 'cough', 'soothe', 'antimicrobial', 'infection', 'pain']
+    searchKeywords: ['sore throat', 'throat', 'laryngitis']
   },
   {
     id: 'allergies',
@@ -381,7 +405,7 @@ export const ailmentsData: AilmentData[] = [
     medicalDisclaimer: 'Allergies can trigger asthma attacks. Allergy testing identifies triggers. Anaphylaxis requires emergency care.',
     commonInAfrica: true,
     associatedHerbs: [],
-    searchKeywords: ['respiratory', 'allergy', 'immune', 'inflammation', 'sinus', 'congestion', 'sneeze']
+    searchKeywords: ['allergy', 'allergies', 'hay fever', 'antihistamine', 'sneeze']
   }
 ];
 
@@ -392,6 +416,17 @@ export const getAilmentsByCategory = (category: string) => {
 
 export const getAilmentById = (id: string) => {
   return ailmentsData.find(a => a.id === id);
+};
+
+export const relatedAilmentIds: Record<string, string[]> = {
+  adhd: ['memory-cognition', 'anxiety', 'stress'],
+  depression: ['anxiety', 'stress', 'insomnia'],
+  insomnia: ['anxiety', 'stress'],
+  'hiv-support': ['weak-immunity'],
+  typhoid: ['malaria-fever', 'weak-immunity'],
+  'stomach-ulcer': ['indigestion'],
+  asthma: ['bronchitis', 'allergies'],
+  'common-cold': ['bronchitis', 'sinusitis', 'sore-throat'],
 };
 
 export const getAllCategories = () => {

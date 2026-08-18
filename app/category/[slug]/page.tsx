@@ -5,142 +5,99 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import { ailmentsData, getAilmentsByCategory, AilmentData } from '@/lib/data/ailments';
+import { getAilmentsByCategory, AilmentData } from '@/lib/data/ailments';
+import { getCategoryVisual, isCategorySlug } from '@/lib/categories';
+import { countMatchingHerbs } from '@/lib/herb-matching';
+import { CategoryGlyphMark } from '@/components/icons/CategoryGlyph';
+import { EditorialPage, PageHero, LoadingScreen, DisclaimerNote } from '@/components/editorial/PageHero';
+import { ArrowRight } from 'lucide-react';
 
 interface AilmentWithHerbCount extends AilmentData {
   herbCount: number;
-  matchingHerbIds: string[];
-}
-
-interface Herb {
-  id: string;
-  name: string;
-  benefits: string[] | string;
-  ailments: string[] | string;
-  description: string;
-  category: string;
 }
 
 export default function CategoryAilmentsPage() {
   const params = useParams();
   const categorySlug = params.slug as string;
-  
+
   const [ailments, setAilments] = useState<AilmentWithHerbCount[]>([]);
   const [loading, setLoading] = useState(true);
-  const [categoryName, setCategoryName] = useState('');
 
-  const categoryLabels: Record<string, string> = {
-    'mental-wellness': 'Mental Wellness',
-    'pain-relief': 'Pain Relief',
-    'digestive-health': 'Digestive Health',
-    'immune-support': 'Immune Support',
-    'skin-care': 'Skin Care',
-    'respiratory': 'Respiratory Health'
-  };
+  const visual = getCategoryVisual(categorySlug);
+  const categoryName = visual?.name || categorySlug.replace(/-/g, ' ');
 
   useEffect(() => {
-    setCategoryName(categoryLabels[categorySlug] || categorySlug);
+    const loadAilments = async () => {
+      setLoading(true);
+      try {
+        const staticAilments = getAilmentsByCategory(categorySlug);
+        const herbsSnapshot = await getDocs(collection(db, 'herbs'));
+        const allHerbs = herbsSnapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        }));
+
+        const ailmentsWithCounts = staticAilments.map((ailment) => ({
+          ...ailment,
+          herbCount: countMatchingHerbs(allHerbs, ailment),
+        }));
+
+        ailmentsWithCounts.sort((a, b) => a.name.localeCompare(b.name));
+        setAilments(ailmentsWithCounts);
+      } catch (error) {
+        console.error('Error loading ailments:', error);
+        setAilments(
+          getAilmentsByCategory(categorySlug).map((ailment) => ({
+            ...ailment,
+            herbCount: 0,
+          }))
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadAilments();
   }, [categorySlug]);
 
-  const loadAilments = async () => {
-    setLoading(true);
-    try {
-      // Get static ailments for this category
-      const staticAilments = getAilmentsByCategory(categorySlug);
-      
-      // Fetch ALL herbs from Firestore
-      const herbsSnapshot = await getDocs(collection(db, 'herbs'));
-      const allHerbs = herbsSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Herb[];
-
-      // For each ailment, find matching herbs using keyword search
-      const ailmentsWithCounts = staticAilments.map(ailment => {
-        const matchingHerbs = findMatchingHerbs(ailment, allHerbs);
-        
-        return {
-          ...ailment,
-          herbCount: matchingHerbs.length,
-          matchingHerbIds: matchingHerbs.map(h => h.id)
-        };
-      });
-
-      // Sort by name
-      ailmentsWithCounts.sort((a, b) => a.name.localeCompare(b.name));
-      setAilments(ailmentsWithCounts);
-      
-    } catch (error) {
-      console.error('Error loading ailments:', error);
-      // Fallback to static data with zero counts
-      const staticAilments = getAilmentsByCategory(categorySlug).map(a => ({
-        ...a,
-        herbCount: 0,
-        matchingHerbIds: []
-      }));
-      setAilments(staticAilments);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Find herbs that match an ailment using keyword search
-  const findMatchingHerbs = (ailment: AilmentData, herbs: Herb[]): Herb[] => {
-    const keywords = ailment.searchKeywords || [ailment.name.toLowerCase()];
-    
-    return herbs.filter(herb => {
-      // Check if herb category matches
-      const categoryMatch = herb.category === ailment.category;
-      
-      // Helper to check if a field contains any of the keywords
-      const fieldMatches = (field: string[] | string | undefined): boolean => {
-        if (!field) return false;
-        
-        const fieldStr = Array.isArray(field) 
-          ? field.join(' ').toLowerCase() 
-          : field.toLowerCase();
-        
-        return keywords.some(keyword => fieldStr.includes(keyword.toLowerCase()));
-      };
-      
-      // Check benefits, ailments, description, and name
-      const benefitsMatch = fieldMatches(herb.benefits);
-      const ailmentsMatch = fieldMatches(herb.ailments);
-      const descriptionMatch = herb.description?.toLowerCase().includes(ailment.name.toLowerCase());
-      const nameMatch = herb.name?.toLowerCase().includes(ailment.name.toLowerCase());
-      
-      // Match if any field contains keywords OR if category matches and description mentions ailment
-      return benefitsMatch || ailmentsMatch || descriptionMatch || nameMatch || 
-             (categoryMatch && (descriptionMatch || benefitsMatch));
-    });
-  };
-
   if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
-        <div className="text-[#97A97C] text-xl">Loading conditions...</div>
-      </div>
-    );
+    return <LoadingScreen label="Loading conditions…" />;
   }
 
-  return (
-    <div className="min-h-screen bg-[#F5F5F0]">
-      {/* Header */}
-      <div className="bg-[#2C3E2D] text-white py-12 px-4">
-        <div className="max-w-6xl mx-auto">
-          <Link href="/" className="text-[#97A97C] hover:underline mb-4 inline-block">
-            ← Back to Home
-          </Link>
-          <h1 className="text-4xl font-bold mb-2">{categoryName}</h1>
-          <p className="text-gray-300">Select a condition to learn more and find traditional African remedies</p>
-        </div>
-      </div>
+  const withRemedies = ailments.filter((ailment) => ailment.herbCount > 0).length;
 
-      <div className="max-w-6xl mx-auto px-4 py-12">
+  return (
+    <EditorialPage>
+      <PageHero
+        eyebrow={isCategorySlug(categorySlug) ? 'Category' : 'Catalogue'}
+        title={categoryName}
+        subtitle={
+          visual?.description ||
+          'Select a condition to see herbs whose recorded benefits actually mention it.'
+        }
+        backHref="/category"
+        backLabel="All categories"
+      >
+        {isCategorySlug(categorySlug) && (
+          <div className="mt-8">
+            <CategoryGlyphMark
+              slug={categorySlug}
+              className="h-16 w-16 border-cream/20 bg-white/10 text-cream"
+            />
+          </div>
+        )}
+      </PageHero>
+
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8">
         {ailments.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 mb-4">No conditions found for this category.</p>
+          <div className="rounded-3xl border border-forest/10 bg-white p-12 text-center shadow-soft">
+            <h2 className="font-serif text-2xl text-forest mb-3">No conditions in this category yet</h2>
+            <p className="text-ink-muted mb-6">
+              We publish conditions only when we can match them to real herb records.
+            </p>
+            <Link href="/category" className="text-sm font-medium text-bronze hover:text-forest">
+              Browse categories
+            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -148,35 +105,36 @@ export default function CategoryAilmentsPage() {
               <Link
                 key={ailment.id}
                 href={`/ailment/${ailment.id}`}
-                className="bg-white rounded-lg shadow-md hover:shadow-xl transition-all p-6 border-l-4 border-[#97A97C] group"
+                className="group flex flex-col rounded-3xl border border-forest/10 bg-white p-7 shadow-soft transition-all duration-500 hover:-translate-y-1 hover:shadow-lift"
               >
-                <div className="flex justify-between items-start mb-3">
-                  <h2 className="text-xl font-bold text-[#2C3E2D] group-hover:text-[#97A97C] transition-colors">
-                    {ailment.name}
-                  </h2>
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <h2 className="font-serif text-2xl text-forest leading-tight">{ailment.name}</h2>
                   {ailment.commonInAfrica && (
-                    <span className="bg-[#2C3E2D] text-white text-xs px-2 py-1 rounded">
+                    <span className="shrink-0 rounded-full bg-cream px-3 py-1 text-[10px] tracking-[0.14em] uppercase text-bronze">
                       Common in Africa
                     </span>
                   )}
                 </div>
-                
-                <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                <p className="text-sm leading-relaxed text-ink-muted line-clamp-3 mb-6">
                   {ailment.description}
                 </p>
-                
-                <div className="flex items-center justify-between text-sm border-t pt-3">
-                  <span className="text-gray-500">
-                    {(ailment.symptoms || []).slice(0, 2).join(', ')}...
+                <div className="mt-auto flex items-center justify-between border-t border-forest/10 pt-4">
+                  <span className="text-xs text-ink-muted">
+                    {(ailment.symptoms || []).slice(0, 2).join(' · ')}
                   </span>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    ailment.herbCount > 0 
-                      ? 'bg-[#97A97C] text-white' 
-                      : 'bg-gray-200 text-gray-600'
-                  }`}>
-                    {ailment.herbCount > 0 
-                      ? `${ailment.herbCount} remedy${ailment.herbCount !== 1 ? 'ies' : 'y'}` 
-                      : 'No remedies yet'}
+                  <span
+                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${
+                      ailment.herbCount > 0
+                        ? 'bg-forest text-cream'
+                        : 'bg-cream text-ink-muted'
+                    }`}
+                  >
+                    {ailment.herbCount > 0
+                      ? `${ailment.herbCount} ${ailment.herbCount === 1 ? 'remedy' : 'remedies'}`
+                      : 'None in library'}
+                    {ailment.herbCount > 0 && (
+                      <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                    )}
                   </span>
                 </div>
               </Link>
@@ -184,42 +142,26 @@ export default function CategoryAilmentsPage() {
           </div>
         )}
 
-        {/* Medical Disclaimer */}
-        <div className="mt-16 bg-red-50 border-l-4 border-red-500 rounded-r-lg p-8">
-          <h3 className="text-red-800 font-bold mb-2 flex items-center gap-2">
-            <span>⚠️</span> Important Medical Disclaimer
-          </h3>
-          <p className="text-red-700 leading-relaxed">
-            The information provided is for educational purposes only and does not constitute medical advice. 
-            Always consult with a qualified healthcare provider for proper diagnosis and treatment. 
-            Laboratory tests and professional evaluation are essential for accurate diagnosis.
-          </p>
+        <div className="mt-16 grid grid-cols-2 md:grid-cols-3 gap-4">
+          {[
+            { n: ailments.length, label: 'Conditions' },
+            { n: withRemedies, label: 'With matching herbs' },
+            { n: ailments.filter((a) => a.commonInAfrica).length, label: 'Common in Africa' },
+          ].map((stat) => (
+            <div key={stat.label} className="rounded-3xl border border-forest/10 bg-white p-6 text-center shadow-soft">
+              <div className="font-serif text-3xl text-forest">{stat.n}</div>
+              <div className="mt-1 text-xs tracking-[0.16em] uppercase text-ink-muted">{stat.label}</div>
+            </div>
+          ))}
         </div>
 
-        {/* Stats */}
-        <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow text-center">
-            <div className="text-2xl font-bold text-[#97A97C]">{ailments.length}</div>
-            <div className="text-sm text-gray-600">Conditions Listed</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow text-center">
-            <div className="text-2xl font-bold text-[#97A97C]">
-              {ailments.filter(a => a.herbCount > 0).length}
-            </div>
-            <div className="text-sm text-gray-600">With Remedies</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow text-center">
-            <div className="text-2xl font-bold text-[#97A97C]">
-              {ailments.filter(a => a.commonInAfrica).length}
-            </div>
-            <div className="text-sm text-gray-600">Common in Africa</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow text-center">
-            <div className="text-2xl font-bold text-[#97A97C]">100%</div>
-            <div className="text-sm text-gray-600">Need Diagnosis</div>
-          </div>
+        <div className="mt-10">
+          <DisclaimerNote>
+            Counts reflect herbs whose name, description, or recorded benefits mention this condition.
+            They are educational, not a diagnosis. Always consult a qualified clinician before treatment.
+          </DisclaimerNote>
         </div>
       </div>
-    </div>
+    </EditorialPage>
   );
 }

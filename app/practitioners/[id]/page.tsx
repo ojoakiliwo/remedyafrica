@@ -113,18 +113,18 @@ export default function PractitionerProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
-        <div className="text-[#97A97C] text-xl">Loading...</div>
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <div className="text-bronze text-xl">Loading...</div>
       </div>
     );
   }
 
   if (!practitioner) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
+      <div className="min-h-screen bg-cream flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-[#2C3E2D]">Practitioner not found</h1>
-          <Link href="/practitioners" className="text-[#97A97C] hover:underline mt-4 inline-block">
+          <h1 className="text-2xl font-bold text-forest">Practitioner not found</h1>
+          <Link href="/practitioners" className="text-bronze hover:underline mt-4 inline-block">
             Back to Directory
           </Link>
         </div>
@@ -135,13 +135,13 @@ export default function PractitionerProfilePage() {
   const displayImage = practitioner.photoURL || practitioner.imageUrl;
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0]">
+    <div className="min-h-screen bg-cream">
       {/* Booking Modal */}
       {showBookingModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-[#2C3E2D]">Book Consultation</h3>
+              <h3 className="text-xl font-bold text-forest">Book Consultation</h3>
               <button 
                 onClick={() => setShowBookingModal(false)}
                 className="text-gray-500 hover:text-gray-700"
@@ -154,7 +154,7 @@ export default function PractitionerProfilePage() {
             <div className="mb-4 p-4 bg-gray-50 rounded">
               <p className="font-semibold">{practitioner.name}</p>
               <p className="text-sm text-gray-600">{practitioner.title}</p>
-              <p className="text-[#97A97C] font-bold mt-2">R{practitioner.consultationFee}/session</p>
+              <p className="text-bronze font-bold mt-2">R{practitioner.consultationFee}/session</p>
             </div>
 
             <form onSubmit={handleBookConsultation} className="space-y-4">
@@ -212,7 +212,7 @@ export default function PractitionerProfilePage() {
               <button 
                 type="submit" 
                 disabled={bookingLoading}
-                className="w-full bg-[#97A97C] text-white py-3 rounded-lg font-bold hover:bg-[#7A8A63] disabled:opacity-50"
+                className="w-full bg-forest text-white py-3 rounded-lg font-bold hover:bg-forest-mist disabled:opacity-50"
               >
                 {bookingLoading ? 'Booking...' : `Confirm & Pay R${practitioner.consultationFee}`}
               </button>
@@ -221,9 +221,9 @@ export default function PractitionerProfilePage() {
         </div>
       )}
 
-      <div className="bg-[#2C3E2D] text-white py-12 px-4">
+      <div className="bg-forest text-white py-12 px-4">
         <div className="max-w-4xl mx-auto">
-          <Link href="/practitioners" className="text-[#97A97C] hover:underline mb-4 inline-block">
+          <Link href="/practitioners" className="text-bronze hover:underline mb-4 inline-block">
             ← Back to Practitioners
           </Link>
         </div>
@@ -240,7 +240,7 @@ export default function PractitionerProfilePage() {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-[#97A97C] text-white text-6xl">
+                <div className="w-full h-full flex items-center justify-center bg-forest text-white text-6xl">
                   👤
                 </div>
               )}
@@ -249,8 +249,8 @@ export default function PractitionerProfilePage() {
             <div className="md:w-2/3 p-8">
               <div className="flex justify-between items-start">
                 <div>
-                  <h1 className="text-3xl font-bold text-[#2C3E2D] mb-1">{practitioner.name}</h1>
-                  <p className="text-[#97A97C] text-lg mb-2">{practitioner.title}</p>
+                  <h1 className="text-3xl font-bold text-forest mb-1">{practitioner.name}</h1>
+                  <p className="text-bronze text-lg mb-2">{practitioner.title}</p>
                   <div className="flex items-center gap-4 text-sm text-gray-600 mb-4 flex-wrap">
                     <span>📍 {practitioner.location}</span>
                     <span>⭐ {practitioner.rating || '0.0'} ({practitioner.reviews || 0} reviews)</span>
@@ -260,7 +260,7 @@ export default function PractitionerProfilePage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-3xl font-bold text-[#2C3E2D]">R{practitioner.consultationFee || 0}</p>
+                  <p className="text-3xl font-bold text-forest">R{practitioner.consultationFee || 0}</p>
                   <p className="text-sm text-gray-500">per consultation</p>
                 </div>
               </div>
@@ -268,19 +268,19 @@ export default function PractitionerProfilePage() {
               <p className="text-gray-700 mb-6 leading-relaxed">{practitioner.bio}</p>
 
               <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-[#F5F5F0] p-4 rounded">
+                <div className="bg-cream p-4 rounded">
                   <p className="text-sm text-gray-600">Experience</p>
-                  <p className="font-bold text-[#2C3E2D]">{practitioner.experience || 0} years</p>
+                  <p className="font-bold text-forest">{practitioner.experience || 0} years</p>
                 </div>
-                <div className="bg-[#F5F5F0] p-4 rounded">
+                <div className="bg-cream p-4 rounded">
                   <p className="text-sm text-gray-600">Languages</p>
-                  <p className="font-bold text-[#2C3E2D]">{(practitioner.languages || []).join(', ') || 'English'}</p>
+                  <p className="font-bold text-forest">{(practitioner.languages || []).join(', ') || 'English'}</p>
                 </div>
               </div>
 
               <button 
                 onClick={() => user ? setShowBookingModal(true) : router.push('/login')}
-                className="w-full md:w-auto bg-[#97A97C] text-white px-8 py-3 rounded-lg font-bold hover:bg-[#7A8A63] transition-colors"
+                className="w-full md:w-auto bg-forest text-white px-8 py-3 rounded-lg font-bold hover:bg-forest-mist transition-colors"
               >
                 Book Consultation
               </button>
@@ -289,11 +289,11 @@ export default function PractitionerProfilePage() {
 
           {practitioner.services && practitioner.services.length > 0 && (
             <div className="p-8 border-t">
-              <h3 className="text-xl font-bold text-[#2C3E2D] mb-4">Services Offered</h3>
+              <h3 className="text-xl font-bold text-forest mb-4">Services Offered</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {practitioner.services.map((service, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <span className="text-[#97A97C]">✓</span>
+                    <span className="text-bronze">✓</span>
                     <span>{service}</span>
                   </div>
                 ))}
@@ -302,7 +302,7 @@ export default function PractitionerProfilePage() {
           )}
 
           <div className="p-8 border-t bg-gray-50">
-            <h3 className="text-xl font-bold text-[#2C3E2D] mb-4">Medicine Delivery</h3>
+            <h3 className="text-xl font-bold text-forest mb-4">Medicine Delivery</h3>
             <p className="text-gray-700 mb-4">
               This practitioner can prepare and send customized herbal formulations directly to you. 
               Discuss medicine preparation and delivery terms during your consultation.

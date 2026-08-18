@@ -166,8 +166,8 @@ export default function SubscriptionPage() {
 
   if (authLoading || checkingSub || loadingRate) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-[#97A97C] animate-spin" />
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <Loader2 className="w-12 h-12 text-bronze animate-spin" />
       </div>
     );
   }
@@ -186,16 +186,16 @@ export default function SubscriptionPage() {
   const getCurrency = () => selectedGateway === 'paystack' ? '₦' : '$';
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0]">
+    <div className="min-h-screen bg-cream">
       {/* Hero */}
-      <div className="bg-[#2C3E2D] text-white py-16 px-4">
+      <div className="bg-forest text-white py-16 px-4">
         <div className="max-w-6xl mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Choose Your Path to Wellness</h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
             Access traditional African healing wisdom. Connect with verified practitioners. 
             Join a community on the journey to natural wellness.
           </p>
-          <p className="text-[#97A97C] mt-3 font-medium">
+          <p className="text-bronze mt-3 font-medium">
             <Calendar className="w-4 h-4 inline mr-1" />
             All plans cover 3 months — consultations INCLUDED, no extra fees
           </p>
@@ -243,8 +243,8 @@ export default function SubscriptionPage() {
               onClick={() => setSelectedGateway('paystack')}
               className={`px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
                 selectedGateway === 'paystack'
-                  ? 'bg-[#97A97C] text-white shadow'
-                  : 'text-gray-600 hover:text-[#2C3E2D]'
+                  ? 'bg-forest text-white shadow'
+                  : 'text-gray-600 hover:text-forest'
               }`}
             >
               <CreditCard className="w-4 h-4" />
@@ -256,8 +256,8 @@ export default function SubscriptionPage() {
               onClick={() => setSelectedGateway('flutterwave')}
               className={`px-6 py-3 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${
                 selectedGateway === 'flutterwave'
-                  ? 'bg-[#97A97C] text-white shadow'
-                  : 'text-gray-600 hover:text-[#2C3E2D]'
+                  ? 'bg-forest text-white shadow'
+                  : 'text-gray-600 hover:text-forest'
               }`}
             >
               <Globe className="w-4 h-4" />
@@ -283,7 +283,7 @@ export default function SubscriptionPage() {
               <Card 
                 key={plan.id}
                 className={`relative transition-all hover:shadow-xl ${
-                  plan.popular ? 'border-[#97A97C] border-2 shadow-lg md:scale-105' : 'border-gray-200'
+                  plan.popular ? 'border-forest border-2 shadow-lg md:scale-105' : 'border-gray-200'
                 } ${isSelected ? 'ring-2 ring-[#97A97C]' : ''}`}
               >
                 {plan.popular && (
@@ -296,7 +296,7 @@ export default function SubscriptionPage() {
                 )}
 
                 <CardHeader className="text-center pb-4">
-                  <CardTitle className="text-2xl font-bold text-[#2C3E2D]">
+                  <CardTitle className="text-2xl font-bold text-forest">
                     {plan.name}
                   </CardTitle>
                   <p className="text-sm text-gray-500 mt-1">{plan.description}</p>
@@ -304,12 +304,12 @@ export default function SubscriptionPage() {
 
                 <CardContent className="text-center pb-6">
                   <div className="mb-1">
-                    <span className="text-4xl font-bold text-[#2C3E2D]">
+                    <span className="text-4xl font-bold text-forest">
                       {currency}{price.toLocaleString()}
                     </span>
                   </div>
                   <p className="text-sm text-gray-500 mb-1">Every 3 months</p>
-                  <p className="text-xs text-[#97A97C] mb-2">
+                  <p className="text-xs text-bronze mb-2">
                     ~{currency}{monthlyEquiv}/month
                   </p>
                   
@@ -326,7 +326,7 @@ export default function SubscriptionPage() {
                   <ul className="space-y-3 text-left mb-8">
                     {plan.features.map((feature, idx) => (
                       <li key={idx} className="flex items-start gap-3 text-sm">
-                        <Check className="w-5 h-5 text-[#97A97C] shrink-0 mt-0.5" />
+                        <Check className="w-5 h-5 text-bronze shrink-0 mt-0.5" />
                         <span className="text-gray-700">{feature}</span>
                       </li>
                     ))}
@@ -338,8 +338,8 @@ export default function SubscriptionPage() {
                       onClick={() => router.push('/login?redirect=/subscription')}
                       className={`w-full h-12 text-base ${
                         plan.popular
-                          ? 'bg-[#97A97C] hover:bg-[#7A8A63] text-white'
-                          : 'bg-[#2C3E2D] hover:bg-[#3d5238] text-white'
+                          ? 'bg-forest hover:bg-forest-mist text-white'
+                          : 'bg-forest hover:bg-forest-mist text-white'
                       }`}
                     >
                       Sign In to Subscribe
@@ -351,8 +351,8 @@ export default function SubscriptionPage() {
                       disabled={isButtonDisabled}
                       className={`w-full h-12 text-base ${
                         plan.popular
-                          ? 'bg-[#97A97C] hover:bg-[#7A8A63] text-white'
-                          : 'bg-[#2C3E2D] hover:bg-[#3d5238] text-white'
+                          ? 'bg-forest hover:bg-forest-mist text-white'
+                          : 'bg-forest hover:bg-forest-mist text-white'
                       }`}
                     >
                       {processing && isSelected ? (
@@ -388,7 +388,7 @@ export default function SubscriptionPage() {
         <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 mb-16">
           <div className="md:flex items-center gap-12">
             <div className="md:w-1/2 mb-8 md:mb-0">
-              <h2 className="text-3xl font-bold text-[#2C3E2D] mb-4">
+              <h2 className="text-3xl font-bold text-forest mb-4">
                 Are You a Traditional Healer?
               </h2>
               <p className="text-gray-700 mb-6 leading-relaxed">
@@ -404,21 +404,21 @@ export default function SubscriptionPage() {
                   'Build your reputation with reviews'
                 ].map((item, i) => (
                   <li key={i} className="flex items-center gap-3">
-                    <Check className="w-4 h-4 text-[#97A97C]" />
+                    <Check className="w-4 h-4 text-bronze" />
                     <span>{item}</span>
                   </li>
                 ))}
               </ul>
               <Link 
                 href="/practitioners/apply"
-                className="inline-block bg-[#2C3E2D] text-white px-8 py-3 rounded-lg font-bold hover:bg-[#3d523e] transition-colors"
+                className="inline-block bg-forest text-white px-8 py-3 rounded-lg font-bold hover:bg-forest-mist transition-colors"
               >
                 Apply as Practitioner
               </Link>
             </div>
             <div className="md:w-1/2">
-              <div className="bg-[#F5F5F0] p-6 rounded-lg">
-                <h3 className="font-bold text-[#2C3E2D] mb-4">How Practitioner Earnings Work</h3>
+              <div className="bg-cream p-6 rounded-lg">
+                <h3 className="font-bold text-forest mb-4">How Practitioner Earnings Work</h3>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center pb-2 border-b">
                     <span className="text-gray-600">Subscribers you served this month</span>
@@ -430,11 +430,11 @@ export default function SubscriptionPage() {
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b">
                     <span className="text-gray-600">Product sales (85% to you)</span>
-                    <span className="font-bold text-[#97A97C]">+$127.50</span>
+                    <span className="font-bold text-bronze">+$127.50</span>
                   </div>
                   <div className="flex justify-between items-center pt-2">
                     <span className="text-gray-600 font-semibold">Your monthly payout</span>
-                    <span className="text-[#97A97C] font-bold text-lg">$211.50</span>
+                    <span className="text-bronze font-bold text-lg">$211.50</span>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-4">
@@ -447,7 +447,7 @@ export default function SubscriptionPage() {
 
         {/* FAQ */}
         <div className="max-w-3xl mx-auto mb-16">
-          <h2 className="text-3xl font-bold text-center text-[#2C3E2D] mb-8">Common Questions</h2>
+          <h2 className="text-3xl font-bold text-center text-forest mb-8">Common Questions</h2>
           <div className="space-y-4">
             {[
               {
@@ -472,7 +472,7 @@ export default function SubscriptionPage() {
               }
             ].map((faq, idx) => (
               <div key={idx} className="bg-white rounded-lg shadow p-6">
-                <h3 className="font-bold text-[#2C3E2D] mb-2">{faq.q}</h3>
+                <h3 className="font-bold text-forest mb-2">{faq.q}</h3>
                 <p className="text-gray-600">{faq.a}</p>
               </div>
             ))}
@@ -482,14 +482,14 @@ export default function SubscriptionPage() {
         {/* Trust Badges */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {[
-            { icon: <Shield className="w-8 h-8 text-[#97A97C] mx-auto mb-2" />, label: 'Secure Payments' },
-            { icon: <Check className="w-8 h-8 text-[#97A97C] mx-auto mb-2" />, label: 'Verified Healers' },
-            { icon: <MessageSquare className="w-8 h-8 text-[#97A97C] mx-auto mb-2" />, label: '24/7 Support' },
-            { icon: <Globe className="w-8 h-8 text-[#97A97C] mx-auto mb-2" />, label: 'African Owned' }
+            { icon: <Shield className="w-8 h-8 text-bronze mx-auto mb-2" />, label: 'Secure Payments' },
+            { icon: <Check className="w-8 h-8 text-bronze mx-auto mb-2" />, label: 'Verified Healers' },
+            { icon: <MessageSquare className="w-8 h-8 text-bronze mx-auto mb-2" />, label: '24/7 Support' },
+            { icon: <Globe className="w-8 h-8 text-bronze mx-auto mb-2" />, label: 'African Owned' }
           ].map((badge, i) => (
             <div key={i}>
               {badge.icon}
-              <p className="text-sm font-semibold text-[#2C3E2D]">{badge.label}</p>
+              <p className="text-sm font-semibold text-forest">{badge.label}</p>
             </div>
           ))}
         </div>

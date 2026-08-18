@@ -21,6 +21,7 @@ export default function Footer() {
             <h4 className="text-[11px] tracking-[0.22em] uppercase text-bronze mb-4">Platform</h4>
             <ul className="space-y-2 text-sm text-cream/70">
               <li><Link href="/search" className="hover:text-cream">Search remedies</Link></li>
+              <li><Link href="/category" className="hover:text-cream">Categories</Link></li>
               <li><Link href="/practitioners" className="hover:text-cream">Find practitioners</Link></li>
               <li><Link href="/subscription" className="hover:text-cream">Pricing</Link></li>
             </ul>

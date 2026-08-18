@@ -166,17 +166,17 @@ export default function PractitionerApplyPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-cream flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Check className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-[#2C3E2D] mb-2">Application Submitted!</h2>
+          <h2 className="text-2xl font-bold text-forest mb-2">Application Submitted!</h2>
           <p className="text-gray-600 mb-6">
             Your application is under review. We will verify your credentials and government ID within 5 business days.
           </p>
           <Link href="/">
-            <Button className="bg-[#97A97C] hover:bg-[#7A8A63]">
+            <Button className="bg-forest hover:bg-forest-mist">
               Return to Home
             </Button>
           </Link>
@@ -186,11 +186,11 @@ export default function PractitionerApplyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0]">
+    <div className="min-h-screen bg-cream">
       {/* Header */}
-      <div className="bg-[#2C3E2D] text-white py-12 px-4">
+      <div className="bg-forest text-white py-12 px-4">
         <div className="max-w-3xl mx-auto">
-          <Link href="/" className="text-[#97A97C] hover:text-white text-sm mb-4 inline-block">
+          <Link href="/" className="text-bronze hover:text-white text-sm mb-4 inline-block">
             ← Back to Home
           </Link>
           <h1 className="text-3xl font-bold">Apply as a Practitioner</h1>
@@ -205,14 +205,14 @@ export default function PractitionerApplyPage() {
           
           {/* Personal Information */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-bold text-[#2C3E2D] mb-4 flex items-center gap-2">
-              <User className="w-5 h-5 text-[#97A97C]" />
+            <h2 className="text-xl font-bold text-forest mb-4 flex items-center gap-2">
+              <User className="w-5 h-5 text-bronze" />
               Personal Information
             </h2>
             
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="block font-medium text-[#2C3E2D] mb-1">Full Name *</label>
+                <label className="block font-medium text-forest mb-1">Full Name *</label>
                 <input
                   type="text"
                   name="fullName"
@@ -224,7 +224,7 @@ export default function PractitionerApplyPage() {
                 />
               </div>
               <div>
-                <label className="block font-medium text-[#2C3E2D] mb-1">Email *</label>
+                <label className="block font-medium text-forest mb-1">Email *</label>
                 <input
                   type="email"
                   name="email"
@@ -236,7 +236,7 @@ export default function PractitionerApplyPage() {
                 />
               </div>
               <div>
-                <label className="block font-medium text-[#2C3E2D] mb-1">Phone *</label>
+                <label className="block font-medium text-forest mb-1">Phone *</label>
                 <input
                   type="tel"
                   name="phone"
@@ -248,7 +248,7 @@ export default function PractitionerApplyPage() {
                 />
               </div>
               <div>
-                <label className="block font-medium text-[#2C3E2D] mb-1">Location *</label>
+                <label className="block font-medium text-forest mb-1">Location *</label>
                 <input
                   type="text"
                   name="location"
@@ -264,14 +264,14 @@ export default function PractitionerApplyPage() {
 
           {/* Professional Information */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-bold text-[#2C3E2D] mb-4 flex items-center gap-2">
-              <Award className="w-5 h-5 text-[#97A97C]" />
+            <h2 className="text-xl font-bold text-forest mb-4 flex items-center gap-2">
+              <Award className="w-5 h-5 text-bronze" />
               Professional Information
             </h2>
             
             <div className="space-y-4">
               <div>
-                <label className="block font-medium text-[#2C3E2D] mb-1">Specialty *</label>
+                <label className="block font-medium text-forest mb-1">Specialty *</label>
                 <input
                   type="text"
                   name="specialty"
@@ -283,7 +283,7 @@ export default function PractitionerApplyPage() {
                 />
               </div>
               <div>
-                <label className="block font-medium text-[#2C3E2D] mb-1">Years of Experience *</label>
+                <label className="block font-medium text-forest mb-1">Years of Experience *</label>
                 <input
                   type="number"
                   name="experience"
@@ -296,7 +296,7 @@ export default function PractitionerApplyPage() {
                 />
               </div>
               <div>
-                <label className="block font-medium text-[#2C3E2D] mb-1">Bio *</label>
+                <label className="block font-medium text-forest mb-1">Bio *</label>
                 <textarea
                   name="bio"
                   required
@@ -308,7 +308,7 @@ export default function PractitionerApplyPage() {
                 />
               </div>
               <div>
-                <label className="block font-medium text-[#2C3E2D] mb-1">Certifications & Training</label>
+                <label className="block font-medium text-forest mb-1">Certifications & Training</label>
                 <textarea
                   name="certifications"
                   rows={2}
@@ -323,14 +323,14 @@ export default function PractitionerApplyPage() {
 
           {/* Profile Photo */}
           <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-xl font-bold text-[#2C3E2D] mb-4 flex items-center gap-2">
-              <Upload className="w-5 h-5 text-[#97A97C]" />
+            <h2 className="text-xl font-bold text-forest mb-4 flex items-center gap-2">
+              <Upload className="w-5 h-5 text-bronze" />
               Profile Photo *
             </h2>
             
             <div className="flex items-center gap-4">
               {photoPreview ? (
-                <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-[#97A97C]">
+                <div className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-forest">
                   <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
                   <button
                     type="button"
@@ -345,7 +345,7 @@ export default function PractitionerApplyPage() {
                 <button
                   type="button"
                   onClick={() => photoRef.current?.click()}
-                  className="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-[#97A97C]"
+                  className="w-24 h-24 rounded-full border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-forest"
                 >
                   <Upload className="w-6 h-6 text-gray-400" />
                   <span className="text-xs text-gray-500 mt-1">Add Photo</span>
@@ -365,7 +365,7 @@ export default function PractitionerApplyPage() {
 
           {/* Government ID Verification */}
           <div className="bg-white rounded-xl shadow-sm p-6 border-2 border-amber-100">
-            <h2 className="text-xl font-bold text-[#2C3E2D] mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-forest mb-4 flex items-center gap-2">
               <Shield className="w-5 h-5 text-amber-600" />
               Identity Verification *
             </h2>
@@ -376,7 +376,7 @@ export default function PractitionerApplyPage() {
             
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label htmlFor="governmentIdType" className="block font-medium text-[#2C3E2D] mb-1">ID Type *</label>
+                <label htmlFor="governmentIdType" className="block font-medium text-forest mb-1">ID Type *</label>
                 <select
                   id="governmentIdType"
                   name="governmentIdType"
@@ -391,7 +391,7 @@ export default function PractitionerApplyPage() {
                 </select>
               </div>
               <div>
-                <label className="block font-medium text-[#2C3E2D] mb-1">ID Number *</label>
+                <label className="block font-medium text-forest mb-1">ID Number *</label>
                 <input
                   type="text"
                   name="governmentIdNumber"
@@ -406,7 +406,7 @@ export default function PractitionerApplyPage() {
 
             <div className="flex items-center gap-4">
               {idPreview ? (
-                <div className="relative w-40 h-28 rounded-lg overflow-hidden border-2 border-[#97A97C]">
+                <div className="relative w-40 h-28 rounded-lg overflow-hidden border-2 border-forest">
                   <img src={idPreview} alt="ID" className="w-full h-full object-cover" />
                   <button
                     type="button"
@@ -421,7 +421,7 @@ export default function PractitionerApplyPage() {
                 <button
                   type="button"
                   onClick={() => idRef.current?.click()}
-                  className="w-40 h-28 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-[#97A97C]"
+                  className="w-40 h-28 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-forest"
                 >
                   <Upload className="w-6 h-6 text-gray-400" />
                   <span className="text-xs text-gray-500 mt-1">Upload ID</span>
@@ -445,13 +445,13 @@ export default function PractitionerApplyPage() {
 
           {/* Legal Agreement */}
           <div className="bg-white rounded-xl shadow-sm p-6 border-2 border-blue-100">
-            <h2 className="text-xl font-bold text-[#2C3E2D] mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-forest mb-4 flex items-center gap-2">
               <FileText className="w-5 h-5 text-blue-600" />
               Legal Agreement
             </h2>
             
             <div className="space-y-4 max-h-64 overflow-y-auto bg-gray-50 p-4 rounded-lg text-sm text-gray-700 mb-4">
-              <h3 className="font-bold text-[#2C3E2D]">Terms of Service for Practitioners</h3>
+              <h3 className="font-bold text-forest">Terms of Service for Practitioners</h3>
               
               <p><strong>1. Verification & Compliance</strong></p>
               <p>You confirm that all information provided is accurate. You consent to background verification including identity confirmation through government-issued ID. Providing false information will result in immediate termination and potential legal action.</p>
@@ -497,7 +497,7 @@ export default function PractitionerApplyPage() {
                   name="agreeToTerms"
                   checked={formData.agreeToTerms}
                   onChange={handleInputChange}
-                  className="mt-1 w-5 h-5 text-[#97A97C] rounded focus:ring-[#97A97C]"
+                  className="mt-1 w-5 h-5 text-bronze rounded focus:ring-[#97A97C]"
                 />
                 <span className="text-sm text-gray-700">
                   I have read and agree to the <strong>Terms of Service</strong> above. I understand that providing false information or violating these terms may result in account termination and legal consequences.
@@ -510,7 +510,7 @@ export default function PractitionerApplyPage() {
                   name="agreeToBackgroundCheck"
                   checked={formData.agreeToBackgroundCheck}
                   onChange={handleInputChange}
-                  className="mt-1 w-5 h-5 text-[#97A97C] rounded focus:ring-[#97A97C]"
+                  className="mt-1 w-5 h-5 text-bronze rounded focus:ring-[#97A97C]"
                 />
                 <span className="text-sm text-gray-700">
                   I consent to <strong>background verification</strong> including identity confirmation through my government-issued ID. I understand this is required for community safety.
@@ -524,7 +524,7 @@ export default function PractitionerApplyPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-[#97A97C] hover:bg-[#7A8A63] h-14 text-lg"
+              className="flex-1 bg-forest hover:bg-forest-mist h-14 text-lg"
             >
               {loading ? (
                 <>

@@ -110,12 +110,12 @@ export default function ForumPage() {
   // PAYWALL for non-Premium Pro and non-admin users
   if (!canAccessForum) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center px-4 py-20">
+      <div className="min-h-screen bg-cream flex items-center justify-center px-4 py-20">
         <div className="max-w-md w-full text-center">
           <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Lock className="w-10 h-10 text-amber-600" />
           </div>
-          <h2 className="text-3xl font-bold text-[#2C3E2D] mb-3">Premium Pro Access Required</h2>
+          <h2 className="text-3xl font-bold text-forest mb-3">Premium Pro Access Required</h2>
           <p className="text-gray-600 mb-2">
             The Community Forum is exclusively available for <strong>Premium Pro</strong> subscribers.
           </p>
@@ -124,7 +124,7 @@ export default function ForumPage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Link href="/subscription">
-              <Button className="bg-[#97A97C] hover:bg-[#7A8A63] text-white px-8">
+              <Button className="bg-forest hover:bg-forest-mist text-white px-8">
                 <Crown className="w-4 h-4 mr-2" />
                 Upgrade to Premium Pro
               </Button>
@@ -140,21 +140,21 @@ export default function ForumPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#97A97C]" />
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-bronze" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0]">
-      <div className="bg-[#2C3E2D] text-white py-12 px-4">
+    <div className="min-h-screen bg-cream">
+      <div className="bg-forest text-white py-12 px-4">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-4xl font-bold mb-4">Community Forum</h1>
           <p className="text-xl text-gray-300">
             Connect with others on their healing journey. Share experiences, ask questions, and learn from the community.
           </p>
-          <div className="mt-4 inline-block bg-[#97A97C] text-white px-4 py-2 rounded-full text-sm">
+          <div className="mt-4 inline-block bg-forest text-white px-4 py-2 rounded-full text-sm">
             💎 Premium Access - Subscribers Only
           </div>
         </div>
@@ -173,7 +173,7 @@ export default function ForumPage() {
                     setShowModal(true);
                   }
                 }}
-                className="w-full bg-[#97A97C] text-white py-3 rounded font-bold hover:bg-[#7A8A63] mb-4 transition-colors"
+                className="w-full bg-forest text-white py-3 rounded font-bold hover:bg-forest-mist mb-4 transition-colors"
               >
                 + Start New Topic
               </button>
@@ -184,13 +184,13 @@ export default function ForumPage() {
             </div>
 
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="font-bold text-[#2C3E2D] mb-4">Categories</h3>
+              <h3 className="font-bold text-forest mb-4">Categories</h3>
               <ul className="space-y-2">
                 {categories.map(cat => (
                   <li 
                     key={cat}
                     onClick={() => setActiveCategory(cat)}
-                    className={`cursor-pointer capitalize ${activeCategory === cat ? 'text-[#97A97C] font-bold' : 'text-gray-600 hover:text-[#97A97C]'}`}
+                    className={`cursor-pointer capitalize ${activeCategory === cat ? 'text-bronze font-bold' : 'text-gray-600 hover:text-bronze'}`}
                   >
                     {cat}
                   </li>
@@ -207,14 +207,14 @@ export default function ForumPage() {
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center gap-2">
                       {topic.isPremium && (
-                        <span className="bg-[#97A97C] text-white text-xs px-2 py-1 rounded">Premium</span>
+                        <span className="bg-forest text-white text-xs px-2 py-1 rounded">Premium</span>
                       )}
                       <span className="text-xs text-gray-500">{topic.category}</span>
                     </div>
                     <span className="text-xs text-gray-500">{topic.lastReply}</span>
                   </div>
                   
-                  <h3 className="text-xl font-bold text-[#2C3E2D] mb-2 hover:text-[#97A97C] cursor-pointer">
+                  <h3 className="text-xl font-bold text-forest mb-2 hover:text-bronze cursor-pointer">
                     {topic.title}
                   </h3>
                   <p className="text-gray-600 text-sm mb-4 line-clamp-2">{topic.preview}</p>
@@ -235,7 +235,7 @@ export default function ForumPage() {
                 <p className="text-gray-600">No topics in this category yet. Be the first to share!</p>
                 <button 
                   onClick={() => setShowModal(true)}
-                  className="mt-4 text-[#97A97C] font-medium hover:underline"
+                  className="mt-4 text-bronze font-medium hover:underline"
                 >
                   Start a new topic
                 </button>
@@ -269,11 +269,11 @@ export default function ForumPage() {
               <X className="w-6 h-6" />
             </button>
 
-            <h2 className="text-2xl font-bold text-[#2C3E2D] mb-4">Start New Topic</h2>
+            <h2 className="text-2xl font-bold text-forest mb-4">Start New Topic</h2>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1 text-[#2C3E2D]">Category</label>
+                <label className="block text-sm font-medium mb-1 text-forest">Category</label>
                 <select 
                   value={newTopic.category}
                   onChange={(e) => setNewTopic({...newTopic, category: e.target.value})}
@@ -287,7 +287,7 @@ export default function ForumPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-1 text-[#2C3E2D]">Title</label>
+                <label className="block text-sm font-medium mb-1 text-forest">Title</label>
                 <input
                   type="text"
                   value={newTopic.title}
@@ -298,7 +298,7 @@ export default function ForumPage() {
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-1 text-[#2C3E2D]">Content</label>
+                <label className="block text-sm font-medium mb-1 text-forest">Content</label>
                 <textarea
                   value={newTopic.content}
                   onChange={(e) => setNewTopic({...newTopic, content: e.target.value})}
@@ -319,7 +319,7 @@ export default function ForumPage() {
               <button
                 onClick={handleCreateTopic}
                 disabled={submitting}
-                className="flex-1 py-2 bg-[#97A97C] text-white rounded hover:bg-[#7A8A63] disabled:opacity-50 transition-colors"
+                className="flex-1 py-2 bg-forest text-white rounded hover:bg-forest-mist disabled:opacity-50 transition-colors"
                 type="button"
               >
                 {submitting ? 'Creating...' : 'Create Topic'}

@@ -36,7 +36,7 @@ export default function ProfilePage() {
   }, [userData]);
 
   if (!mounted) {
-    return <div className="min-h-screen bg-[#F5F5F0]" />;
+    return <div className="min-h-screen bg-cream" />;
   }
 
   if (!user) {
@@ -119,15 +119,15 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] py-8 px-4">
+    <div className="min-h-screen bg-cream py-8 px-4">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
-          <Link href="/dashboard" className="text-[#97A97C] hover:underline flex items-center gap-1">
+          <Link href="/dashboard" className="text-bronze hover:underline flex items-center gap-1">
             <ArrowLeft className="w-4 h-4" /> Back to Dashboard
           </Link>
         </div>
 
-        <h1 className="text-3xl font-bold text-[#2C3E2D] mb-8">My Profile</h1>
+        <h1 className="text-3xl font-bold text-forest mb-8">My Profile</h1>
 
         {message && (
           <div className={`p-4 rounded-lg mb-6 ${message.includes('success') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
@@ -150,13 +150,13 @@ export default function ProfilePage() {
                   {userData?.photoURL ? (
                     <img src={userData.photoURL} alt="Profile" className="w-20 h-20 rounded-full object-cover" />
                   ) : (
-                    <div className="w-20 h-20 rounded-full bg-[#97A97C] flex items-center justify-center text-white text-2xl font-bold">
+                    <div className="w-20 h-20 rounded-full bg-forest flex items-center justify-center text-white text-2xl font-bold">
                       {(userData?.displayName || user?.email?.[0] || 'U').toUpperCase()}
                     </div>
                   )}
                   <button 
                     onClick={() => fileInputRef.current?.click()}
-                    className="absolute -bottom-2 -right-2 bg-[#2C3E2D] text-white p-2 rounded-full hover:bg-[#3d5238]"
+                    className="absolute -bottom-2 -right-2 bg-forest text-white p-2 rounded-full hover:bg-forest-mist"
                     aria-label="Upload profile picture"
                     type="button"
                   >
@@ -172,7 +172,7 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div>
-                  <p className="font-medium text-[#2C3E2D]">{userData?.displayName}</p>
+                  <p className="font-medium text-forest">{userData?.displayName}</p>
                   <p className="text-sm text-gray-500">{user.email}</p>
                 </div>
               </div>
@@ -191,7 +191,7 @@ export default function ProfilePage() {
               <Button 
                 onClick={handleUpdateProfile} 
                 disabled={loading || !displayName.trim()}
-                className="bg-[#97A97C] hover:bg-[#7A8A63]"
+                className="bg-forest hover:bg-forest-mist"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Update Profile'}
               </Button>
@@ -247,7 +247,7 @@ export default function ProfilePage() {
                     <Button 
                       onClick={handleChangePassword} 
                       disabled={loading}
-                      className="bg-[#97A97C] hover:bg-[#7A8A63]"
+                      className="bg-forest hover:bg-forest-mist"
                     >
                       {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Update Password'}
                     </Button>

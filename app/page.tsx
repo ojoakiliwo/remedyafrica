@@ -18,6 +18,7 @@ import {
 import { useState, useEffect } from 'react';
 import HerbIdentifier from '@/components/HerbIdentifier';
 import FeaturedRemedies from '@/components/home/FeaturedRemedies';
+import { CategoryGrid } from '@/components/CategoryGrid';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 
@@ -155,6 +156,24 @@ export default function HomePage() {
             </Link>
           </div>
           <FeaturedRemedies />
+        </div>
+      </section>
+
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-12">
+            <div>
+              <p className="eyebrow">By concern</p>
+              <h2 className="mt-4 text-3xl sm:text-4xl text-forest">Find a path by how you feel</h2>
+              <p className="mt-4 text-ink-muted max-w-xl">
+                Counts are live from the herb library — the same herbs you will see inside each condition.
+              </p>
+            </div>
+            <Link href="/category" className="inline-flex items-center gap-2 text-sm font-medium text-forest hover:text-bronze">
+              All categories <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <CategoryGrid />
         </div>
       </section>
 

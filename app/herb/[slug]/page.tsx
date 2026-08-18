@@ -2,7 +2,6 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import Navbar from '@/components/Navbar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -117,10 +116,10 @@ export default function HerbDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] dark:bg-[#151f16] flex items-center justify-center">
+      <div className="min-h-screen bg-cream dark:bg-[#151f16] flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#97A97C] mx-auto mb-4"></div>
-          <p className="text-[#2C3E2D] dark:text-[#F5F5F0]">Loading herb details...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-forest mx-auto mb-4"></div>
+          <p className="text-forest dark:text-[#F5F5F0]">Loading herb details...</p>
         </div>
       </div>
     );
@@ -128,11 +127,10 @@ export default function HerbDetailPage() {
 
   if (error || !herb) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] dark:bg-[#151f16]">
-        <Navbar />
+      <div className="min-h-screen bg-cream dark:bg-[#151f16]">
         <div className="container mx-auto px-4 py-20 text-center">
-          <h1 className="text-3xl font-bold text-[#2C3E2D] dark:text-[#F5F5F0] mb-4">{error || 'Herb Not Found'}</h1>
-          <Link href="/" className="text-[#97A97C] hover:underline">
+          <h1 className="text-3xl font-bold text-forest dark:text-[#F5F5F0] mb-4">{error || 'Herb Not Found'}</h1>
+          <Link href="/" className="text-bronze hover:underline">
             Return to Home
           </Link>
         </div>
@@ -141,24 +139,22 @@ export default function HerbDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] dark:bg-[#151f16]">
-      <Navbar />
-      
+    <div className="min-h-screen bg-cream dark:bg-[#151f16]">
       <main className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-6">
-          <Link href="/" className="hover:text-[#97A97C]">Home</Link>
+          <Link href="/" className="hover:text-bronze">Home</Link>
           <ChevronRight className="h-4 w-4 mx-2" />
-          <Link href={`/category/${herb.category}`} className="hover:text-[#97A97C] capitalize">
+          <Link href={`/category/${herb.category}`} className="hover:text-bronze capitalize">
             {herb.category?.replace('-', ' ')}
           </Link>
           <ChevronRight className="h-4 w-4 mx-2" />
-          <span className="text-[#2C3E2D] dark:text-[#F5F5F0] font-medium">{herb.name}</span>
+          <span className="text-forest dark:text-[#F5F5F0] font-medium">{herb.name}</span>
         </div>
 
         {/* Header with Logo */}
         <div className="flex items-center justify-between mb-8 relative">
-          <Link href={`/category/${herb.category}`} className="flex items-center space-x-2 text-[#97A97C] hover:text-[#7A8A63]">
+          <Link href={`/category/${herb.category}`} className="flex items-center space-x-2 text-bronze hover:text-bronze">
             <ArrowLeft className="h-5 w-5" />
             <span>Back to Category</span>
           </Link>
@@ -220,7 +216,7 @@ export default function HerbDetailPage() {
                           setImageError(false);
                         }}
                         className={`aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                          selectedImage === idx ? 'border-[#97A97C]' : 'border-transparent'
+                          selectedImage === idx ? 'border-forest' : 'border-transparent'
                         }`}
                         aria-label={`View image ${idx + 1} of ${herb.name}`}
                       >
@@ -233,19 +229,19 @@ export default function HerbDetailPage() {
             ) : null}
 
             {/* AI Camera */}
-            <Card className="bg-gradient-to-r from-[#97A97C]/10 to-[#B8860B]/10 border-[#97A97C]/30">
+            <Card className="bg-gradient-to-r from-[#97A97C]/10 to-[#B8860B]/10 border-forest/30">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="bg-[#97A97C] p-2 rounded-full">
+                    <div className="bg-forest p-2 rounded-full">
                       <Camera className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0]">AI Herb Identifier</h4>
+                      <h4 className="font-semibold text-forest dark:text-[#F5F5F0]">AI Herb Identifier</h4>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Take a photo to identify this herb</p>
                     </div>
                   </div>
-                  <Button className="bg-[#97A97C] hover:bg-[#7A8A63]">
+                  <Button className="bg-forest hover:bg-forest-mist">
                     Open Camera
                   </Button>
                 </div>
@@ -256,7 +252,7 @@ export default function HerbDetailPage() {
           {/* Right Column - Details */}
           <div className="space-y-6">
             <div>
-              <h1 className="text-4xl font-bold text-[#2C3E2D] dark:text-[#F5F5F0] mb-2">{herb.name}</h1>
+              <h1 className="font-serif text-4xl text-forest dark:text-[#F5F5F0] mb-2">{herb.name}</h1>
               <p className="text-lg text-gray-500 dark:text-gray-400 italic">{herb.scientificName}</p>
             </div>
 
@@ -265,37 +261,37 @@ export default function HerbDetailPage() {
             {/* Quick Stats - Only show fields that exist */}
             <div className="grid grid-cols-3 gap-4">
               {herb.origin && (
-                <div className="bg-white/80 dark:bg-[#1e2b1f]/80 p-4 rounded-xl border border-[#97A97C]/20 text-center">
-                  <Clock className="h-5 w-5 text-[#97A97C] mx-auto mb-1" />
+                <div className="bg-white/80 dark:bg-[#1e2b1f]/80 p-4 rounded-xl border border-forest/20 text-center">
+                  <Clock className="h-5 w-5 text-bronze mx-auto mb-1" />
                   <p className="text-sm text-gray-600 dark:text-gray-400">Origin</p>
-                  <p className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0] text-sm">{herb.origin}</p>
+                  <p className="font-semibold text-forest dark:text-[#F5F5F0] text-sm">{herb.origin}</p>
                 </div>
               )}
               {herb.partsUsed && (
-                <div className="bg-white/80 dark:bg-[#1e2b1f]/80 p-4 rounded-xl border border-[#97A97C]/20 text-center">
+                <div className="bg-white/80 dark:bg-[#1e2b1f]/80 p-4 rounded-xl border border-forest/20 text-center">
                   <p className="text-sm text-gray-600 dark:text-gray-400">Parts</p>
-                  <p className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0] text-sm">{herb.partsUsed}</p>
+                  <p className="font-semibold text-forest dark:text-[#F5F5F0] text-sm">{herb.partsUsed}</p>
                 </div>
               )}
               {herb.rating && (
-                <div className="bg-white/80 dark:bg-[#1e2b1f]/80 p-4 rounded-xl border border-[#97A97C]/20 text-center">
+                <div className="bg-white/80 dark:bg-[#1e2b1f]/80 p-4 rounded-xl border border-forest/20 text-center">
                   <p className="text-sm text-gray-600 dark:text-gray-400">Rating</p>
-                  <p className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0]">{herb.rating}</p>
+                  <p className="font-semibold text-forest dark:text-[#F5F5F0]">{herb.rating}</p>
                 </div>
               )}
             </div>
 
             {/* Benefits */}
             {herb.benefits && herb.benefits.length > 0 && (
-              <Card className="border-[#97A97C]/20 dark:border-[#97A97C]/30 dark:bg-[#1e2b1f]">
+              <Card className="border-forest/20 dark:border-forest/30 dark:bg-[#1e2b1f]">
                 <CardHeader>
-                  <CardTitle className="text-[#2C3E2D] dark:text-[#F5F5F0]">Key Benefits</CardTitle>
+                  <CardTitle className="text-forest dark:text-[#F5F5F0]">Key Benefits</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2">
                     {herb.benefits.map((benefit: string, idx: number) => (
                       <li key={idx} className="flex items-start">
-                        <span className="text-[#97A97C] mr-2">✓</span>
+                        <span className="text-bronze mr-2">✓</span>
                         <span className="text-gray-700 dark:text-gray-300">{benefit}</span>
                       </li>
                     ))}
@@ -306,15 +302,15 @@ export default function HerbDetailPage() {
 
             {/* Preparation */}
             {herb.preparation && (
-              <Card className="border-[#97A97C]/20 dark:border-[#97A97C]/30 dark:bg-[#1e2b1f]">
+              <Card className="border-forest/20 dark:border-forest/30 dark:bg-[#1e2b1f]">
                 <CardHeader>
-                  <CardTitle className="text-[#2C3E2D] dark:text-[#F5F5F0] flex items-center">
-                    <Clock className="h-5 w-5 mr-2 text-[#97A97C]" />
+                  <CardTitle className="text-forest dark:text-[#F5F5F0] flex items-center">
+                    <Clock className="h-5 w-5 mr-2 text-bronze" />
                     Preparation
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="bg-[#F5F5DC] dark:bg-[#2a3a2b] p-4 rounded-lg">
+                  <div className="bg-cream dark:bg-[#2a3a2b] p-4 rounded-lg">
                     <p className="text-gray-700 dark:text-gray-300">{herb.preparation}</p>
                   </div>
                   {herb.dosage && (
@@ -329,10 +325,10 @@ export default function HerbDetailPage() {
             {/* Prescription - GATED */}
             {herb.prescription && (
               canAccessPrescription ? (
-                <Card className="border-[#97A97C]/20 dark:border-[#97A97C]/30 dark:bg-[#1e2b1f]">
+                <Card className="border-forest/20 dark:border-forest/30 dark:bg-[#1e2b1f]">
                   <CardHeader>
-                    <CardTitle className="text-[#2C3E2D] dark:text-[#F5F5F0] flex items-center">
-                      <Pill className="h-5 w-5 mr-2 text-[#97A97C]" />
+                    <CardTitle className="text-forest dark:text-[#F5F5F0] flex items-center">
+                      <Pill className="h-5 w-5 mr-2 text-bronze" />
                       Prescription & Usage Guide
                     </CardTitle>
                   </CardHeader>
@@ -349,7 +345,7 @@ export default function HerbDetailPage() {
                 <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
                   <CardContent className="p-6 text-center">
                     <Lock className="h-8 w-8 text-amber-600 dark:text-amber-400 mx-auto mb-3" />
-                    <h3 className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0] mb-2">Prescription Guide Locked</h3>
+                    <h3 className="font-semibold text-forest dark:text-[#F5F5F0] mb-2">Prescription Guide Locked</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                       Detailed prescription and usage guidelines are available for Premium subscribers.
                     </p>
@@ -357,7 +353,7 @@ export default function HerbDetailPage() {
                       Your current plan: <span className="font-semibold capitalize">{tier}</span>
                     </p>
                     <Link href="/subscription">
-                      <Button className="bg-[#97A97C] hover:bg-[#7A8A63] text-white">
+                      <Button className="bg-forest hover:bg-forest-mist text-white">
                         <Crown className="h-4 w-4 mr-2" />
                         Upgrade to Premium
                       </Button>
@@ -404,7 +400,7 @@ export default function HerbDetailPage() {
                 <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
                   <CardContent className="p-6 text-center">
                     <Lock className="h-8 w-8 text-amber-600 dark:text-amber-400 mx-auto mb-3" />
-                    <h3 className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0] mb-2">Safety Information Locked</h3>
+                    <h3 className="font-semibold text-forest dark:text-[#F5F5F0] mb-2">Safety Information Locked</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                       Side effects, precautions, and drug interaction data are available for Premium subscribers.
                     </p>
@@ -412,7 +408,7 @@ export default function HerbDetailPage() {
                       Your current plan: <span className="font-semibold capitalize">{tier}</span>
                     </p>
                     <Link href="/subscription">
-                      <Button className="bg-[#97A97C] hover:bg-[#7A8A63] text-white">
+                      <Button className="bg-forest hover:bg-forest-mist text-white">
                         <Crown className="h-4 w-4 mr-2" />
                         Upgrade to Premium
                       </Button>
@@ -425,7 +421,7 @@ export default function HerbDetailPage() {
             {/* Related Herbs */}
             {relatedHerbs.length > 0 && (
               <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
-                <h3 className="text-xl font-bold text-[#2C3E2D] dark:text-[#F5F5F0] mb-4">Related Herbs</h3>
+                <h3 className="text-xl font-bold text-forest dark:text-[#F5F5F0] mb-4">Related Herbs</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {relatedHerbs.map((related: any) => (
                     <Link 
@@ -433,7 +429,7 @@ export default function HerbDetailPage() {
                       href={`/herb/${related.slug || related.id}`}
                       className="group block"
                     >
-                      <div className="bg-white dark:bg-[#1e2b1f] rounded-xl overflow-hidden border border-[#97A97C]/20 hover:border-[#97A97C] transition-all hover:shadow-md">
+                      <div className="bg-white dark:bg-[#1e2b1f] rounded-xl overflow-hidden border border-forest/20 hover:border-forest transition-all hover:shadow-md">
                         <div className="aspect-video bg-gray-100 dark:bg-[#2a3a2b] relative overflow-hidden">
                           {related.imageUrl ? (
                             <img 
@@ -444,7 +440,7 @@ export default function HerbDetailPage() {
                           ) : null}
                         </div>
                         <div className="p-3">
-                          <h4 className="font-semibold text-[#2C3E2D] dark:text-[#F5F5F0] text-sm">{related.name}</h4>
+                          <h4 className="font-semibold text-forest dark:text-[#F5F5F0] text-sm">{related.name}</h4>
                           <p className="text-xs text-gray-500 dark:text-gray-400 italic truncate">{related.scientificName}</p>
                         </div>
                       </div>

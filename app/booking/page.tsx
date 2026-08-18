@@ -124,7 +124,7 @@ export default function BookingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0]">
+    <div className="min-h-screen bg-cream">
       {/* Header */}
       <header className="bg-white border-b border-[#E5E5E5]">
         <div className="max-w-4xl mx-auto px-4 py-6">
@@ -133,7 +133,7 @@ export default function BookingPage() {
               <ChevronLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-[#2C3E2D]">Book Consultation</h1>
+              <h1 className="text-2xl font-bold text-forest">Book Consultation</h1>
               <p className="text-gray-600">Step {step} of 3</p>
             </div>
           </div>
@@ -146,7 +146,7 @@ export default function BookingPage() {
           {[1, 2, 3].map((i) => (
             <div 
               key={i}
-              className={`flex-1 h-2 rounded-full ${i <= step ? 'bg-[#97A97C]' : 'bg-gray-200'}`}
+              className={`flex-1 h-2 rounded-full ${i <= step ? 'bg-forest' : 'bg-gray-200'}`}
             />
           ))}
         </div>
@@ -155,7 +155,7 @@ export default function BookingPage() {
         {step === 1 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-semibold text-[#2C3E2D] mb-2">Choose Your Practitioner</h2>
+              <h2 className="text-xl font-semibold text-forest mb-2">Choose Your Practitioner</h2>
               <p className="text-gray-600">Select a herbalist for your consultation</p>
             </div>
 
@@ -163,19 +163,19 @@ export default function BookingPage() {
               {practitioners.map((practitioner) => (
                 <Card 
                   key={practitioner.id}
-                  className={`cursor-pointer transition-all hover:border-[#97A97C] ${
-                    bookingData.practitionerId === practitioner.id ? 'border-[#97A97C] border-2' : ''
+                  className={`cursor-pointer transition-all hover:border-forest ${
+                    bookingData.practitionerId === practitioner.id ? 'border-forest border-2' : ''
                   }`}
                   onClick={() => handlePractitionerSelect(practitioner)}
                 >
                   <CardContent className="p-6 text-center">
-                    <div className="w-20 h-20 rounded-full bg-[#97A97C] mx-auto mb-4 flex items-center justify-center text-white text-2xl font-bold">
+                    <div className="w-20 h-20 rounded-full bg-forest mx-auto mb-4 flex items-center justify-center text-white text-2xl font-bold">
                       {practitioner.name.charAt(0)}
                     </div>
-                    <h3 className="font-semibold text-[#2C3E2D]">{practitioner.name}</h3>
+                    <h3 className="font-semibold text-forest">{practitioner.name}</h3>
                     <p className="text-sm text-gray-600 mt-1">{practitioner.specialty}</p>
                     {bookingData.practitionerId === practitioner.id && (
-                      <CheckCircle className="w-5 h-5 text-[#97A97C] mx-auto mt-2" />
+                      <CheckCircle className="w-5 h-5 text-bronze mx-auto mt-2" />
                     )}
                   </CardContent>
                 </Card>
@@ -188,7 +188,7 @@ export default function BookingPage() {
         {step === 2 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-semibold text-[#2C3E2D] mb-2">Select Date & Time</h2>
+              <h2 className="text-xl font-semibold text-forest mb-2">Select Date & Time</h2>
               <p className="text-gray-600">Choose when you'd like to meet with {bookingData.practitionerName}</p>
             </div>
 
@@ -202,8 +202,8 @@ export default function BookingPage() {
                       onClick={() => handleDateSelect(date.value)}
                       className={`p-3 rounded-lg border text-sm transition-colors ${
                         bookingData.date === date.value 
-                          ? 'bg-[#97A97C] text-white border-[#97A97C]' 
-                          : 'bg-white border-gray-200 hover:border-[#97A97C]'
+                          ? 'bg-forest text-white border-forest' 
+                          : 'bg-white border-gray-200 hover:border-forest'
                       }`}
                     >
                       {date.display}
@@ -222,8 +222,8 @@ export default function BookingPage() {
                         onClick={() => handleTimeSelect(time)}
                         className={`p-3 rounded-lg border text-sm transition-colors ${
                           bookingData.time === time 
-                            ? 'bg-[#97A97C] text-white border-[#97A97C]' 
-                            : 'bg-white border-gray-200 hover:border-[#97A97C]'
+                            ? 'bg-forest text-white border-forest' 
+                            : 'bg-white border-gray-200 hover:border-forest'
                         }`}
                       >
                         {time}
@@ -238,7 +238,7 @@ export default function BookingPage() {
               <div className="flex justify-end">
                 <Button 
                   onClick={() => setStep(3)}
-                  className="bg-[#97A97C] hover:bg-[#7A8A63]"
+                  className="bg-forest hover:bg-forest-mist"
                 >
                   Continue
                   <ChevronRight className="w-4 h-4 ml-2" />
@@ -252,7 +252,7 @@ export default function BookingPage() {
         {step === 3 && (
           <div className="space-y-6">
             <div>
-              <h2 className="text-xl font-semibold text-[#2C3E2D] mb-2">Consultation Details</h2>
+              <h2 className="text-xl font-semibold text-forest mb-2">Consultation Details</h2>
               <p className="text-gray-600">Add final details for your session</p>
             </div>
 
@@ -266,8 +266,8 @@ export default function BookingPage() {
                       onClick={() => setBookingData({...bookingData, type: 'video'})}
                       className={`p-4 rounded-lg border flex flex-col items-center gap-2 transition-colors ${
                         bookingData.type === 'video' 
-                          ? 'border-[#97A97C] bg-[#97A97C]/10' 
-                          : 'border-gray-200 hover:border-[#97A97C]'
+                          ? 'border-forest bg-forest/10' 
+                          : 'border-gray-200 hover:border-forest'
                       }`}
                     >
                       <Video className="w-6 h-6" />
@@ -277,8 +277,8 @@ export default function BookingPage() {
                       onClick={() => setBookingData({...bookingData, type: 'audio'})}
                       className={`p-4 rounded-lg border flex flex-col items-center gap-2 transition-colors ${
                         bookingData.type === 'audio' 
-                          ? 'border-[#97A97C] bg-[#97A97C]/10' 
-                          : 'border-gray-200 hover:border-[#97A97C]'
+                          ? 'border-forest bg-forest/10' 
+                          : 'border-gray-200 hover:border-forest'
                       }`}
                     >
                       <Phone className="w-6 h-6" />
@@ -315,7 +315,7 @@ export default function BookingPage() {
                 <Button 
                   onClick={handleSubmit}
                   disabled={loading}
-                  className="w-full bg-[#97A97C] hover:bg-[#7A8A63] h-12"
+                  className="w-full bg-forest hover:bg-forest-mist h-12"
                 >
                   {loading ? (
                     <>

@@ -47,16 +47,16 @@ export default function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-cream flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-[#2C3E2D] mb-2">Check Your Email</h2>
+          <h2 className="text-2xl font-bold text-forest mb-2">Check Your Email</h2>
           <p className="text-gray-600 mb-2">
             We've sent a password reset link to:
           </p>
-          <p className="font-medium text-[#2C3E2D] mb-6">{email}</p>
+          <p className="font-medium text-forest mb-6">{email}</p>
           <p className="text-sm text-gray-500 mb-6">
             Click the link in the email to reset your password. If you don't see it, check your spam folder.
           </p>
@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
               Send to a different email
             </Button>
             <Link href="/login">
-              <Button className="w-full bg-[#97A97C] hover:bg-[#7A8A63]">
+              <Button className="w-full bg-forest hover:bg-forest-mist">
                 Back to Login
               </Button>
             </Link>
@@ -80,18 +80,18 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-cream flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full">
-        <Link href="/login" className="text-[#97A97C] hover:text-[#7A8A63] text-sm flex items-center gap-1 mb-6">
+        <Link href="/login" className="text-bronze hover:text-bronze text-sm flex items-center gap-1 mb-6">
           <ArrowLeft className="w-4 h-4" />
           Back to Login
         </Link>
 
         <div className="text-center mb-6">
-          <div className="w-12 h-12 bg-[#97A97C]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Mail className="w-6 h-6 text-[#97A97C]" />
+          <div className="w-12 h-12 bg-forest/10 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Mail className="w-6 h-6 text-bronze" />
           </div>
-          <h1 className="text-2xl font-bold text-[#2C3E2D]">Reset Your Password</h1>
+          <h1 className="text-2xl font-bold text-forest">Reset Your Password</h1>
           <p className="text-gray-500 mt-1 text-sm">
             Enter your email and we'll send you a link to reset your password.
           </p>
@@ -99,7 +99,7 @@ export default function ForgotPasswordPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-[#2C3E2D] mb-1">
+            <label htmlFor="email" className="block text-sm font-medium text-forest mb-1">
               Email Address
             </label>
             <input
@@ -116,7 +116,7 @@ export default function ForgotPasswordPage() {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#97A97C] hover:bg-[#7A8A63] h-12"
+            className="w-full bg-forest hover:bg-forest-mist h-12"
           >
             {loading ? (
               <>
@@ -131,7 +131,7 @@ export default function ForgotPasswordPage() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           Remember your password?{' '}
-          <Link href="/login" className="text-[#97A97C] hover:text-[#7A8A63] font-medium">
+          <Link href="/login" className="text-bronze hover:text-bronze font-medium">
             Sign in
           </Link>
         </p>

@@ -4,9 +4,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Mail, Phone, MapPin, Send, ArrowLeft, Loader2, CheckCircle } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, Loader2, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { EditorialPage, PageHero } from '@/components/editorial/PageHero';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -57,19 +58,17 @@ export default function ContactPage() {
 
   if (sent) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-green-600" />
+      <div className="min-h-screen bg-cream flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl border border-forest/10 shadow-lift p-10 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-cream rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-bronze" />
           </div>
-          <h2 className="text-2xl font-bold text-[#2C3E2D] mb-2">Message Sent!</h2>
-          <p className="text-gray-600 mb-6">
-            Thank you for reaching out. We'll get back to you within 24 hours.
+          <h2 className="font-serif text-3xl text-forest mb-2">Message sent</h2>
+          <p className="text-ink-muted mb-6">
+            Thank you for reaching out. We will respond within 24 hours.
           </p>
           <Link href="/">
-            <Button className="bg-[#97A97C] hover:bg-[#7A8A63]">
-              Back to Home
-            </Button>
+            <Button>Back to home</Button>
           </Link>
         </div>
       </div>
@@ -77,54 +76,49 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0]">
-      <div className="bg-[#2C3E2D] text-white py-8 px-4">
-        <div className="max-w-3xl mx-auto">
-          <Link href="/" className="text-[#97A97C] hover:text-white text-sm flex items-center gap-1 mb-4">
-            <ArrowLeft className="w-4 h-4" />
-            Back to Home
-          </Link>
-          <h1 className="text-3xl font-bold">Contact Us</h1>
-          <p className="text-gray-300 mt-2">We'd love to hear from you. Reach out anytime.</p>
-        </div>
-      </div>
+    <EditorialPage>
+      <PageHero
+        eyebrow="A letter"
+        title="Write to us"
+        subtitle="We read every note. Reach the house in Lagos, or send a message here."
+      />
 
-      <div className="max-w-3xl mx-auto px-4 py-12">
+      <div className="max-w-3xl mx-auto px-4 py-16">
         <div className="grid md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-            <div className="w-10 h-10 bg-[#97A97C]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Mail className="w-5 h-5 text-[#97A97C]" />
+          <div className="bg-white rounded-3xl border border-forest/10 shadow-soft p-6 text-center">
+            <div className="w-10 h-10 bg-cream rounded-full flex items-center justify-center mx-auto mb-3">
+              <Mail className="w-5 h-5 text-bronze" />
             </div>
-            <h3 className="font-bold text-[#2C3E2D] mb-1">Email</h3>
-            <a href="mailto:hello@remedyafrica.com" className="text-[#97A97C] hover:underline text-sm">
+            <h3 className="font-serif text-xl text-forest mb-1">Email</h3>
+            <a href="mailto:hello@remedyafrica.com" className="text-bronze hover:text-forest text-sm">
               hello@remedyafrica.com
             </a>
           </div>
-          <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-            <div className="w-10 h-10 bg-[#97A97C]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Phone className="w-5 h-5 text-[#97A97C]" />
+          <div className="bg-white rounded-3xl border border-forest/10 shadow-soft p-6 text-center">
+            <div className="w-10 h-10 bg-cream rounded-full flex items-center justify-center mx-auto mb-3">
+              <Phone className="w-5 h-5 text-bronze" />
             </div>
-            <h3 className="font-bold text-[#2C3E2D] mb-1">Phone</h3>
-            <a href="tel:+2348000000000" className="text-[#97A97C] hover:underline text-sm">
+            <h3 className="font-serif text-xl text-forest mb-1">Phone</h3>
+            <a href="tel:+2348000000000" className="text-bronze hover:text-forest text-sm">
               +234 800 000 0000
             </a>
           </div>
-          <div className="bg-white rounded-xl shadow-sm p-6 text-center">
-            <div className="w-10 h-10 bg-[#97A97C]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-              <MapPin className="w-5 h-5 text-[#97A97C]" />
+          <div className="bg-white rounded-3xl border border-forest/10 shadow-soft p-6 text-center">
+            <div className="w-10 h-10 bg-cream rounded-full flex items-center justify-center mx-auto mb-3">
+              <MapPin className="w-5 h-5 text-bronze" />
             </div>
-            <h3 className="font-bold text-[#2C3E2D] mb-1">Location</h3>
-            <p className="text-gray-500 text-sm">Lagos, Nigeria</p>
+            <h3 className="font-serif text-xl text-forest mb-1">Location</h3>
+            <p className="text-ink-muted text-sm">Lagos, Nigeria</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-8">
-          <h2 className="text-xl font-bold text-[#2C3E2D] mb-6">Send Us a Message</h2>
+        <div className="bg-white rounded-3xl border border-forest/10 shadow-soft p-8">
+          <h2 className="font-serif text-2xl text-forest mb-6">Send a message</h2>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-[#2C3E2D] mb-1">Name *</label>
+                <label htmlFor="name" className="block text-sm font-medium text-forest mb-1">Name *</label>
                 <input
                   id="name"
                   name="name"
@@ -132,7 +126,7 @@ export default function ContactPage() {
                   required
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                  className="w-full p-3 border border-forest/15 rounded-2xl bg-cream focus:ring-2 focus:ring-forest outline-none"
                   placeholder="Your name"
                 />
               </div>
@@ -145,7 +139,7 @@ export default function ContactPage() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                  className="w-full p-3 border border-forest/15 rounded-2xl bg-cream focus:ring-2 focus:ring-forest outline-none"
                   placeholder="you@example.com"
                 />
               </div>
@@ -159,7 +153,7 @@ export default function ContactPage() {
                 required
                 value={formData.subject}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                className="w-full p-3 border border-forest/15 rounded-2xl bg-cream focus:ring-2 focus:ring-forest outline-none"
               >
                 <option value="">Select a subject</option>
                 <option value="General Inquiry">General Inquiry</option>
@@ -180,7 +174,7 @@ export default function ContactPage() {
                 rows={5}
                 value={formData.message}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                className="w-full p-3 border border-forest/15 rounded-2xl bg-cream focus:ring-2 focus:ring-forest outline-none"
                 placeholder="How can we help you?"
               />
             </div>
@@ -188,7 +182,7 @@ export default function ContactPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#97A97C] hover:bg-[#7A8A63] h-12"
+              className="w-full h-12"
             >
               {loading ? (
                 <>
@@ -205,6 +199,6 @@ export default function ContactPage() {
           </form>
         </div>
       </div>
-    </div>
+    </EditorialPage>
   );
 }

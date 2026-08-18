@@ -64,7 +64,7 @@ export default function HistoryPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
+      <div className="min-h-screen bg-cream flex items-center justify-center">
         <p>Please sign in to view your history.</p>
       </div>
     );
@@ -72,16 +72,16 @@ export default function HistoryPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#97A97C]" />
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-bronze" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] py-8 px-4">
+    <div className="min-h-screen bg-cream py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-[#2C3E2D] mb-8">Identification History</h1>
+        <h1 className="text-3xl font-bold text-forest mb-8">Identification History</h1>
         
         {history.length === 0 ? (
           <Card>
@@ -96,12 +96,12 @@ export default function HistoryPage() {
               <Card key={item.id}>
                 <CardContent className="p-4 flex items-center justify-between">
                   <div>
-                    <h3 className="font-bold text-[#2C3E2D]">{item.topMatch.commonName}</h3>
+                    <h3 className="font-bold text-forest">{item.topMatch.commonName}</h3>
                     <p className="text-sm text-gray-500 italic">{item.topMatch.name}</p>
                     <p className="text-xs text-gray-400 mt-1">{formatDate(item.timestamp)}</p>
                   </div>
                   <div className="text-right">
-                    <span className="bg-[#97A97C] text-white px-3 py-1 rounded-full text-sm">
+                    <span className="bg-forest text-white px-3 py-1 rounded-full text-sm">
                       {item.topMatch.confidence}%
                     </span>
                   </div>
@@ -112,7 +112,7 @@ export default function HistoryPage() {
         )}
         
         <div className="mt-8 text-center">
-          <Link href="/" className="text-[#97A97C] hover:underline">
+          <Link href="/" className="text-bronze hover:underline">
             ← Back to Identifier
           </Link>
         </div>

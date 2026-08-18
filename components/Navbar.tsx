@@ -64,7 +64,7 @@ export default function Navbar() {
 
   const baseNavLinks = [
     { href: '/', label: 'Home' },
-    { href: '/category/', label: 'Categories' },
+    { href: '/category', label: 'Categories' },
     { href: '/practitioners', label: 'Practitioners' },
   ];
 
