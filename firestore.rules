@@ -1,31 +1,41 @@
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
     // Allow public read access to herbs and practitioners
     match /herbs/{herbId} {
       allow read: if true;
-      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow write: if isAdmin();
     }
     
     match /practitioners/{practitionerId} {
       allow read: if true;
-      allow write: if request.auth != null && (request.auth.uid == practitionerId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      allow write: if isSignedIn() && (request.auth.uid == practitionerId || isAdmin());
     }
     
     match /practitioner_applications/{applicationId} {
-      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
     }
     
-    // Users collection - users can read/write their own data
+    // Users can read/write their own profile, but cannot change their role.
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow read, write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == userId && request.resource.data.role == 'user';
+      allow update: if isSignedIn() && request.auth.uid == userId && request.resource.data.role == resource.data.role;
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+      allow write: if isAdmin();
 
       match /subscription/{docId} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
-        allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+        allow read: if isAdmin();
       }
     }
     
@@ -34,7 +44,7 @@ service cloud.firestore {
       allow read, write: if request.auth != null && (
         request.auth.uid == resource.data.patientId || 
         request.auth.uid == resource.data.practitionerId ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        isAdmin()
       );
       allow create: if request.auth != null;
     }
@@ -55,7 +65,7 @@ service cloud.firestore {
     // Categories - public read
     match /categories/{categoryId} {
       allow read: if true;
-      allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow write: if isAdmin();
     }
     
     // User plant identification history
@@ -74,7 +84,7 @@ service cloud.firestore {
     // Search queries (for analytics)
     match /search_queries/{docId} {
       allow create: if true; // Allow anonymous
-      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow read: if isAdmin();
     }
     
     // Forum topics

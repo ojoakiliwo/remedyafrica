@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, User, Lock, Camera, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { isPractitionerRole } from '@/lib/auth/roles';
 
 export default function ProfilePage() {
   const { user, userData } = useAuth();
@@ -174,6 +175,18 @@ export default function ProfilePage() {
                 <div>
                   <p className="font-medium text-forest">{userData?.displayName}</p>
                   <p className="text-sm text-gray-500">{user.email}</p>
+                  <p className="mt-1 text-xs font-medium text-forest">
+                    {userData?.role === 'admin'
+                      ? 'Admin account'
+                      : isPractitionerRole(userData?.role)
+                        ? 'Practitioner account'
+                        : 'Member account'}
+                  </p>
+                  {isPractitionerRole(userData?.role) && userData?.role !== 'admin' && (
+                    <Link href="/practitioners/dashboard" className="mt-2 inline-block text-sm text-bronze hover:underline">
+                      Open practitioner dashboard
+                    </Link>
+                  )}
                 </div>
               </div>
 

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { isAdminRole, isPractitionerRole } from '@/lib/auth/roles';
 import { useSubscription } from '@/providers/SubscriptionProvider';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
@@ -50,8 +51,8 @@ export default function Navbar() {
     setMounted(true);
   }, []);
 
-  const isAdmin = userData?.role === 'admin';
-  const isPractitioner = userData?.role === 'practitioner' || isAdmin;
+  const isAdmin = isAdminRole(userData?.role);
+  const isPractitioner = isPractitionerRole(userData?.role);
 
   const handleQuickSearch = (e: React.FormEvent) => {
     e.preventDefault();

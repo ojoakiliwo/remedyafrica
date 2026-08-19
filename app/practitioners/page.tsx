@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { isPractitionerRole } from '@/lib/auth/roles';
 import { EditorialPage, PageHero, DisclaimerNote } from '@/components/editorial/PageHero';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,7 +35,7 @@ export default function PractitionersDirectoryPage() {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
 
-  const isPractitioner = userData?.role === 'practitioner' || userData?.role === 'admin';
+  const isPractitioner = isPractitionerRole(userData?.role);
 
   useEffect(() => {
     const load = async () => {

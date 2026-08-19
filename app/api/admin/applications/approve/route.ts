@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getAdminAuth, getAdminDb } from '@/lib/firebase/admin';
+import {
+  fieldsToCopyFromOrphan,
+  normalizeEmail,
+  resolveApplicantUid,
+} from '@/lib/auth/roles';
 
 function asString(value: unknown, fallback = '') {
   return typeof value === 'string' ? value : fallback;
@@ -20,6 +25,23 @@ function asExperience(value: unknown) {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   const parsed = parseInt(String(value ?? ''), 10);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+async function getAuthUser(uid: string) {
+  try {
+    return await getAdminAuth().getUser(uid);
+  } catch {
+    return null;
+  }
+}
+
+async function getAuthUserByEmail(email: string) {
+  if (!email) return null;
+  try {
+    return await getAdminAuth().getUserByEmail(email);
+  } catch {
+    return null;
+  }
 }
 
 export async function POST(request: Request) {
@@ -49,8 +71,52 @@ export async function POST(request: Request) {
     }
 
     const application = applicationSnap.data() || {};
-    const practitionerId = asString(application.userId) || applicationId;
+    const statedUserId = asString(application.userId);
+    const email = normalizeEmail(asString(application.email) || asString(application.applicantEmail));
     const name = asString(application.name) || asString(application.fullName) || 'Practitioner';
+
+    const statedAuth = statedUserId ? await getAuthUser(statedUserId) : null;
+    const statedUserSnap = statedUserId ? await db.doc(`users/${statedUserId}`).get() : null;
+    const emailAuth = await getAuthUserByEmail(email);
+    const emailUserSnap = emailAuth ? await db.doc(`users/${emailAuth.uid}`).get() : null;
+
+    const resolved = resolveApplicantUid({
+      applicationId,
+      statedUserId,
+      statedAccount: statedUserId
+        ? {
+            existsInAuth: Boolean(statedAuth),
+            role: asString(statedUserSnap?.data()?.role) || null,
+          }
+        : null,
+      authUidByEmail: emailAuth?.uid || null,
+      emailAccountIsAdmin: emailUserSnap?.data()?.role === 'admin',
+    });
+
+    const practitionerId = resolved.uid;
+    const convertedUserSnap = await db.doc(`users/${practitionerId}`).get();
+    const convertingAdmin = convertedUserSnap.data()?.role === 'admin';
+
+    const orphanFields: Record<string, unknown> = {};
+    const emailsToSearch = Array.from(new Set(
+      [asString(application.email), asString(application.applicantEmail), email].filter(Boolean)
+    ));
+    if (emailsToSearch.length > 0) {
+      for (const candidate of emailsToSearch) {
+        const orphans = await db.collection('users').where('email', '==', candidate).get();
+        for (const orphan of orphans.docs) {
+          if (orphan.id === practitionerId) continue;
+          const copied = fieldsToCopyFromOrphan(orphan.data() as Record<string, unknown>);
+          for (const [key, value] of Object.entries(copied)) {
+            if (orphanFields[key] == null) orphanFields[key] = value;
+          }
+          await orphan.ref.set({
+            replacedByUserId: practitionerId,
+            updatedAt: FieldValue.serverTimestamp(),
+          }, { merge: true });
+        }
+      }
+    }
 
     await db.doc(`practitioners/${practitionerId}`).set({
       name,
@@ -69,11 +135,17 @@ export async function POST(request: Request) {
       consultationFee: asExperience(application.consultationFee),
       createdAt: FieldValue.serverTimestamp(),
       applicationId,
-      userId: asString(application.userId) || null,
+      userId: statedUserId || practitionerId,
     }, { merge: true });
 
-    if (application.userId) {
-      await db.doc(`users/${application.userId}`).set({
+    if (!convertingAdmin) {
+      const authRecord = statedAuth?.uid === practitionerId ? statedAuth : emailAuth;
+      await db.doc(`users/${practitionerId}`).set({
+        ...orphanFields,
+        email: asString(application.email) || asString(application.applicantEmail) || authRecord?.email || email,
+        displayName: asString(orphanFields.displayName) || name,
+        name,
+        photoURL: asString(application.photoURL) || asString(orphanFields.photoURL),
         role: 'practitioner',
         updatedAt: FieldValue.serverTimestamp(),
       }, { merge: true });
@@ -83,9 +155,15 @@ export async function POST(request: Request) {
       status: 'approved',
       approvedAt: FieldValue.serverTimestamp(),
       approvedBy: decoded.uid,
+      convertedUserId: practitionerId,
     });
 
-    return NextResponse.json({ ok: true, practitionerId, name });
+    return NextResponse.json({
+      ok: true,
+      practitionerId,
+      name,
+      convertedExistingAccount: !convertingAdmin,
+    });
   } catch (error: any) {
     console.error('Approve application error:', error);
     const message = error?.message || 'Failed to approve application';

@@ -178,7 +178,7 @@ export default function AdminApplicationsPage() {
         });
         const payload = await response.json().catch(() => ({}));
         if (response.ok) {
-          toast.success(`Application approved for ${application.name}`);
+          toast.success(`Approved ${application.name}. Their existing login is now a practitioner account.`);
           fetchApplications();
           return;
         }

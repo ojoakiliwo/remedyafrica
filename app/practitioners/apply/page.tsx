@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase/client';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { uploadPractitionerApplicationFile } from '@/lib/firebase/storage';
 import { useAuth } from '@/hooks/useAuth';
+import { isAdminRole, isPractitionerRole } from '@/lib/auth/roles';
 import { 
   Upload, 
   X, 
@@ -29,7 +30,7 @@ import Link from 'next/link';
 
 export default function PractitionerApplyPage() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, userData, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   
@@ -57,10 +58,13 @@ export default function PractitionerApplyPage() {
   const idRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (user?.email) {
-      setFormData((prev) => prev.email ? prev : { ...prev, email: user.email || '' });
-    }
-  }, [user]);
+    if (!user) return;
+    setFormData((prev) => ({
+      ...prev,
+      email: user.email || prev.email,
+      fullName: prev.fullName || user.displayName || userData?.displayName || userData?.name || '',
+    }));
+  }, [user, userData]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -155,6 +159,7 @@ export default function PractitionerApplyPage() {
 
       await addDoc(collection(db, 'practitioner_applications'), {
         ...formData,
+        email: user.email || formData.email,
         name: formData.fullName,
         certifications,
         userId: user.uid,
@@ -208,6 +213,25 @@ export default function PractitionerApplyPage() {
     );
   }
 
+  if (isPractitionerRole(userData?.role) && !isAdminRole(userData?.role)) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Check className="w-8 h-8 text-green-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-forest mb-2">You already have a practitioner account</h2>
+          <p className="text-gray-600 mb-6">
+            This same login is your practitioner account. Open the dashboard to manage consultations.
+          </p>
+          <Link href="/practitioners/dashboard">
+            <Button className="bg-forest hover:bg-forest-mist">Open practitioner dashboard</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (submitted) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center p-4">
@@ -217,7 +241,7 @@ export default function PractitionerApplyPage() {
           </div>
           <h2 className="text-2xl font-bold text-forest mb-2">Application Submitted!</h2>
           <p className="text-gray-600 mb-6">
-            Your application is under review. We will verify your credentials and government ID within 5 business days.
+            Your application is under review. If it is approved, this same account will become your practitioner login. You will not get a second account.
           </p>
           <Link href="/">
             <Button className="bg-forest hover:bg-forest-mist">
@@ -245,6 +269,15 @@ export default function PractitionerApplyPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4 py-8">
+        {isAdminRole(userData?.role) && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            You are signed in as an admin. Apply from the healer&apos;s own login so approval converts that account, not this admin login.
+          </div>
+        )}
+        <div className="mb-6 rounded-xl border border-forest/15 bg-white p-4 text-sm text-gray-700">
+          You are applying with your existing RemedyAfrica login
+          {user.email ? ` (${user.email})` : ''}. If the application is approved, this same account is converted to a practitioner account. A separate practitioner login is not created.
+        </div>
         <form onSubmit={handleSubmit} className="space-y-8">
           
           {/* Personal Information */}
@@ -273,11 +306,12 @@ export default function PractitionerApplyPage() {
                   type="email"
                   name="email"
                   required
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#97A97C] outline-none"
+                  readOnly
+                  value={user.email || formData.email}
+                  className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-700 outline-none"
                   placeholder="amina@example.com"
                 />
+                <p className="mt-1 text-xs text-gray-500">This stays tied to the account you are signed in with.</p>
               </div>
               <div>
                 <label className="block font-medium text-forest mb-1">Phone *</label>
