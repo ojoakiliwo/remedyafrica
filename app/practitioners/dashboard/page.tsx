@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/providers/AuthProvider';
+import { getPractitionerLookupIds } from '@/lib/consultations/lookup';
 import { 
   Calendar, 
   Clock, 
@@ -112,9 +113,11 @@ export default function PractitionerDashboard() {
 
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
-        const practitionerDoc = await getDoc(doc(db, 'practitioners', user.uid));
+        const ownProfile = await getDoc(doc(db, 'practitioners', user.uid));
+        const lookupIds = await getPractitionerLookupIds(user.uid);
+        const hasLinkedProfile = ownProfile.exists() || lookupIds.some((id) => id !== user.uid);
         const role = userDoc.exists() ? userDoc.data().role : userData?.role;
-        if (role === 'practitioner' || role === 'admin' || practitionerDoc.exists()) {
+        if (role === 'practitioner' || role === 'admin' || hasLinkedProfile) {
           setIsPractitioner(true);
         } else {
           setIsPractitioner(false);
@@ -132,56 +135,70 @@ export default function PractitionerDashboard() {
 
   useEffect(() => {
     if (authLoading || checkingRole) return;
-    
     if (!user) {
       router.push('/login');
       return;
     }
-
     if (!isPractitioner) return;
-    
-    loadConsultations();
-  }, [user, authLoading, checkingRole, isPractitioner, router]);
 
-  const loadConsultations = async () => {
-    if (!user?.uid) return;
-    
-    try {
+    let cancelled = false;
+    const unsubs: Array<() => void> = [];
+    const buckets = new Map<string, Consultation[]>();
+
+    const publish = () => {
+      const data = Array.from(buckets.values()).flat();
+      const seen = new Set<string>();
+      const unique = data.filter((item) => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      });
+      unique.sort((a, b) => {
+        const dateA = new Date(`${a.date} ${a.time}`);
+        const dateB = new Date(`${b.date} ${b.time}`);
+        return dateA.getTime() - dateB.getTime();
+      });
+      setConsultations(unique);
+      setLoading(false);
+    };
+
+    const start = async () => {
       setLoading(true);
       setError(null);
-      
-      const q = query(
-        collection(db, 'consultations'),
-        where('practitionerId', '==', user.uid)
-      );
-      
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Consultation[];
-        
-        data.sort((a, b) => {
-          const dateA = new Date(`${a.date} ${a.time}`);
-          const dateB = new Date(`${b.date} ${b.time}`);
-          return dateA.getTime() - dateB.getTime();
+      const ids = await getPractitionerLookupIds(user.uid);
+      if (cancelled) return;
+
+      ids.forEach((practitionerId) => {
+        const q = query(
+          collection(db, 'consultations'),
+          where('practitionerId', '==', practitionerId)
+        );
+        const unsub = onSnapshot(q, (snapshot) => {
+          buckets.set(
+            practitionerId,
+            snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as Consultation))
+          );
+          publish();
+        }, (err) => {
+          console.error('Error loading consultations:', err);
+          setError(err.message);
+          setLoading(false);
         });
-        
-        setConsultations(data);
-        setLoading(false);
-      }, (err) => {
-        console.error('Error loading consultations:', err);
-        setError(err.message);
-        setLoading(false);
+        unsubs.push(unsub);
       });
 
-      return () => unsubscribe();
-    } catch (error: any) {
-      console.error('Error loading consultations:', error);
-      setError(error.message);
-      setLoading(false);
-    }
-  };
+      if (ids.length === 0) {
+        setConsultations([]);
+        setLoading(false);
+      }
+    };
+
+    start();
+    return () => {
+      cancelled = true;
+      unsubs.forEach((unsub) => unsub());
+    };
+  }, [user, authLoading, checkingRole, isPractitioner, router]);
 
   const handleCreateConsultation = async () => {
     if (!user?.uid) {

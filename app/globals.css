@@ -76,6 +76,10 @@
     @apply bg-white text-ink caret-ink placeholder:text-ink-muted;
     color-scheme: light;
   }
+  .booking-field {
+    @apply w-full p-2 rounded-lg border border-forest/20 bg-white text-ink caret-ink placeholder:text-ink-muted;
+    color-scheme: light;
+  }
   .eyebrow {
     @apply text-[11px] sm:text-xs font-semibold uppercase tracking-[0.28em] text-bronze;
   }

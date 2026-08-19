@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { getPractitionerLookupIds } from '@/lib/consultations/lookup';
 import { Button } from '@/components/ui/button';
 import {
   Loader2,
@@ -55,66 +56,58 @@ export default function ConsultationsPage() {
       return;
     }
 
-    const patientQuery = query(
-      collection(db, 'consultations'),
-      where('patientId', '==', user.uid)
-    );
-    const practitionerQuery = query(
-      collection(db, 'consultations'),
-      where('practitionerId', '==', user.uid)
-    );
+    const buckets = new Map<string, ConsultationItem[]>();
+    const unsubs: Array<() => void> = [];
+    let cancelled = false;
 
-    const merged = new Map<string, ConsultationItem>();
     const publish = () => {
-      const items = Array.from(merged.values()).sort((a, b) => {
+      const items = Array.from(buckets.values()).flat();
+      const seen = new Set<string>();
+      const unique = items.filter((item) => {
+        if (seen.has(item.id)) return false;
+        seen.add(item.id);
+        return true;
+      });
+      unique.sort((a, b) => {
         const left = `${a.date || ''} ${a.time || ''}`;
         const right = `${b.date || ''} ${b.time || ''}`;
         return right.localeCompare(left);
       });
-      setConsultations(items);
+      setConsultations(unique);
       setLoading(false);
     };
 
-    let remaining = 2;
-    const markReady = () => {
-      remaining -= 1;
-      if (remaining <= 0) publish();
+    const listen = (key: string, field: 'patientId' | 'practitionerId', value: string) => {
+      const q = query(collection(db, 'consultations'), where(field, '==', value));
+      const unsub = onSnapshot(
+        q,
+        (snap) => {
+          buckets.set(
+            key,
+            snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as ConsultationItem))
+          );
+          setError('');
+          publish();
+        },
+        (err) => {
+          console.error('Error loading consultations:', err);
+          setError('We could not load your consultations right now.');
+          publish();
+        }
+      );
+      unsubs.push(unsub);
     };
 
-    const unsubPatient = onSnapshot(
-      patientQuery,
-      (snap) => {
-        snap.docs.forEach((docSnap) => {
-          merged.set(docSnap.id, { id: docSnap.id, ...docSnap.data() } as ConsultationItem);
-        });
-        setError('');
-        if (remaining > 0) markReady();
-        else publish();
-      },
-      (err) => {
-        console.error('Error loading patient consultations:', err);
-        setError('We could not load your consultations right now.');
-        markReady();
-      }
-    );
+    listen('patient', 'patientId', user.uid);
 
-    const unsubPractitioner = onSnapshot(
-      practitionerQuery,
-      (snap) => {
-        snap.docs.forEach((docSnap) => {
-          merged.set(docSnap.id, { id: docSnap.id, ...docSnap.data() } as ConsultationItem);
-        });
-        if (remaining > 0) markReady();
-        else publish();
-      },
-      () => {
-        markReady();
-      }
-    );
+    getPractitionerLookupIds(user.uid).then((ids) => {
+      if (cancelled) return;
+      ids.forEach((id) => listen(`practitioner:${id}`, 'practitionerId', id));
+    });
 
     return () => {
-      unsubPatient();
-      unsubPractitioner();
+      cancelled = true;
+      unsubs.forEach((unsub) => unsub());
     };
   }, [user, authLoading, router]);
 
@@ -154,7 +147,7 @@ export default function ConsultationsPage() {
           </Link>
           <h1 className="text-3xl font-bold">My consultations</h1>
           <p className="text-gray-300 mt-2">
-            Video and audio sessions booked with your practitioner.
+            Sessions you booked, and sessions booked with you as a practitioner.
           </p>
         </div>
       </div>
@@ -172,7 +165,7 @@ export default function ConsultationsPage() {
             <Calendar className="h-12 w-12 text-forest/30 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-forest mb-2">No consultations yet</h2>
             <p className="text-gray-600 mb-6">
-              When you book a healer, the session will show up here so you can join the call.
+              When a patient books you, or you book a healer, the session will show up here.
             </p>
             <Link href="/practitioners">
               <Button className="bg-forest hover:bg-forest-mist">Browse practitioners</Button>

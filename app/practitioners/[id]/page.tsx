@@ -6,9 +6,11 @@ import Link from 'next/link';
 import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { resolvePractitionerBookingIds } from '@/lib/consultations/booking';
 
 interface Practitioner {
   id: string;
+  userId?: string;
   name: string;
   title?: string;
   specialty: string;
@@ -53,6 +55,7 @@ export default function PractitionerProfilePage() {
         const raw = docSnap.data();
         setPractitioner({
           id: docSnap.id,
+          userId: raw.userId || '',
           name: raw.name || 'Unknown',
           title: raw.title || raw.specialty || 'Practitioner',
           specialty: raw.specialty || 'General',
@@ -85,8 +88,13 @@ export default function PractitionerProfilePage() {
     
     setBookingLoading(true);
     try {
+      const bookingIds = resolvePractitionerBookingIds({
+        id: practitioner.id,
+        userId: practitioner.userId,
+      });
       const consultationRef = await addDoc(collection(db, 'consultations'), {
-        practitionerId: practitioner.id,
+        practitionerId: bookingIds.practitionerId,
+        practitionerProfileId: bookingIds.practitionerProfileId,
         practitionerName: practitioner.name,
         practitionerImage: practitioner.photoURL || practitioner.imageUrl || '',
         patientId: user.uid,
@@ -98,7 +106,9 @@ export default function PractitionerProfilePage() {
         status: 'scheduled',
         notes: bookingData.notes,
         createdAt: serverTimestamp(),
-        roomUrl: null
+        dailyRoomUrl: null,
+        roomName: null,
+        roomUrl: null,
       });
       
       setShowBookingModal(false);
@@ -139,57 +149,57 @@ export default function PractitionerProfilePage() {
       {/* Booking Modal */}
       {showBookingModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-white text-ink rounded-lg max-w-md w-full p-6" style={{ colorScheme: 'light' }}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-forest">Book Consultation</h3>
               <button 
                 onClick={() => setShowBookingModal(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-ink-muted hover:text-ink"
                 aria-label="Close booking modal"
               >
                 ✕
               </button>
             </div>
             
-            <div className="mb-4 p-4 bg-gray-50 rounded">
-              <p className="font-semibold">{practitioner.name}</p>
-              <p className="text-sm text-gray-600">{practitioner.title}</p>
+            <div className="mb-4 p-4 bg-cream rounded">
+              <p className="font-semibold text-forest">{practitioner.name}</p>
+              <p className="text-sm text-ink-muted">{practitioner.title}</p>
               <p className="text-bronze font-bold mt-2">R{practitioner.consultationFee}/session</p>
             </div>
 
             <form onSubmit={handleBookConsultation} className="space-y-4">
               <div>
-                <label htmlFor="booking-date" className="block text-sm font-semibold mb-1">Preferred Date</label>
+                <label htmlFor="booking-date" className="block text-sm font-semibold text-forest mb-1">Preferred Date</label>
                 <input 
                   id="booking-date"
                   type="date" 
                   required
                   value={bookingData.date}
                   onChange={(e) => setBookingData({...bookingData, date: e.target.value})}
-                  className="w-full p-2 border rounded"
+                  className="booking-field"
                   min={new Date().toISOString().split('T')[0]}
                 />
               </div>
               
               <div>
-                <label htmlFor="booking-time" className="block text-sm font-semibold mb-1">Preferred Time</label>
+                <label htmlFor="booking-time" className="block text-sm font-semibold text-forest mb-1">Preferred Time</label>
                 <input 
                   id="booking-time"
                   type="time" 
                   required
                   value={bookingData.time}
                   onChange={(e) => setBookingData({...bookingData, time: e.target.value})}
-                  className="w-full p-2 border rounded"
+                  className="booking-field"
                 />
               </div>
               
               <div>
-                <label htmlFor="booking-type" className="block text-sm font-semibold mb-1">Consultation Type</label>
+                <label htmlFor="booking-type" className="block text-sm font-semibold text-forest mb-1">Consultation Type</label>
                 <select 
                   id="booking-type"
                   value={bookingData.type}
                   onChange={(e) => setBookingData({...bookingData, type: e.target.value})}
-                  className="w-full p-2 border rounded"
+                  className="booking-field"
                 >
                   <option value="video">Video Call</option>
                   <option value="audio">Voice Call</option>
@@ -198,12 +208,12 @@ export default function PractitionerProfilePage() {
               </div>
               
               <div>
-                <label htmlFor="booking-notes" className="block text-sm font-semibold mb-1">Describe your concern (optional)</label>
+                <label htmlFor="booking-notes" className="block text-sm font-semibold text-forest mb-1">Describe your concern (optional)</label>
                 <textarea 
                   id="booking-notes"
                   value={bookingData.notes}
                   onChange={(e) => setBookingData({...bookingData, notes: e.target.value})}
-                  className="w-full p-2 border rounded" 
+                  className="booking-field"
                   rows={3}
                   placeholder="Briefly describe your symptoms or questions..."
                 ></textarea>

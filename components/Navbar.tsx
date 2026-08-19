@@ -264,8 +264,8 @@ export default function Navbar() {
                 )}
 
                 <DropdownMenuItem asChild className="cursor-pointer dark:text-gray-300 dark:focus:bg-[#2a3a2b] dark:focus:text-white">
-                  <Link href="/consultations" className="flex items-center gap-2">
-                    <Video className="h-4 w-4" /> My Consultations
+                  <Link href={isPractitioner ? '/practitioners/dashboard' : '/consultations'} className="flex items-center gap-2">
+                    <Video className="h-4 w-4" /> {isPractitioner ? 'Consultations' : 'My Consultations'}
                   </Link>
                 </DropdownMenuItem>
 
