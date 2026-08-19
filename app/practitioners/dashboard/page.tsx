@@ -112,8 +112,9 @@ export default function PractitionerDashboard() {
 
       try {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const practitionerDoc = await getDoc(doc(db, 'practitioners', user.uid));
         const role = userDoc.exists() ? userDoc.data().role : userData?.role;
-        if (role === 'practitioner' || role === 'admin') {
+        if (role === 'practitioner' || role === 'admin' || practitionerDoc.exists()) {
           setIsPractitioner(true);
         } else {
           setIsPractitioner(false);

@@ -132,13 +132,34 @@ export default function AdminApplicationsPage() {
   const handleApprove = async (application: Application) => {
     setProcessing(application.id);
     try {
+      const idToken = await user?.getIdToken();
+      if (idToken) {
+        const response = await fetch('/api/admin/applications/approve', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ applicationId: application.id }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (response.ok) {
+          toast.success(`Application approved for ${application.name}`);
+          fetchApplications();
+          return;
+        }
+        if (response.status !== 503) {
+          throw new Error(payload.error || 'Failed to approve application');
+        }
+      }
+
       const practitionerId = application.userId || application.id;
       await setDoc(doc(db, 'practitioners', practitionerId), {
         name: application.name,
         email: application.email,
         phone: application.phone,
         location: application.location,
-        experience: application.experience,
+        experience: Number.parseInt(String(application.experience), 10) || 0,
         specialty: application.specialty,
         bio: application.bio,
         certifications: application.certifications || [],
@@ -150,28 +171,31 @@ export default function AdminApplicationsPage() {
         consultationFee: 0,
         createdAt: serverTimestamp(),
         applicationId: application.id,
-        userId: application.userId || null
+        userId: application.userId || null,
       }, { merge: true });
 
-      if (application.userId) {
-        await setDoc(doc(db, 'users', application.userId), {
-          role: 'practitioner',
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      }
-
-      // Update application status
       await updateDoc(doc(db, 'practitioner_applications', application.id), {
         status: 'approved',
         approvedAt: new Date(),
-        approvedBy: user?.uid
+        approvedBy: user?.uid,
       });
+
+      if (application.userId) {
+        try {
+          await setDoc(doc(db, 'users', application.userId), {
+            role: 'practitioner',
+            updatedAt: serverTimestamp(),
+          }, { merge: true });
+        } catch (roleError) {
+          console.warn('Could not set practitioner role on user profile', roleError);
+        }
+      }
 
       toast.success(`Application approved for ${application.name}`);
       fetchApplications();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error approving application:', error);
-      toast.error('Failed to approve application');
+      toast.error(error?.message || 'Failed to approve application');
     } finally {
       setProcessing(null);
     }
