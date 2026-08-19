@@ -1,9 +1,15 @@
 'use client';
 
-import { createContext, useContext, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 import { useAuth } from './AuthProvider';
+import {
+  effectiveSubscriptionTier,
+  type SubscriptionTier,
+} from '@/lib/auth/subscription';
 
-export type SubscriptionTier = 'free' | 'premium' | 'premium_pro';
+export type { SubscriptionTier };
 
 export interface SubscriptionContextType {
   tier: SubscriptionTier;
@@ -18,27 +24,50 @@ export interface SubscriptionContextType {
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
 
 export function SubscriptionProvider({ children }: { children: ReactNode }) {
-  const { profile } = useAuth();
-  
-  const tier = (profile?.subscriptionTier as SubscriptionTier) || 'free';
+  const { profile, user } = useAuth();
+  const [record, setRecord] = useState<{
+    status?: string;
+    plan?: string;
+    expiresAt?: unknown;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      setRecord(null);
+      return;
+    }
+
+    const unsubscribe = onSnapshot(
+      doc(db, 'users', user.uid, 'subscription', 'current'),
+      (snap) => {
+        setRecord(snap.exists() ? snap.data() : null);
+      },
+      () => {
+        setRecord(null);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const tier = effectiveSubscriptionTier({
+    role: profile?.role,
+    subscriptionTier: profile?.subscriptionTier,
+    subscriptionStatus: profile?.subscriptionStatus,
+    record,
+  });
   const isPremium = tier === 'premium' || tier === 'premium_pro';
   const isPremiumPro = tier === 'premium_pro';
-  
-  // Gate prescription and side effects behind ANY paid tier (premium or premium_pro)
-  const canAccessPrescription = isPremium;
-  const canAccessSideEffects = isPremium;
-  const canAccessForum = isPremiumPro;
-  const canAccessPractitioners = isPremium; // Also gate practitioner directory
 
   return (
     <SubscriptionContext.Provider value={{
       tier,
       isPremium,
       isPremiumPro,
-      canAccessPrescription,
-      canAccessSideEffects,
-      canAccessForum,
-      canAccessPractitioners,
+      canAccessPrescription: isPremium,
+      canAccessSideEffects: isPremium,
+      canAccessForum: isPremiumPro,
+      canAccessPractitioners: isPremium,
     }}>
       {children}
     </SubscriptionContext.Provider>

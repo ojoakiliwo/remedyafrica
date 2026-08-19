@@ -18,6 +18,7 @@ import {
   Crown
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscription } from '@/providers/SubscriptionProvider';
 import { db } from '@/lib/firebase/client';
 import { collection, query, where, getDocs, orderBy, limit, doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,7 @@ interface Subscription {
 
 export default function DashboardPage() {
   const { user, userData } = useAuth();
+  const { isPremium, tier } = useSubscription();
   const router = useRouter();
   const [isAdmin, setIsAdmin] = useState(false);
   const [savedHerbs, setSavedHerbs] = useState<SavedHerb[]>([]);
@@ -200,7 +202,7 @@ export default function DashboardPage() {
   }
 
   const displayName = userData?.displayName || user?.displayName || user?.email?.split('@')[0] || 'User';
-  const isSubActive = subscription?.status === 'active' && subscription?.expiresAt && subscription.expiresAt > new Date();
+  const isSubActive = isPremium || (subscription?.status === 'active' && (!subscription.expiresAt || subscription.expiresAt > new Date()));
 
   return (
     <div className="min-h-screen bg-cream">
@@ -219,7 +221,7 @@ export default function DashboardPage() {
             {isSubActive ? (
               <Badge className="bg-amber-500 text-white px-3 py-1">
                 <Crown className="w-3 h-3 mr-1" />
-                {subscription.plan || 'Premium'} Active
+                {subscription?.plan || tier} Active
               </Badge>
             ) : (
               <Link href="/subscription">

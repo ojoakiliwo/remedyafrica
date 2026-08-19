@@ -12,11 +12,11 @@ import {
   Users, 
   Leaf, 
   Calendar, 
-  TrendingUp, 
   Shield,
   ArrowRight,
   Loader2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Crown
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -153,6 +153,14 @@ export default function AdminDashboard() {
       bgColor: 'bg-amber-100'
     },
     {
+      title: 'Users & subscriptions',
+      count: stats.totalUsers,
+      icon: Crown,
+      href: '/admin/users',
+      color: 'text-amber-600',
+      bgColor: 'bg-amber-100'
+    },
+    {
       title: 'Consultations',
       count: stats.totalConsultations,
       icon: Calendar,
@@ -212,6 +220,12 @@ export default function AdminDashboard() {
               <CardTitle className="text-lg">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <Link href="/admin/users">
+                <Button variant="outline" className="w-full justify-start">
+                  <Crown className="h-4 w-4 mr-2" />
+                  Grant subscription access
+                </Button>
+              </Link>
               <Link href="/admin/herbs/list">
                 <Button variant="outline" className="w-full justify-start">
                   <ImageIcon className="h-4 w-4 mr-2" />
