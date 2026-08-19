@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { db } from '@/lib/firebase/client';
-import { collection, query, getDocs, doc, getDoc, updateDoc, setDoc, deleteDoc, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, updateDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -18,8 +18,19 @@ import {
   Phone,
   MapPin,
   FileText,
-  Trash2
+  Trash2,
+  Shield,
+  Eye,
+  ExternalLink,
+  Calendar
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import Link from 'next/link';
 import { toast } from 'sonner';
 
@@ -29,7 +40,7 @@ interface Application {
   email: string;
   phone: string;
   location: string;
-  experience: number;
+  experience: number | string;
   specialty: string;
   bio: string;
   certifications: string[];
@@ -37,6 +48,25 @@ interface Application {
   createdAt: Date;
   photoURL?: string;
   userId?: string;
+  governmentIdURL?: string;
+  governmentIdType?: string;
+  governmentIdNumber?: string;
+  agreeToTerms?: boolean;
+  agreeToBackgroundCheck?: boolean;
+  notes?: string;
+  whyJoin?: string;
+}
+
+const ID_TYPE_LABELS: Record<string, string> = {
+  national_id: 'National ID Card',
+  passport: 'International Passport',
+  drivers_license: "Driver's License",
+  voters_card: "Voter's Card",
+};
+
+function idTypeLabel(value?: string) {
+  if (!value) return 'Not provided';
+  return ID_TYPE_LABELS[value] || value.replace(/_/g, ' ');
 }
 
 export default function AdminApplicationsPage() {
@@ -89,37 +119,41 @@ export default function AdminApplicationsPage() {
 
   const fetchApplications = async () => {
     try {
-      const q = query(
-        collection(db, 'practitioner_applications'),
-        orderBy('createdAt', 'desc')
-      );
-
-      const snapshot = await getDocs(q);
-      const data: Application[] = [];
-
-      for (const docSnap of snapshot.docs) {
+      const snapshot = await getDocs(collection(db, 'practitioner_applications'));
+      const data: Application[] = snapshot.docs.map((docSnap) => {
         const raw = docSnap.data();
-        // FIX: Ensure certifications is always an array
         const certs = raw.certifications;
-        const safeCerts = Array.isArray(certs) ? certs : [];
+        const safeCerts = Array.isArray(certs)
+          ? certs
+          : typeof certs === 'string'
+            ? certs.split(',').map((item: string) => item.trim()).filter(Boolean)
+            : [];
 
-        data.push({
+        return {
           id: docSnap.id,
           name: raw.name || raw.fullName || 'Unknown',
           email: raw.email || raw.applicantEmail || '',
           phone: raw.phone || '',
           location: raw.location || '',
-          experience: raw.experience || 0,
+          experience: raw.experience ?? 0,
           specialty: raw.specialty || 'General',
           bio: raw.bio || '',
           certifications: safeCerts,
           status: raw.status || 'pending',
           createdAt: raw.createdAt?.toDate?.() || raw.submittedAt?.toDate?.() || new Date(),
           photoURL: raw.photoURL || '',
-          userId: raw.userId || ''
-        });
-      }
+          userId: raw.userId || '',
+          governmentIdURL: raw.governmentIdURL || '',
+          governmentIdType: raw.governmentIdType || '',
+          governmentIdNumber: raw.governmentIdNumber || '',
+          agreeToTerms: raw.agreeToTerms === true,
+          agreeToBackgroundCheck: raw.agreeToBackgroundCheck === true,
+          notes: raw.notes || '',
+          whyJoin: raw.whyJoin || '',
+        };
+      });
 
+      data.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       setApplications(data);
     } catch (error) {
       console.error('Error fetching applications:', error);
@@ -371,96 +405,92 @@ function ApplicationCard({
   processing: boolean;
   showActions?: boolean;
 }) {
-  // FIX: Ensure certifications is always an array before using .map()
+  const [reviewOpen, setReviewOpen] = useState(false);
   const certifications = application.certifications || [];
 
   return (
-    <Card className="border-[#e8e4df]">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 bg-[#5c7c6b]/10 rounded-full flex items-center justify-center">
-                <User className="h-6 w-6 text-[#5c7c6b]" />
+    <>
+      <Card className="border-[#e8e4df]">
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-14 h-14 rounded-full overflow-hidden bg-[#5c7c6b]/10 flex items-center justify-center shrink-0">
+                  {application.photoURL ? (
+                    <img src={application.photoURL} alt={`Photo of ${application.name}`} className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="h-6 w-6 text-[#5c7c6b]" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-[#2c3e33]">{application.name}</h3>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <Badge className={
+                      application.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                        application.status === 'approved' ? 'bg-green-100 text-green-700' :
+                          'bg-red-100 text-red-700'
+                    }>
+                      {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
+                    </Badge>
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {application.createdAt.toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold text-[#2c3e33]">{application.name}</h3>
-                <Badge className={
-                  application.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                    application.status === 'approved' ? 'bg-green-100 text-green-700' :
-                      'bg-red-100 text-red-700'
-                }>
-                  {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
-                </Badge>
+
+              <div className="grid md:grid-cols-2 gap-2 mb-3 text-sm text-[#5a5a5a]">
+                <div className="flex items-center gap-2"><Mail className="h-4 w-4" />{application.email || 'No email'}</div>
+                <div className="flex items-center gap-2"><Phone className="h-4 w-4" />{application.phone || 'No phone'}</div>
+                <div className="flex items-center gap-2"><MapPin className="h-4 w-4" />{application.location || 'No location'}</div>
+                <div className="flex items-center gap-2"><FileText className="h-4 w-4" />{application.experience} years • {application.specialty}</div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 mb-3 text-xs">
+                <span className={`px-2 py-1 rounded-full ${application.photoURL ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  Photo {application.photoURL ? 'uploaded' : 'missing'}
+                </span>
+                <span className={`px-2 py-1 rounded-full ${application.governmentIdURL ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  ID {application.governmentIdURL ? 'uploaded' : 'missing'}
+                </span>
+                <span className="px-2 py-1 rounded-full bg-[#f0efe9] text-[#5a5a5a]">
+                  {idTypeLabel(application.governmentIdType)}
+                </span>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <div className="flex items-center gap-2 text-sm text-[#5a5a5a]">
-                <Mail className="h-4 w-4" />
-                {application.email}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-[#5a5a5a]">
-                <Phone className="h-4 w-4" />
-                {application.phone}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-[#5a5a5a]">
-                <MapPin className="h-4 w-4" />
-                {application.location}
-              </div>
-              <div className="flex items-center gap-2 text-sm text-[#5a5a5a]">
-                <FileText className="h-4 w-4" />
-                {application.experience} years experience
-              </div>
-            </div>
-
-            <p className="text-sm text-[#5a5a5a] mb-3">
-              <span className="font-medium">Specialty:</span> {application.specialty}
-            </p>
-
-            <p className="text-sm text-[#5a5a5a] line-clamp-3 mb-3">
-              {application.bio}
-            </p>
-
-            {/* FIX: Safe check - ensure certifications exists and has items before mapping */}
-            {certifications.length > 0 && (
-              <div className="flex flex-wrap gap-1">
-                {certifications.map((cert, idx) => (
-                  <span key={idx} className="text-xs bg-[#f0efe9] px-2 py-1 rounded-full">
-                    {cert}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {showActions && (
-            <div className="flex flex-col gap-2 ml-4">
+            <div className="flex flex-col gap-2 shrink-0">
               <Button
                 size="sm"
-                className="bg-green-600 hover:bg-green-700 text-white"
-                onClick={onApprove}
-                disabled={processing}
+                className="bg-[#5c7c6b] hover:bg-[#4a6354] text-white"
+                onClick={() => setReviewOpen(true)}
               >
-                {processing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Approve
-                  </>
-                )}
+                <Eye className="h-4 w-4 mr-1" />
+                Review details
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-red-300 text-red-600 hover:bg-red-50"
-                onClick={onReject}
-                disabled={processing}
-              >
-                <XCircle className="h-4 w-4 mr-1" />
-                Reject
-              </Button>
+              {showActions && (
+                <>
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={onApprove}
+                    disabled={processing}
+                  >
+                    {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle className="h-4 w-4 mr-1" />Approve</>}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-red-300 text-red-600 hover:bg-red-50"
+                    onClick={onReject}
+                    disabled={processing}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Reject
+                  </Button>
+                </>
+              )}
               <Button
                 size="sm"
                 variant="ghost"
@@ -472,9 +502,143 @@ function ApplicationCard({
                 Delete
               </Button>
             </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Review application</DialogTitle>
+            <DialogDescription>
+              Inspect every submitted field and document before you approve or reject this healer.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 text-sm">
+            <section className="grid md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">Profile photo</p>
+                {application.photoURL ? (
+                  <a href={application.photoURL} target="_blank" rel="noreferrer" className="block">
+                    <img src={application.photoURL} alt={`Profile photo of ${application.name}`} className="w-full max-w-xs rounded-lg object-cover border" />
+                  </a>
+                ) : (
+                  <p className="text-gray-500">No profile photo uploaded.</p>
+                )}
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-gray-500 mb-2">Government ID</p>
+                {application.governmentIdURL ? (
+                  <a href={application.governmentIdURL} target="_blank" rel="noreferrer" className="block">
+                    <img src={application.governmentIdURL} alt="Uploaded government ID" className="w-full max-w-xs rounded-lg object-cover border" />
+                  </a>
+                ) : (
+                  <p className="text-gray-500">No ID document uploaded.</p>
+                )}
+              </div>
+            </section>
+
+            <section className="grid md:grid-cols-2 gap-3">
+              <Detail label="Full name" value={application.name} />
+              <Detail label="Email" value={application.email} />
+              <Detail label="Phone" value={application.phone} />
+              <Detail label="Location" value={application.location} />
+              <Detail label="Specialty" value={application.specialty} />
+              <Detail label="Years of experience" value={String(application.experience)} />
+              <Detail label="ID type" value={idTypeLabel(application.governmentIdType)} />
+              <Detail label="ID number" value={application.governmentIdNumber || 'Not provided'} />
+              <Detail label="Submitted" value={application.createdAt.toLocaleString()} />
+            </section>
+
+            <section>
+              <p className="font-medium text-[#2c3e33] mb-1">Bio</p>
+              <p className="whitespace-pre-wrap text-[#5a5a5a]">{application.bio || 'Not provided'}</p>
+            </section>
+
+            {application.whyJoin && (
+              <section>
+                <p className="font-medium text-[#2c3e33] mb-1">Why they want to join</p>
+                <p className="whitespace-pre-wrap text-[#5a5a5a]">{application.whyJoin}</p>
+              </section>
+            )}
+
+            {application.notes && (
+              <section>
+                <p className="font-medium text-[#2c3e33] mb-1">Notes</p>
+                <p className="whitespace-pre-wrap text-[#5a5a5a]">{application.notes}</p>
+              </section>
+            )}
+
+            <section>
+              <p className="font-medium text-[#2c3e33] mb-2">Certifications & training</p>
+              {certifications.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {certifications.map((cert, idx) => (
+                    <span key={idx} className="text-xs bg-[#f0efe9] px-2 py-1 rounded-full">{cert}</span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500">None provided</p>
+              )}
+            </section>
+
+            <section className="rounded-lg bg-amber-50 border border-amber-100 p-3 space-y-1">
+              <p className="font-medium text-[#2c3e33] flex items-center gap-2">
+                <Shield className="h-4 w-4 text-amber-600" />
+                Consents
+              </p>
+              <p>{application.agreeToTerms ? 'Agreed to practitioner terms of service' : 'Did not record terms agreement'}</p>
+              <p>{application.agreeToBackgroundCheck ? 'Consented to background / ID verification' : 'Did not record background-check consent'}</p>
+            </section>
+
+            {(application.photoURL || application.governmentIdURL) && (
+              <div className="flex flex-wrap gap-3">
+                {application.photoURL && (
+                  <a href={application.photoURL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#5c7c6b] hover:underline">
+                    <ExternalLink className="h-4 w-4" /> Open photo
+                  </a>
+                )}
+                {application.governmentIdURL && (
+                  <a href={application.governmentIdURL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[#5c7c6b] hover:underline">
+                    <ExternalLink className="h-4 w-4" /> Open ID document
+                  </a>
+                )}
+              </div>
+            )}
+
+            {showActions && (
+              <div className="flex gap-3 pt-2">
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  onClick={() => { setReviewOpen(false); onApprove(); }}
+                  disabled={processing}
+                >
+                  {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <><CheckCircle className="h-4 w-4 mr-1" />Approve after review</>}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-red-300 text-red-600 hover:bg-red-50"
+                  onClick={() => { setReviewOpen(false); onReject(); }}
+                  disabled={processing}
+                >
+                  <XCircle className="h-4 w-4 mr-1" />
+                  Reject
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="text-[#2c3e33] break-words">{value || 'Not provided'}</p>
+    </div>
   );
 }
