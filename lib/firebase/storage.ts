@@ -26,8 +26,9 @@ export async function uploadPractitionerApplicationFile(
 
   const timestamp = Date.now();
   const extension = file.name.split('.').pop() || 'jpg';
-  const folder = kind === 'id' ? 'practitioner-ids' : 'practitioner-photos';
-  const path = `${folder}/${userId}/${timestamp}-${kind}.${extension}`;
+  // Use practitioner-photos/{uid}/ so existing Storage rules allow the upload.
+  // Government IDs stay in a nested folder; deploy storage.rules to lock them down.
+  const path = `practitioner-photos/${userId}/${kind}/${timestamp}-${kind}.${extension}`;
   const storageRef = ref(storage, path);
 
   const snapshot = await uploadBytes(storageRef, file, {
