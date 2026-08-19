@@ -12,6 +12,14 @@ export function getGrantablePlan(planId?: string | null) {
   return GRANTABLE_PLANS.find((plan) => plan.id === planId) || GRANTABLE_PLANS[2];
 }
 
+export function subscriptionGrantDocId(userId: string) {
+  return `__sub_${userId}`;
+}
+
+export function isSystemPractitionerDoc(id?: string | null, data?: Record<string, unknown> | null) {
+  return Boolean(id && id.startsWith('__')) || data?.isSubscriptionGrant === true;
+}
+
 export function planToAccessTier(plan?: string | null): SubscriptionTier {
   if (plan === 'healer' || plan === 'premium_pro') return 'premium_pro';
   if (plan === 'premium' || plan === 'basic') return 'premium';

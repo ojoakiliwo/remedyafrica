@@ -60,7 +60,7 @@ export default function PractitionersDirectoryPage() {
             experience: raw.experience || 0,
           } as Practitioner;
         });
-        setPractitioners(people.filter((p) => p.isActive));
+        setPractitioners(people.filter((p) => p.isActive && !p.id.startsWith('__')));
       } catch (err) {
         console.error('Error loading practitioners:', err);
         setError('We could not load practitioners right now. Please try again.');

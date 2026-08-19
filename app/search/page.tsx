@@ -24,6 +24,7 @@ import {
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useSubscription } from '@/providers/SubscriptionProvider';
 import { publicCatalogHerbs } from '@/lib/herb-trust';
 import { HerbPreviewCard, PreviewHerb } from '@/components/editorial/HerbPreviewCard';
 import { EditorialPage, PageHero, DisclaimerNote } from '@/components/editorial/PageHero';
@@ -178,22 +179,11 @@ function scoreHerbs(herbs: Herb[], rawQuery: string): Herb[] {
     .map((item) => item.herb);
 }
 
-async function checkSubscription(uid: string): Promise<{ active: boolean; plan?: string }> {
-  try {
-    const subDoc = await getDoc(doc(db, 'users', uid, 'subscription', 'current'));
-    if (!subDoc.exists()) return { active: false };
-    const data = subDoc.data();
-    const expiresAt = data.expiresAt?.toDate?.() || new Date(data.expiresAt);
-    return { active: data.status === 'active' && expiresAt > new Date(), plan: data.plan };
-  } catch {
-    return { active: false };
-  }
-}
-
 function SearchPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, userData } = useAuth();
+  const { isPremium } = useSubscription();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const allHerbsRef = useRef<Herb[]>([]);
   const initialQuery = searchParams.get('q') || '';
@@ -301,8 +291,8 @@ function SearchPageContent() {
       setCheckingSub(false);
       return;
     }
-    const sub = await checkSubscription(user.uid);
-    if (!sub.active) {
+    const subActive = isPremium || userData?.role === 'admin';
+    if (!subActive) {
       setNeedsSubscription(true);
       setShowHealers(true);
       setCheckingSub(false);
@@ -312,7 +302,9 @@ function SearchPageContent() {
     const lowerQuery = query.toLowerCase();
     const terms = lowerQuery.split(/\s+/).filter((t) => t.length > 2);
     const snap = await getDocs(collection(db, 'practitioners'));
-    const all = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Practitioner));
+    const all = snap.docs
+      .filter((d) => !d.id.startsWith('__') && d.data().isSubscriptionGrant !== true)
+      .map((d) => ({ id: d.id, ...d.data() } as Practitioner));
     const matched = all
       .filter((p) => {
         const text = `${p.name || ''} ${p.specialty || ''} ${p.bio || ''} ${p.location || ''}`.toLowerCase();

@@ -103,7 +103,7 @@ export default function AdminDashboard() {
 
       setStats({
         totalUsers: usersSnap.size,
-        totalPractitioners: practitionersSnap.size,
+        totalPractitioners: practitionersSnap.docs.filter((item) => !item.id.startsWith('__')).length,
         pendingApplications: applicationsSnap.size,
         totalConsultations: consultationsSnap.size,
         totalHerbs: herbsSnap.size

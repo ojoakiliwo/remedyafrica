@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { collection, doc, getDoc, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { GRANTABLE_PLANS, buildGrantFields } from '@/lib/auth/subscription';
+import { GRANTABLE_PLANS, buildGrantFields, subscriptionGrantDocId } from '@/lib/auth/subscription';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -103,9 +103,6 @@ export default function AdminUsersPage() {
           toast.success(`Granted ${payload.planName || 'subscription'} access`);
           return;
         }
-        if (response.status !== 503) {
-          throw new Error(payload.error || 'Failed to grant access');
-        }
       }
 
       const grantFields = buildGrantFields({
@@ -118,12 +115,12 @@ export default function AdminUsersPage() {
         throw new Error('Could not find that user in Firestore. Open the user document in Firebase and grant access there.');
       }
 
-      await setDoc(doc(db, 'users', targetId), {
-        ...grantFields.userFields,
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
-
       try {
+        await setDoc(doc(db, 'users', targetId), {
+          ...grantFields.userFields,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+
         await setDoc(doc(db, 'users', targetId, 'subscription', 'current'), {
           ...grantFields.record,
           reference: `admin-grant-${Date.now()}`,
@@ -132,13 +129,27 @@ export default function AdminUsersPage() {
           updatedAt: serverTimestamp(),
           grantedAt: serverTimestamp(),
         }, { merge: true });
-      } catch (subError) {
-        console.warn('Could not write subscription subcollection', subError);
+      } catch (writeError) {
+        await setDoc(doc(db, 'practitioners', subscriptionGrantDocId(targetId)), {
+          isSubscriptionGrant: true,
+          isActive: false,
+          name: 'Subscription grant',
+          userId: targetId,
+          email: targetEmail,
+          ...grantFields.record,
+          ...grantFields.userFields,
+          expiresAt: grantFields.expiresAt,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
       }
 
-      toast.success(`Granted ${grantFields.plan.name} access`);
+      toast.success(`Granted ${grantFields.plan.name} access. Ask them to refresh or sign in again.`);
     } catch (error: any) {
-      toast.error(error?.message || 'Failed to grant access');
+      const raw = String(error?.message || '');
+      const friendly = /insufficient|permission/i.test(raw)
+        ? 'Firebase blocked the write. Refresh this page and try once more.'
+        : (error?.message || 'Failed to grant access');
+      toast.error(friendly);
     } finally {
       setGranting(false);
     }
@@ -266,7 +277,7 @@ export default function AdminUsersPage() {
             <CardContent className="text-sm text-gray-600 space-y-2">
               <p>1. Open Authentication and copy the user&apos;s UID.</p>
               <p>2. Open Firestore → <code>users</code> → that UID.</p>
-              <p>3. Set <code>subscriptionTier</code> to <code>premium_pro</code> and <code>subscriptionStatus</code> to <code>active</code>.</p>
+              <p>3. Set <code>subscriptionTier</code> to <code>premium</code> for Basic/Premium, or <code>premium_pro</code> for Healer. Set <code>subscriptionStatus</code> to <code>active</code>.</p>
               <p>4. Optional: add subcollection <code>subscription/current</code> with <code>status: active</code>, <code>plan: healer</code>, and an <code>expiresAt</code> timestamp in the future.</p>
               <p>The member should refresh or sign in again after you save.</p>
             </CardContent>

@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase/client';
 import { useAuth } from './AuthProvider';
 import {
   effectiveSubscriptionTier,
+  subscriptionGrantDocId,
   type SubscriptionTier,
 } from '@/lib/auth/subscription';
 
@@ -37,17 +38,38 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const unsubscribe = onSnapshot(
+    let fromUser: { status?: string; plan?: string; expiresAt?: unknown } | null = null;
+    let fromGrant: { status?: string; plan?: string; expiresAt?: unknown } | null = null;
+    const publish = () => setRecord(fromUser || fromGrant);
+
+    const unsubRecord = onSnapshot(
       doc(db, 'users', user.uid, 'subscription', 'current'),
       (snap) => {
-        setRecord(snap.exists() ? snap.data() : null);
+        fromUser = snap.exists() ? snap.data() : null;
+        publish();
       },
       () => {
-        setRecord(null);
+        fromUser = null;
+        publish();
       }
     );
 
-    return () => unsubscribe();
+    const unsubGrant = onSnapshot(
+      doc(db, 'practitioners', subscriptionGrantDocId(user.uid)),
+      (snap) => {
+        fromGrant = snap.exists() ? snap.data() : null;
+        publish();
+      },
+      () => {
+        fromGrant = null;
+        publish();
+      }
+    );
+
+    return () => {
+      unsubRecord();
+      unsubGrant();
+    };
   }, [user]);
 
   const tier = effectiveSubscriptionTier({

@@ -109,6 +109,7 @@ export default function AdminPractitionersPage() {
       
       for (const docSnap of snapshot.docs) {
         const raw = docSnap.data();
+        if (docSnap.id.startsWith('__') || raw.isSubscriptionGrant) continue;
         data.push({
           id: docSnap.id,
           name: raw.name || 'Unknown',
