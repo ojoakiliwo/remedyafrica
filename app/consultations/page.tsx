@@ -131,7 +131,19 @@ export default function ConsultationsPage() {
     );
   }
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <h1 className="text-2xl font-bold text-forest mb-2">Sign in to view consultations</h1>
+          <p className="text-gray-600 mb-6">Your booked video and audio sessions will appear here.</p>
+          <Link href="/login?redirect=/consultations">
+            <Button className="bg-forest hover:bg-forest-mist">Sign in</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-cream">
