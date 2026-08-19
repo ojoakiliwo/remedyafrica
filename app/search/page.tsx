@@ -699,7 +699,7 @@ function SearchPageContent() {
                     {practitioners.map((person) => (
                       <Link
                         key={person.id}
-                        href={`/consultation/${person.id}`}
+                        href={`/practitioners/${person.id}`}
                         className="group flex gap-5 rounded-3xl border border-forest/10 bg-white p-6 shadow-soft transition hover:-translate-y-0.5 hover:shadow-lift"
                       >
                         <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-cream-dark">

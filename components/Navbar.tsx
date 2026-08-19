@@ -30,7 +30,8 @@ import {
   Crown,
   Lock,
   Sun,
-  Moon
+  Moon,
+  Users
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -50,6 +51,7 @@ export default function Navbar() {
   }, []);
 
   const isAdmin = userData?.role === 'admin';
+  const isPractitioner = userData?.role === 'practitioner' || isAdmin;
 
   const handleQuickSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,6 +246,14 @@ export default function Navbar() {
                   </Link>
                 </DropdownMenuItem>
                 
+                {isPractitioner && (
+                  <DropdownMenuItem asChild className="cursor-pointer dark:text-gray-300 dark:focus:bg-[#2a3a2b] dark:focus:text-white">
+                    <Link href="/practitioners/dashboard" className="flex items-center gap-2">
+                      <Users className="h-4 w-4" /> Practitioner Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+
                 {isAdmin && (
                   <DropdownMenuItem asChild className="cursor-pointer dark:text-gray-300 dark:focus:bg-[#2a3a2b] dark:focus:text-white">
                     <Link href="/admin" className="flex items-center gap-2">
@@ -332,6 +342,15 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+            {isPractitioner && (
+              <Link
+                href="/practitioners/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="rounded-md px-3 py-2.5 text-sm font-medium text-[#5a5a5a] hover:bg-[#5c7c6b]/5 dark:text-gray-300 dark:hover:bg-[#97A97C]/10"
+              >
+                Practitioner Dashboard
+              </Link>
+            )}
             {!isPremiumPro && !isAdmin && user && (
               <Link
                 href="/subscription"

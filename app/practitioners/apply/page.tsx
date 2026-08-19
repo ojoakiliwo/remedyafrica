@@ -2,11 +2,11 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase/client';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { uploadHerbImage } from '@/lib/firebase/storage';
+import { uploadPractitionerApplicationFile } from '@/lib/firebase/storage';
 import { useAuth } from '@/hooks/useAuth';
 import { 
   Upload, 
@@ -29,7 +29,7 @@ import Link from 'next/link';
 
 export default function PractitionerApplyPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   
@@ -55,6 +55,12 @@ export default function PractitionerApplyPage() {
   
   const photoRef = useRef<HTMLInputElement>(null);
   const idRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (user?.email) {
+      setFormData((prev) => prev.email ? prev : { ...prev, email: user.email || '' });
+    }
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -105,6 +111,12 @@ export default function PractitionerApplyPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!user) {
+      toast.error('Please sign in to submit a practitioner application');
+      router.push('/login');
+      return;
+    }
+
     if (!formData.agreeToTerms) {
       toast.error('You must agree to the Terms of Service');
       return;
@@ -133,22 +145,27 @@ export default function PractitionerApplyPage() {
     setLoading(true);
 
     try {
-      // Upload photo
-      const photoResult = await uploadHerbImage(photo, `practitioner-photos/${Date.now()}`, 0);
-      
-      // Upload ID document
-      const idResult = await uploadHerbImage(idDocument, `practitioner-ids/${Date.now()}`, 0);
+      const photoResult = await uploadPractitionerApplicationFile(photo, user.uid, 'photo');
+      const idResult = await uploadPractitionerApplicationFile(idDocument, user.uid, 'id');
+
+      const certifications = formData.certifications
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
 
       await addDoc(collection(db, 'practitioner_applications'), {
         ...formData,
-        userId: user?.uid || null,
-        applicantEmail: user?.email || formData.email,
+        name: formData.fullName,
+        certifications,
+        userId: user.uid,
+        applicantEmail: user.email || formData.email,
         photoURL: photoResult.url,
         photoPath: photoResult.path,
         governmentIdURL: idResult.url,
         governmentIdPath: idResult.path,
         status: 'pending',
         submittedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
         reviewedAt: null,
         reviewedBy: null,
         notes: null
@@ -158,11 +175,38 @@ export default function PractitionerApplyPage() {
       toast.success('Application submitted! We will review within 5 business days.');
     } catch (error: any) {
       console.error('Submit error:', error);
-      toast.error('Failed to submit: ' + error.message);
+      const message = error?.code === 'storage/unauthorized'
+        ? 'Your account does not have permission to upload practitioner files. Sign in and try again.'
+        : (error.message || 'Failed to submit application');
+      toast.error(message);
     } finally {
       setLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-forest" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-cream flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <h2 className="text-2xl font-bold text-forest mb-2">Sign in to apply</h2>
+          <p className="text-gray-600 mb-6">
+            Create or sign in to your RemedyAfrica account before submitting a practitioner application.
+          </p>
+          <Link href="/login">
+            <Button className="bg-forest hover:bg-forest-mist">Sign in</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (submitted) {
     return (

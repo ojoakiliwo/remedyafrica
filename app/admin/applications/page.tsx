@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { db } from '@/lib/firebase/client';
-import { collection, query, getDocs, doc, getDoc, updateDoc, deleteDoc, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, doc, getDoc, updateDoc, setDoc, deleteDoc, orderBy, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +36,7 @@ interface Application {
   status: 'pending' | 'approved' | 'rejected';
   createdAt: Date;
   photoURL?: string;
+  userId?: string;
 }
 
 export default function AdminApplicationsPage() {
@@ -104,8 +105,8 @@ export default function AdminApplicationsPage() {
 
         data.push({
           id: docSnap.id,
-          name: raw.name || 'Unknown',
-          email: raw.email || '',
+          name: raw.name || raw.fullName || 'Unknown',
+          email: raw.email || raw.applicantEmail || '',
           phone: raw.phone || '',
           location: raw.location || '',
           experience: raw.experience || 0,
@@ -113,8 +114,9 @@ export default function AdminApplicationsPage() {
           bio: raw.bio || '',
           certifications: safeCerts,
           status: raw.status || 'pending',
-          createdAt: raw.createdAt?.toDate() || new Date(),
-          photoURL: raw.photoURL || ''
+          createdAt: raw.createdAt?.toDate?.() || raw.submittedAt?.toDate?.() || new Date(),
+          photoURL: raw.photoURL || '',
+          userId: raw.userId || ''
         });
       }
 
@@ -130,8 +132,8 @@ export default function AdminApplicationsPage() {
   const handleApprove = async (application: Application) => {
     setProcessing(application.id);
     try {
-      // Create practitioner document
-      await updateDoc(doc(db, 'practitioners', application.id), {
+      const practitionerId = application.userId || application.id;
+      await setDoc(doc(db, 'practitioners', practitionerId), {
         name: application.name,
         email: application.email,
         phone: application.phone,
@@ -146,9 +148,17 @@ export default function AdminApplicationsPage() {
         rating: 0,
         reviews: 0,
         consultationFee: 0,
-        createdAt: new Date(),
-        applicationId: application.id
-      });
+        createdAt: serverTimestamp(),
+        applicationId: application.id,
+        userId: application.userId || null
+      }, { merge: true });
+
+      if (application.userId) {
+        await setDoc(doc(db, 'users', application.userId), {
+          role: 'practitioner',
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
 
       // Update application status
       await updateDoc(doc(db, 'practitioner_applications', application.id), {

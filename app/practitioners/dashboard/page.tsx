@@ -11,7 +11,8 @@ import {
   addDoc, 
   serverTimestamp,
   deleteDoc,
-  onSnapshot
+  onSnapshot,
+  getDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/providers/AuthProvider';
@@ -78,9 +79,11 @@ interface Consultation {
 
 export default function PractitionerDashboard() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, userData } = useAuth();
   const [consultations, setConsultations] = useState<Consultation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [checkingRole, setCheckingRole] = useState(true);
+  const [isPractitioner, setIsPractitioner] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -100,15 +103,44 @@ export default function PractitionerDashboard() {
   });
 
   useEffect(() => {
-    if (authLoading) return;
+    const checkRole = async () => {
+      if (authLoading) return;
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        const role = userDoc.exists() ? userDoc.data().role : userData?.role;
+        if (role === 'practitioner' || role === 'admin') {
+          setIsPractitioner(true);
+        } else {
+          setIsPractitioner(false);
+        }
+      } catch (err) {
+        console.error('Error checking practitioner role:', err);
+        setIsPractitioner(false);
+      } finally {
+        setCheckingRole(false);
+      }
+    };
+
+    checkRole();
+  }, [user, authLoading, router, userData?.role]);
+
+  useEffect(() => {
+    if (authLoading || checkingRole) return;
     
     if (!user) {
       router.push('/login');
       return;
     }
+
+    if (!isPractitioner) return;
     
     loadConsultations();
-  }, [user, authLoading, router]);
+  }, [user, authLoading, checkingRole, isPractitioner, router]);
 
   const loadConsultations = async () => {
     if (!user?.uid) return;
@@ -299,7 +331,7 @@ export default function PractitionerDashboard() {
     completed: consultations.filter(c => c.status === 'completed').length
   };
 
-  if (authLoading) {
+  if (authLoading || checkingRole) {
     return (
       <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
         <Loader2 className="w-12 h-12 animate-spin text-[#97A97C]" />
@@ -312,10 +344,32 @@ export default function PractitionerDashboard() {
       <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <h1 className="text-2xl font-bold mb-4">Sign in required</h1>
           <Button onClick={() => router.push('/login')} className="bg-[#97A97C]">
             Go to Login
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isPractitioner) {
+    return (
+      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center p-4">
+        <div className="max-w-md text-center">
+          <AlertCircle className="w-16 h-16 text-orange-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-3">Practitioner dashboard</h1>
+          <p className="text-gray-600 mb-6">
+            This page is for verified practitioners. You can still browse healers and request a consultation.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button onClick={() => router.push('/practitioners')} className="bg-[#97A97C]">
+              Browse practitioners
+            </Button>
+            <Button variant="outline" onClick={() => router.push('/practitioners/apply')}>
+              Apply as a practitioner
+            </Button>
+          </div>
         </div>
       </div>
     );

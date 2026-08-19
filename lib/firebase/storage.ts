@@ -9,6 +9,43 @@ export interface UploadResult {
 
 export const MAX_HERB_IMAGE_BYTES = 10 * 1024 * 1024;
 
+export async function uploadPractitionerApplicationFile(
+  file: File,
+  userId: string,
+  kind: 'photo' | 'id'
+): Promise<UploadResult> {
+  if (!userId) {
+    throw new Error('You must be signed in to upload application files');
+  }
+  if (!file.type.startsWith('image/')) {
+    throw new Error('File must be an image');
+  }
+  if (file.size > MAX_HERB_IMAGE_BYTES) {
+    throw new Error('Image must be less than 10MB');
+  }
+
+  const timestamp = Date.now();
+  const extension = file.name.split('.').pop() || 'jpg';
+  const folder = kind === 'id' ? 'practitioner-ids' : 'practitioner-photos';
+  const path = `${folder}/${userId}/${timestamp}-${kind}.${extension}`;
+  const storageRef = ref(storage, path);
+
+  const snapshot = await uploadBytes(storageRef, file, {
+    contentType: file.type,
+    customMetadata: {
+      kind,
+      originalName: file.name,
+      uploadedAt: new Date().toISOString(),
+    },
+  });
+
+  return {
+    url: await getDownloadURL(snapshot.ref),
+    path,
+    name: file.name,
+  };
+}
+
 export async function uploadHerbImage(
   file: File, 
   herbId: string, 
