@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useAuth } from '@/providers/AuthProvider';
 import { db } from '@/lib/firebase/client';
 import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { identifiedPlantSearchHref } from '@/lib/search/query-intent';
 
 interface HerbSuggestion {
   id: number;
@@ -35,6 +36,8 @@ export default function HerbIdentifier() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
   const [savedToCollection, setSavedToCollection] = useState(false);
+  const [plantUses, setPlantUses] = useState('');
+  const [plantUsesLoading, setPlantUsesLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -106,6 +109,8 @@ export default function HerbIdentifier() {
     setResult(null);
     setCameraReady(false);
     setSavedToCollection(false);
+    setPlantUses('');
+    setPlantUsesLoading(false);
   }, []);
 
   const captureImage = () => {
@@ -186,9 +191,35 @@ export default function HerbIdentifier() {
     }
   };
 
+  const fetchPlantUses = async (suggestion: HerbSuggestion) => {
+    setPlantUses('');
+    setPlantUsesLoading(true);
+    try {
+      const response = await fetch('/api/ai-explain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symptoms: suggestion.commonName || suggestion.name,
+          mode: 'plant',
+          scientificName: suggestion.name,
+          source: 'herb_identifier',
+        }),
+      });
+      const data = await response.json();
+      if (data.explanation) {
+        setPlantUses(data.explanation);
+      }
+    } catch (error) {
+      console.error('Plant uses error:', error);
+    } finally {
+      setPlantUsesLoading(false);
+    }
+  };
+
   const identifyHerb = async (imageBase64: string) => {
     setIdentifying(true);
     setResult(null);
+    setPlantUses('');
     
     try {
       const response = await fetch('/api/identify-herb', {
@@ -204,6 +235,7 @@ export default function HerbIdentifier() {
         if (user) {
           await saveToUserHistory(data.suggestions, imageBase64);
         }
+        void fetchPlantUses(data.suggestions[0]);
       } else if (data.message) {
         toast.info(data.message);
       }
@@ -235,17 +267,23 @@ export default function HerbIdentifier() {
     reader.readAsDataURL(file);
   };
 
-  const handleViewInDatabase = (herbName: string) => {
+  const handleViewInDatabase = (suggestion: HerbSuggestion) => {
+    const href = identifiedPlantSearchHref({
+      commonName: suggestion.commonName,
+      scientificName: suggestion.name,
+      name: suggestion.name,
+    });
     if (user) {
       addDoc(collection(db, 'search_queries'), {
         userId: user.uid,
-        query: herbName,
+        query: suggestion.commonName || suggestion.name,
         source: 'herb_identifier',
+        intent: 'plant',
         timestamp: serverTimestamp()
       }).catch(() => {});
     }
     
-    router.push(`/search?q=${encodeURIComponent(herbName)}`);
+    router.push(href);
     stopCamera();
   };
 
@@ -253,6 +291,8 @@ export default function HerbIdentifier() {
     setCapturedImage(null);
     setResult(null);
     setSavedToCollection(false);
+    setPlantUses('');
+    setPlantUsesLoading(false);
   };
 
   if (!isOpen) {
@@ -411,11 +451,30 @@ export default function HerbIdentifier() {
                   
                   <Button 
                     className="w-full bg-[#97A97C] hover:bg-[#7A8A63] text-white py-6 text-lg"
-                    onClick={() => handleViewInDatabase(result.suggestions![0].commonName)}
+                    onClick={() => handleViewInDatabase(result.suggestions![0])}
                   >
                     <Search className="w-5 h-5 mr-2" aria-hidden="true" />
-                    Find in RemedyAfrica Database
+                    Find traditional uses
                   </Button>
+
+                  {(plantUsesLoading || plantUses) && (
+                    <div className="rounded-2xl border border-[#97A97C]/20 bg-white p-5 text-left">
+                      <p className="text-xs uppercase tracking-[0.18em] text-[#7A8A63] mb-3">
+                        Uses of this plant
+                      </p>
+                      {plantUsesLoading && !plantUses ? (
+                        <p className="text-sm text-gray-500">Writing traditional uses of the plant and its parts…</p>
+                      ) : (
+                        <div className="space-y-3 text-sm leading-relaxed text-gray-700">
+                          {plantUses.split('\n').map((paragraph, i) =>
+                            paragraph.trim() ? (
+                              <p key={i}>{paragraph.replace(/\*\*/g, '').replace(/^\d+\.\s*/, '').trim()}</p>
+                            ) : null
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   
                   {!savedToCollection && user && (
                     <Button 

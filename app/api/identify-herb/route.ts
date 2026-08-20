@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
           return {
             id: index,
             name: plantName,
-            scientificName: commonName,
+            scientificName: plantName,
             commonName: commonName,
             probability: Math.round(probability * 100),
             confidence: Math.round(probability * 100),

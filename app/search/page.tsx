@@ -28,6 +28,12 @@ import { useSubscription } from '@/providers/SubscriptionProvider';
 import { publicCatalogHerbs } from '@/lib/herb-trust';
 import { HerbPreviewCard, PreviewHerb } from '@/components/editorial/HerbPreviewCard';
 import { EditorialPage, PageHero, DisclaimerNote } from '@/components/editorial/PageHero';
+import {
+  identifiedPlantSearchHref,
+  plantMatchQuery,
+  resolveSearchIntent,
+  type SearchExplainMode,
+} from '@/lib/search/query-intent';
 
 interface Herb extends PreviewHerb {
   medicinalUses?: string[];
@@ -196,6 +202,8 @@ function SearchPageContent() {
   const [aiExplanation, setAiExplanation] = useState('');
   const [isFallback, setIsFallback] = useState(false);
   const [explainError, setExplainError] = useState('');
+  const [explainMode, setExplainMode] = useState<SearchExplainMode>('condition');
+  const [scientificName, setScientificName] = useState('');
   const [herbs, setHerbs] = useState<Herb[]>([]);
   const [practitioners, setPractitioners] = useState<Practitioner[]>([]);
   const [allHerbs, setAllHerbs] = useState<Herb[]>([]);
@@ -228,8 +236,15 @@ function SearchPageContent() {
     setMatching(false);
   };
 
-  const startTextFlow = async (q: string) => {
+  const startTextFlow = async (
+    q: string,
+    options?: { mode?: SearchExplainMode; scientificName?: string | null }
+  ) => {
+    const mode = options?.mode || 'condition';
+    const scientificName = options?.scientificName || '';
     setQuery(q);
+    setExplainMode(mode);
+    setScientificName(scientificName);
     setMode('feel');
     setShowHealers(false);
     setNeedsSubscription(false);
@@ -239,13 +254,17 @@ function SearchPageContent() {
     setExplainError('');
     setAiExplanation('');
     setExplaining(true);
-    applyMatches(q);
+    applyMatches(mode === 'plant' ? plantMatchQuery(q, scientificName) : q);
 
     try {
       const res = await fetch('/api/ai-explain', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ symptoms: q }),
+        body: JSON.stringify({
+          symptoms: q,
+          mode,
+          scientificName,
+        }),
       });
       const data = await res.json();
       if (data.explanation) {
@@ -255,7 +274,11 @@ function SearchPageContent() {
         throw new Error('No explanation');
       }
     } catch {
-      setExplainError('We could not write a note just now. The plant matches below still come from the library.');
+      setExplainError(
+        mode === 'plant'
+          ? 'We could not write a plant note just now. Library matches below still come from our catalogue.'
+          : 'We could not write a note just now. The plant matches below still come from the library.'
+      );
     } finally {
       setExplaining(false);
     }
@@ -263,15 +286,21 @@ function SearchPageContent() {
 
   useEffect(() => {
     const q = searchParams.get('q') || '';
+    const mode = resolveSearchIntent({
+      intent: searchParams.get('intent'),
+      source: searchParams.get('source'),
+    });
+    const scientificName = searchParams.get('scientific') || '';
     setQuery(q);
     setSearchInput(q);
-    if (q.trim()) startTextFlow(q.trim());
+    setExplainMode(mode);
+    if (q.trim()) startTextFlow(q.trim(), { mode, scientificName });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   useEffect(() => {
     if (query.trim() && allHerbs.length && mode === 'feel') {
-      applyMatches(query);
+      applyMatches(explainMode === 'plant' ? plantMatchQuery(query, scientificName) : query);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allHerbs]);
@@ -400,7 +429,9 @@ function SearchPageContent() {
         title={query && mode === 'feel' ? query : 'Find a plant by how you feel'}
         subtitle={
           query && mode === 'feel'
-            ? 'Matches from the library, written in plain language. This is traditional knowledge, not a diagnosis.'
+            ? explainMode === 'plant'
+              ? 'Traditional uses of the identified plant and its parts. This is folk knowledge, not a diagnosis.'
+              : 'Matches from the library, written in plain language. This is traditional knowledge, not a diagnosis.'
             : 'Type a symptom in everyday words, or photograph a leaf from the compound. We look in the same herb library you browse elsewhere.'
         }
       />
@@ -564,7 +595,9 @@ function SearchPageContent() {
           <div className="space-y-16">
             {(explaining || aiExplanation || explainError) && (
               <section className="rounded-[2rem] border border-forest/10 bg-white p-8 sm:p-10 shadow-soft">
-                <p className="eyebrow">A note on this concern</p>
+                <p className="eyebrow">
+                  {explainMode === 'plant' ? 'Traditional uses of this plant' : 'A note on this concern'}
+                </p>
                 <div className="hairline mt-4 mb-6" />
                 {explaining && !aiExplanation ? (
                   <div className="space-y-3">
@@ -625,9 +658,13 @@ function SearchPageContent() {
               ) : (
                 <div className="rounded-[2rem] border border-forest/10 bg-white px-8 py-16 text-center shadow-soft">
                   <Leaf className="mx-auto mb-4 h-10 w-10 text-bronze/40" aria-hidden="true" />
-                  <h3 className="font-serif text-2xl text-forest">No plants matched that wording</h3>
+                  <h3 className="font-serif text-2xl text-forest">
+                    {explainMode === 'plant' ? 'Not in the library yet' : 'No plants matched that wording'}
+                  </h3>
                   <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-ink-muted">
-                    Try a simpler word — fever, sleep, stomach — or a local name such as ewuro or dogoyaro.
+                    {explainMode === 'plant'
+                      ? 'We recognised a plant, but we have not catalogued it. The note above covers traditional uses of the plant itself.'
+                      : 'Try a simpler word — fever, sleep, stomach — or a local name such as ewuro or dogoyaro.'}
                   </p>
                 </div>
               )}
@@ -800,9 +837,13 @@ function SearchPageContent() {
                       </div>
                     </div>
                     <div className="p-6">
-                      <h3 className="font-serif text-2xl text-forest">{suggestion.name}</h3>
-                      <p className="mt-1 text-sm italic text-ink-muted">{suggestion.scientificName}</p>
-                      {suggestion.commonNames.length > 0 && (
+                      <h3 className="font-serif text-2xl text-forest">
+                        {suggestion.commonNames?.[0] || suggestion.name}
+                      </h3>
+                      <p className="mt-1 text-sm italic text-ink-muted">
+                        {suggestion.name || suggestion.scientificName}
+                      </p>
+                      {suggestion.commonNames?.length > 1 && (
                         <p className="mt-2 text-sm text-forest/80">
                           {suggestion.commonNames.slice(0, 3).join(' · ')}
                         </p>
@@ -812,16 +853,28 @@ function SearchPageContent() {
                           {suggestion.wikiDescription}
                         </p>
                       )}
-                      {suggestion.wikiUrl && (
-                        <a
-                          href={suggestion.wikiUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-bronze hover:text-forest"
+                      <div className="mt-4 flex flex-wrap items-center gap-3">
+                        <Link
+                          href={identifiedPlantSearchHref({
+                            commonName: suggestion.commonNames?.[0] || suggestion.name,
+                            scientificName: suggestion.name,
+                            name: suggestion.name,
+                          })}
+                          className="inline-flex items-center gap-1.5 text-sm font-medium text-bronze hover:text-forest"
                         >
-                          Read more <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                        </a>
-                      )}
+                          Traditional uses <ArrowRight className="h-3.5 w-3.5" />
+                        </Link>
+                        {suggestion.wikiUrl && (
+                          <a
+                            href={suggestion.wikiUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-forest"
+                          >
+                            Read more <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </article>
                 ))}

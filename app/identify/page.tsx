@@ -34,7 +34,7 @@ export default function IdentifyPage() {
                 </li>
                 <li className="flex gap-3">
                   <Leaf className="h-5 w-5 shrink-0 text-bronze" />
-                  We match it, then you can open the library or save it when you are signed in.
+                  We match the plant, then explain traditional uses of its leaves and other parts — not a disease that shares the same name.
                 </li>
               </ul>
             </div>
