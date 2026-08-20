@@ -44,10 +44,12 @@ export default function GetTheAppActions() {
   const [androidHelp, setAndroidHelp] = useState(false);
   const [copied, setCopied] = useState(false);
   const [identifyHref, setIdentifyHref] = useState('/identify');
+  const [pageShareUrl, setPageShareUrl] = useState('https://www.remedyafrica.com/get-the-app');
 
   useEffect(() => {
     setInstalled(isStandaloneDisplay());
     setIdentifyHref(withCampaignParams('/identify'));
+    setPageShareUrl(shareUrl({ utm_source: 'share', utm_medium: 'landing', utm_campaign: 'get_the_app' }));
     trackCampaignEvent('landing_view');
     return subscribeInstallPrompt(setPrompt);
   }, []);
@@ -87,16 +89,16 @@ export default function GetTheAppActions() {
   };
 
   const copyLink = async () => {
-    const url = `${window.location.origin}${withCampaignParams(GET_THE_APP_PATH, {
+    const nextUrl = `${window.location.origin}${withCampaignParams(GET_THE_APP_PATH, {
       utm_source: 'copy',
       utm_medium: 'share',
       utm_campaign: 'get_the_app',
     })}`;
-    const copiedOk = await copyText(url);
-    if (!copiedOk) return;
+    setPageShareUrl(nextUrl);
+    void copyText(nextUrl);
     setCopied(true);
     trackCampaignEvent('share_copy');
-    window.setTimeout(() => setCopied(false), 2000);
+    window.setTimeout(() => setCopied(false), 2500);
   };
 
   return (
@@ -171,6 +173,15 @@ export default function GetTheAppActions() {
                 {copied ? 'Link copied' : 'Copy link'}
               </button>
             </div>
+            <label className="mt-4 block text-xs text-ink-muted">
+              Share this link
+              <input
+                readOnly
+                value={pageShareUrl}
+                onFocus={(event) => event.currentTarget.select()}
+                className="mt-1 w-full rounded-2xl border border-forest/10 bg-cream px-3 py-2 text-xs text-forest"
+              />
+            </label>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
