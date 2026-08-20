@@ -23,12 +23,15 @@ export default function Footer() {
               <li><Link href="/search" className="hover:text-cream">Search remedies</Link></li>
               <li><Link href="/category" className="hover:text-cream">Categories</Link></li>
               <li><Link href="/practitioners" className="hover:text-cream">Find practitioners</Link></li>
+              <li><Link href="/identify" className="hover:text-cream">Identify a plant</Link></li>
+              <li><Link href="/support" className="hover:text-cream">House guide</Link></li>
               <li><Link href="/subscription" className="hover:text-cream">Pricing</Link></li>
             </ul>
           </div>
           <div>
             <h4 className="text-[11px] tracking-[0.22em] uppercase text-bronze mb-4">Company</h4>
             <ul className="space-y-2 text-sm text-cream/70">
+              <li><Link href="/support" className="hover:text-cream">Guide</Link></li>
               <li><Link href="/contact" className="hover:text-cream">Contact</Link></li>
               <li><Link href="/terms" className="hover:text-cream">Terms of service</Link></li>
               <li><Link href="/privacy" className="hover:text-cream">Privacy policy</Link></li>

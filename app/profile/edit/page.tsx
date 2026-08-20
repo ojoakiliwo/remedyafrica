@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { EditorialPage, LoadingScreen, PageHero } from '@/components/editorial/PageHero';
 
 export default function EditProfilePage() {
   const { user, loading: authLoading } = useAuth();
@@ -189,32 +190,26 @@ export default function EditProfilePage() {
   };
 
   if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-[#F5F5F0] flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-[#97A97C] animate-spin" />
-      </div>
-    );
+    return <LoadingScreen label="Opening your profile…" />;
   }
 
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0] py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Link href="/profile">
-            <Button variant="outline" size="icon">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold text-[#2C3E2D]">Edit Profile</h1>
-        </div>
+    <EditorialPage>
+      <PageHero
+        eyebrow="Your house"
+        title="The name people will know you by."
+        subtitle="This is the name used in video and audio consultations. Practitioners can also shape the public card patients see when they book."
+        backHref="/profile"
+        backLabel="Back to profile"
+      />
+      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
 
         <div className="grid md:grid-cols-3 gap-8">
           {/* Left Column - Photo */}
           <div className="md:col-span-1">
-            <div className="bg-white rounded-xl shadow-md p-6 text-center">
+            <div className="bg-white rounded-3xl border border-forest/10 shadow-soft p-6 text-center">
               <h2 className="font-semibold text-[#2C3E2D] mb-4">Profile Picture</h2>
               
               <div className="relative w-32 h-32 mx-auto mb-4">
@@ -260,7 +255,7 @@ export default function EditProfilePage() {
           {/* Right Column - Form */}
           <div className="md:col-span-2 space-y-6">
             {/* Basic Info */}
-            <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="bg-white rounded-3xl border border-forest/10 shadow-soft p-6">
               <h2 className="text-xl font-semibold text-[#2C3E2D] mb-6 flex items-center gap-2">
                 <User className="w-5 h-5 text-[#97A97C]" />
                 Basic Information
@@ -274,6 +269,7 @@ export default function EditProfilePage() {
                     value={profile.displayName}
                     onChange={(e) => setProfile({ ...profile, displayName: e.target.value })}
                     placeholder="Your full name"
+                    className="booking-field mt-1"
                   />
                 </div>
 
@@ -352,11 +348,14 @@ export default function EditProfilePage() {
                     Cancel
                   </Button>
                 </Link>
+                <Link href="/practitioners/profile/edit" className="self-center text-sm text-bronze hover:text-forest">
+                  Edit practitioner card
+                </Link>
               </div>
             </div>
 
             {/* Password Change */}
-            <div className="bg-white rounded-xl shadow-md p-6">
+            <div className="bg-white rounded-3xl border border-forest/10 shadow-soft p-6">
               <h2 className="text-xl font-semibold text-[#2C3E2D] mb-4">Security</h2>
               
               {!showPasswordChange ? (
@@ -410,6 +409,6 @@ export default function EditProfilePage() {
           </div>
         </div>
       </div>
-    </div>
+    </EditorialPage>
   );
 }

@@ -3,15 +3,18 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { doc, getDoc, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { updateProfile } from 'firebase/auth';
+import { db, auth } from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { getPractitionerLookupIds } from '@/lib/consultations/lookup';
+import { uploadPractitionerApplicationFile } from '@/lib/firebase/storage';
+import { EditorialPage, LoadingScreen, PageHero } from '@/components/editorial/PageHero';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import { Camera, Loader2, Save } from 'lucide-react';
 
 export default function PractitionerProfileEditPage() {
   const router = useRouter();
@@ -19,6 +22,7 @@ export default function PractitionerProfileEditPage() {
   const [profileId, setProfileId] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [missing, setMissing] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -27,6 +31,8 @@ export default function PractitionerProfileEditPage() {
     location: '',
     bio: '',
     experience: '',
+    languages: '',
+    photoURL: '',
   });
 
   useEffect(() => {
@@ -54,6 +60,8 @@ export default function PractitionerProfileEditPage() {
             location: data.location || '',
             bio: data.bio || '',
             experience: String(data.experience || ''),
+            languages: Array.isArray(data.languages) ? data.languages.join(', ') : data.languages || '',
+            photoURL: data.photoURL || data.imageUrl || '',
           });
           setMissing(false);
           setLoading(false);
@@ -76,10 +84,32 @@ export default function PractitionerProfileEditPage() {
     };
   }, [user, authLoading, router]);
 
+  const handlePhoto = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+    setUploadingPhoto(true);
+    try {
+      const uploaded = await uploadPractitionerApplicationFile(file, user.uid, 'photo');
+      setForm((current) => ({ ...current, photoURL: uploaded.url }));
+      toast.success('Photo ready — save the profile to publish it.');
+    } catch (error) {
+      console.error('Photo upload error:', error);
+      toast.error('Could not upload that photo. Try a smaller JPG or PNG.');
+    } finally {
+      setUploadingPhoto(false);
+      event.target.value = '';
+    }
+  };
+
   const save = async () => {
-    if (!profileId) return;
+    if (!profileId || !user) return;
     setSaving(true);
     try {
+      const languages = form.languages
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+
       await updateDoc(doc(db, 'practitioners', profileId), {
         name: form.name.trim(),
         title: form.title.trim(),
@@ -87,9 +117,26 @@ export default function PractitionerProfileEditPage() {
         location: form.location.trim(),
         bio: form.bio.trim(),
         experience: Number(form.experience) || 0,
+        languages,
+        photoURL: form.photoURL,
+        imageUrl: form.photoURL,
         updatedAt: serverTimestamp(),
       });
-      toast.success('Profile updated');
+
+      if (auth.currentUser && form.name.trim()) {
+        await updateProfile(auth.currentUser, {
+          displayName: form.name.trim(),
+          ...(form.photoURL ? { photoURL: form.photoURL } : {}),
+        });
+      }
+      await setDoc(doc(db, 'users', user.uid), {
+        displayName: form.name.trim(),
+        name: form.name.trim(),
+        ...(form.photoURL ? { photoURL: form.photoURL } : {}),
+        updatedAt: serverTimestamp(),
+      }, { merge: true }).catch(() => undefined);
+
+      toast.success('Your public profile is updated. Calls will use this name.');
       router.push('/practitioners/dashboard');
     } catch (error) {
       console.error('Error saving practitioner profile:', error);
@@ -100,84 +147,107 @@ export default function PractitionerProfileEditPage() {
   };
 
   if (authLoading || loading) {
-    return (
-      <div className="min-h-screen bg-cream flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-forest" />
-      </div>
-    );
+    return <LoadingScreen label="Opening your public profile…" />;
   }
 
   if (missing) {
     return (
-      <div className="min-h-screen bg-cream flex items-center justify-center px-4">
-        <div className="max-w-md bg-white rounded-2xl border border-forest/10 p-8 text-center">
-          <h1 className="text-2xl font-bold text-forest">No practitioner profile yet</h1>
-          <p className="text-gray-600 mt-3">
-            Apply as a practitioner first, then you can edit the public profile patients see.
-          </p>
-          <div className="mt-6 flex flex-col gap-3">
-            <Link href="/practitioners/apply">
-              <Button className="w-full bg-forest hover:bg-forest-mist">Apply now</Button>
-            </Link>
-            <Link href="/practitioners/dashboard">
-              <Button variant="outline" className="w-full">Back to dashboard</Button>
-            </Link>
-          </div>
+      <EditorialPage>
+        <PageHero
+          eyebrow="Your house"
+          title="A public profile comes after you apply."
+          subtitle="Patients see this page when they book you. Apply first, then return here to shape how you appear."
+          backHref="/practitioners/dashboard"
+          backLabel="Back to dashboard"
+        />
+        <div className="mx-auto max-w-xl px-4 py-16 text-center">
+          <Link href="/practitioners/apply">
+            <Button className="rounded-full bg-forest text-cream hover:bg-forest-mist">Apply as a practitioner</Button>
+          </Link>
         </div>
-      </div>
+      </EditorialPage>
     );
   }
 
   return (
-    <div className="min-h-screen bg-cream">
-      <div className="bg-forest text-white py-10 px-4">
-        <div className="max-w-2xl mx-auto">
-          <Link href="/practitioners/dashboard" className="inline-flex items-center gap-1 text-bronze hover:text-white text-sm mb-4">
-            <ArrowLeft className="h-4 w-4" /> Back to dashboard
-          </Link>
-          <h1 className="text-3xl font-bold">Edit practitioner profile</h1>
-          <p className="text-gray-300 mt-2">This is the public profile patients see when they book you.</p>
-        </div>
-      </div>
+    <EditorialPage>
+      <PageHero
+        eyebrow="Public face"
+        title="How patients will find you."
+        subtitle="This is the card and the booking page they see. Your video and audio calls will also use this name."
+        backHref="/practitioners/dashboard"
+        backLabel="Back to dashboard"
+      />
 
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
-        <div className="bg-white rounded-2xl border border-forest/10 p-6 space-y-4">
-          <div>
-            <Label htmlFor="name">Full name</Label>
-            <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+      <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="grid gap-8 lg:grid-cols-[18rem_minmax(0,1fr)]">
+          <aside className="rounded-3xl border border-forest/10 bg-white p-6 shadow-soft text-center h-fit">
+            <div className="mx-auto mb-4 h-36 w-36 overflow-hidden rounded-full bg-cream">
+              {form.photoURL ? (
+                <img src={form.photoURL} alt={form.name || 'Profile photo'} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full items-center justify-center text-3xl font-serif text-bronze">
+                  {(form.name || 'P').charAt(0).toUpperCase()}
+                </div>
+              )}
+            </div>
+            <p className="font-serif text-2xl text-forest">{form.name || 'Your name'}</p>
+            <p className="mt-1 text-sm text-ink-muted">{form.title || form.specialty || 'Traditional healer'}</p>
+            <p className="mt-1 text-xs text-ink-muted">{form.location || 'Location'}</p>
+            <label className="mt-5 inline-flex cursor-pointer items-center justify-center rounded-full bg-forest px-4 py-2 text-sm text-cream hover:bg-forest-mist">
+              <input type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handlePhoto} disabled={uploadingPhoto} />
+              <Camera className="mr-2 h-4 w-4" />
+              {uploadingPhoto ? 'Uploading…' : 'Change photo'}
+            </label>
+          </aside>
+
+          <div className="rounded-3xl border border-forest/10 bg-white p-6 sm:p-8 shadow-soft space-y-5">
+            <div>
+              <Label htmlFor="name">Full name</Label>
+              <Input id="name" className="booking-field mt-1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="title">Title</Label>
+                <Input id="title" className="booking-field mt-1" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Traditional healer" />
+              </div>
+              <div>
+                <Label htmlFor="specialty">Specialty</Label>
+                <Input id="specialty" className="booking-field mt-1" value={form.specialty} onChange={(e) => setForm({ ...form, specialty: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="location">Location</Label>
+                <Input id="location" className="booking-field mt-1" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
+              </div>
+              <div>
+                <Label htmlFor="experience">Years of experience</Label>
+                <Input id="experience" className="booking-field mt-1" type="number" min="0" value={form.experience} onChange={(e) => setForm({ ...form, experience: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="languages">Languages</Label>
+              <Input id="languages" className="booking-field mt-1" value={form.languages} onChange={(e) => setForm({ ...form, languages: e.target.value })} placeholder="English, Yoruba, Hausa" />
+            </div>
+            <div>
+              <Label htmlFor="bio">Bio</Label>
+              <textarea
+                id="bio"
+                value={form.bio}
+                onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                rows={6}
+                className="booking-field mt-1 min-h-[8rem]"
+                placeholder="How you work with families, and what you are known for."
+              />
+            </div>
+            <Button onClick={save} disabled={saving || !form.name.trim()} className="rounded-full bg-forest text-cream hover:bg-forest-mist">
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Save public profile
+            </Button>
           </div>
-          <div>
-            <Label htmlFor="title">Title</Label>
-            <Input id="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Traditional healer" />
-          </div>
-          <div>
-            <Label htmlFor="specialty">Specialty</Label>
-            <Input id="specialty" value={form.specialty} onChange={(e) => setForm({ ...form, specialty: e.target.value })} />
-          </div>
-          <div>
-            <Label htmlFor="location">Location</Label>
-            <Input id="location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-          </div>
-          <div>
-            <Label htmlFor="experience">Years of experience</Label>
-            <Input id="experience" type="number" min="0" value={form.experience} onChange={(e) => setForm({ ...form, experience: e.target.value })} />
-          </div>
-          <div>
-            <Label htmlFor="bio">Bio</Label>
-            <textarea
-              id="bio"
-              value={form.bio}
-              onChange={(e) => setForm({ ...form, bio: e.target.value })}
-              rows={5}
-              className="w-full rounded-md border border-forest/20 px-3 py-2 text-ink"
-            />
-          </div>
-          <Button onClick={save} disabled={saving || !form.name.trim()} className="bg-forest hover:bg-forest-mist">
-            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            Save profile
-          </Button>
         </div>
       </div>
-    </div>
+    </EditorialPage>
   );
 }

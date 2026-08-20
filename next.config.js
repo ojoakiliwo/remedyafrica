@@ -19,7 +19,6 @@ const nextConfig = {
   async redirects() {
     return [
       { source: '/consultation', destination: '/consultations', permanent: false },
-      { source: '/support', destination: '/contact', permanent: false },
     ];
   },
 }
