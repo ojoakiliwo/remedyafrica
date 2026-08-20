@@ -19,6 +19,24 @@ import {
   type BeforeInstallPromptEvent,
 } from '@/lib/pwa-prompt';
 
+async function copyText(value: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    const field = document.createElement('textarea');
+    field.value = value;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.left = '-9999px';
+    document.body.appendChild(field);
+    field.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(field);
+    return ok;
+  }
+}
+
 export default function GetTheAppActions() {
   const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
@@ -92,14 +110,11 @@ export default function GetTheAppActions() {
       utm_medium: 'share',
       utm_campaign: 'get_the_app',
     })}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      trackCampaignEvent('share_copy');
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      window.prompt('Copy this link', url);
-    }
+    const copiedOk = await copyText(url);
+    if (!copiedOk) return;
+    setCopied(true);
+    trackCampaignEvent('share_copy');
+    window.setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -168,7 +183,7 @@ export default function GetTheAppActions() {
               <button
                 type="button"
                 onClick={shareNative}
-                className="inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-medium text-ink-muted hover:text-forest"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-forest/20 px-5 py-3 text-sm font-medium text-forest hover:bg-cream"
               >
                 {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
                 {copied ? 'Link copied' : 'Copy link'}
