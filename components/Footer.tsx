@@ -24,6 +24,7 @@ export default function Footer() {
               <li><Link href="/category" className="hover:text-cream">Categories</Link></li>
               <li><Link href="/practitioners" className="hover:text-cream">Find practitioners</Link></li>
               <li><Link href="/identify" className="hover:text-cream">Identify a plant</Link></li>
+              <li><Link href="/get-the-app" className="hover:text-cream">Get the app</Link></li>
               <li><Link href="/support" className="hover:text-cream">House guide</Link></li>
               <li><Link href="/subscription" className="hover:text-cream">Pricing</Link></li>
             </ul>

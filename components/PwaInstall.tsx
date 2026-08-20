@@ -1,32 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { Download, Share, X } from 'lucide-react';
+import { trackCampaignEvent } from '@/lib/campaign';
+import {
+  consumeDeferredInstallPrompt,
+  isIosDevice,
+  isStandaloneDisplay,
+  setDeferredInstallPrompt,
+  subscribeInstallPrompt,
+  type BeforeInstallPromptEvent,
+} from '@/lib/pwa-prompt';
 
 const DISMISS_KEY = 'ra-install-banner-dismissed-at';
 const DISMISS_MS = 14 * 24 * 60 * 60 * 1000;
 
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
-};
-
-function isStandaloneDisplay() {
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    window.matchMedia('(display-mode: fullscreen)').matches ||
-    Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone)
-  );
-}
-
-function isIosDevice() {
-  const ua = window.navigator.userAgent;
-  const iPhone = /iPhone|iPad|iPod/i.test(ua);
-  const iPadOs = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-  return iPhone || iPadOs;
-}
-
 export default function PwaInstall() {
+  const pathname = usePathname();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
   const [iosHelp, setIosHelp] = useState(false);
@@ -51,31 +42,40 @@ export default function PwaInstall() {
   }, []);
 
   useEffect(() => {
-    if (isStandaloneDisplay()) return;
-
-    const dismissedAt = Number(window.localStorage.getItem(DISMISS_KEY) || 0);
-    if (dismissedAt && Date.now() - dismissedAt < DISMISS_MS) return;
-
-    setVisible(true);
-
     const onPrompt = (event: Event) => {
       event.preventDefault();
-      setDeferredPrompt(event as BeforeInstallPromptEvent);
-      setVisible(true);
+      setDeferredInstallPrompt(event as BeforeInstallPromptEvent);
     };
-
     const onInstalled = () => {
       setVisible(false);
-      setDeferredPrompt(null);
+      setDeferredInstallPrompt(null);
     };
-
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
+    const unsubscribe = subscribeInstallPrompt(setDeferredPrompt);
     return () => {
       window.removeEventListener('beforeinstallprompt', onPrompt);
       window.removeEventListener('appinstalled', onInstalled);
+      unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (isStandaloneDisplay()) {
+      setVisible(false);
+      return;
+    }
+    if (pathname === '/get-the-app') {
+      setVisible(false);
+      return;
+    }
+    const dismissedAt = Number(window.localStorage.getItem(DISMISS_KEY) || 0);
+    if (dismissedAt && Date.now() - dismissedAt < DISMISS_MS) {
+      setVisible(false);
+      return;
+    }
+    setVisible(true);
+  }, [pathname]);
 
   const dismiss = () => {
     window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
@@ -85,18 +85,25 @@ export default function PwaInstall() {
   };
 
   const install = async () => {
+    trackCampaignEvent('install_click');
     if (isIosDevice()) {
       setIosHelp(true);
+      trackCampaignEvent('install_help_ios');
       return;
     }
-    if (deferredPrompt) {
-      await deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      setDeferredPrompt(null);
-      if (choice.outcome === 'accepted') setVisible(false);
+    const prompt = deferredPrompt || consumeDeferredInstallPrompt();
+    if (prompt) {
+      await prompt.prompt();
+      const choice = await prompt.userChoice;
+      consumeDeferredInstallPrompt();
+      if (choice.outcome === 'accepted') {
+        setVisible(false);
+        trackCampaignEvent('install_accepted');
+      }
       return;
     }
     setAndroidHelp(true);
+    trackCampaignEvent('install_help_android');
   };
 
   if (!visible) return null;
