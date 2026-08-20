@@ -41,7 +41,9 @@ export async function POST(request: NextRequest) {
         model: 'google/gemini-2.5-pro',
         messages: [{ role: 'user', content: buildExplainPrompt(parsed) }],
         temperature: 0.3,
-        max_tokens: 2048,
+        // Gemini 2.5 Pro spends part of this budget on reasoning; 2048 often
+        // truncates a 400-word plant note before preparation and cautions.
+        max_tokens: 8192,
         top_p: 0.8,
       }),
     });

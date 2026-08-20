@@ -103,6 +103,7 @@ RULES:
 - Do not diagnose skin lesions, infections, or other diseases.
 - Do not prescribe dosages.
 - Keep the tone educational and practical.
+- Complete all five numbered sections.
 - Maximum 400 words`;
 }
 
