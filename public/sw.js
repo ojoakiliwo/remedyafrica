@@ -1,10 +1,9 @@
-const CACHE_NAME = 'remedyafrica-pwa-v1';
+const CACHE_NAME = 'remedyafrica-pwa-v2';
 const OFFLINE_URL = '/offline.html';
 const PRECACHE = [
   OFFLINE_URL,
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/logo.png',
+  '/icons/icon-192.png?v=2',
+  '/icons/icon-512.png?v=2',
 ];
 
 self.addEventListener('install', (event) => {
@@ -41,9 +40,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  if (url.pathname.startsWith('/icons/')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || Response.error()))
+    );
+    return;
+  }
+
   const isStaticAsset =
     url.pathname.startsWith('/_next/static/') ||
-    url.pathname.startsWith('/icons/') ||
     /\.(?:png|jpe?g|webp|gif|svg|ico|woff2)$/i.test(url.pathname);
 
   if (!isStaticAsset) return;
