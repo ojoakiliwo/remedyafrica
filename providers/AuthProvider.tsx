@@ -21,6 +21,7 @@ export interface UserProfile {
   role?: string;
   subscriptionTier?: string;
   subscriptionStatus?: string;
+  subscriptionExpiresAt?: any;
   name?: string;
   createdAt?: any;
   updatedAt?: any;
@@ -51,6 +52,7 @@ function toProfile(
     role: effectiveAccountRole(data?.role, hasPractitionerProfile),
     subscriptionTier: data?.subscriptionTier,
     subscriptionStatus: data?.subscriptionStatus,
+    subscriptionExpiresAt: data?.subscriptionExpiresAt,
     name: data?.name,
     createdAt: data?.createdAt,
     updatedAt: data?.updatedAt,

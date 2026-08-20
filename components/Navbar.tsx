@@ -69,6 +69,7 @@ export default function Navbar() {
     { href: '/', label: 'Home' },
     { href: '/category', label: 'Categories' },
     { href: '/practitioners', label: 'Practitioners' },
+    { href: '/subscription', label: 'Plans' },
   ];
 
   const navLinks = (isPremiumPro || isAdmin)

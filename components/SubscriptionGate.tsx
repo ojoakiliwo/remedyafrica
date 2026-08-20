@@ -32,7 +32,7 @@ export function SubscriptionGate({
         </div>
         <h2 className="text-3xl font-bold text-[#2C3E2D] mb-3">Premium Access Required</h2>
         <p className="text-gray-600 mb-2">
-          {featureName} is exclusively available for <strong>{requiredTier === 'premium_pro' ? 'Premium Pro' : 'Premium'}</strong> subscribers.
+          {featureName} is available on a paid season. Healer unlocks the forum. Premium includes two healer visits a month.
         </p>
         <p className="text-sm text-gray-500 mb-8">
           Your current plan: <span className="font-semibold capitalize">{tier}</span>

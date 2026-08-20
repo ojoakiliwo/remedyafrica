@@ -1,244 +1,145 @@
-// app/api/payments/initiate/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { SUBSCRIPTION_PLANS } from '@/lib/payments';
+import { isAuthError, requireUser } from '@/lib/auth/request';
+import { getPlanById, SUBSCRIPTION_PLANS } from '@/lib/payments/plans';
+import { getUsdToNgnRate } from '@/lib/payments/fx';
+import { initializeFlutterwave, initializePaystack, configuredGateways } from '@/lib/payments/gateways';
+import {
+  ngnToKobo,
+  paymentReference,
+  publicAppUrl,
+  usdToNgn,
+  type PaymentGateway,
+} from '@/lib/payments/logic';
+import { writePendingPayment } from '@/lib/payments/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  console.log('[Initiate] Request received');
+  const user = await requireUser(request);
+  if (isAuthError(user)) return user;
 
+  let body: any = {};
   try {
-    let body;
-    try {
-      body = await request.json();
-    } catch (parseErr) {
-      console.error('[Initiate] JSON parse error:', parseErr);
-      return NextResponse.json(
-        { success: false, error: 'Invalid JSON body' },
-        { status: 400 }
-      );
-    }
-
-    const { email, userId, planId, gateway, callbackUrl } = body || {};
-
-    console.log('[Initiate] Body:', { email, userId, planId, gateway });
-
-    if (!email || typeof email !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'Email is required' },
-        { status: 400 }
-      );
-    }
-
-    if (!userId || typeof userId !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'User ID is required' },
-        { status: 400 }
-      );
-    }
-
-    if (!planId || typeof planId !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'Plan ID is required' },
-        { status: 400 }
-      );
-    }
-
-    if (!gateway || (gateway !== 'paystack' && gateway !== 'flutterwave')) {
-      return NextResponse.json(
-        { success: false, error: 'Gateway must be "paystack" or "flutterwave"' },
-        { status: 400 }
-      );
-    }
-
-    const plan = SUBSCRIPTION_PLANS.find((p) => p.id === planId);
-    if (!plan) {
-      return NextResponse.json(
-        { success: false, error: `Invalid plan: ${planId}` },
-        { status: 400 }
-      );
-    }
-
-    const callback = callbackUrl || `${process.env.NEXT_PUBLIC_APP_URL || 'https://your-app.vercel.app'}/subscription`;
-
-    if (gateway === 'paystack') {
-      return await initiatePaystack(email, plan, userId, callback);
-    }
-
-    return await initiateFlutterwave(email, plan, userId, callback);
-  } catch (error: any) {
-    console.error('[Initiate] Unhandled error:', error);
-    return NextResponse.json(
-      { success: false, error: error.message || 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-async function initiatePaystack(
-  email: string,
-  plan: any,
-  userId: string,
-  callback: string
-) {
-  const secretKey = process.env.PAYSTACK_SECRET_KEY;
-  if (!secretKey) {
-    console.error('[Initiate] PAYSTACK_SECRET_KEY missing');
-    return NextResponse.json(
-      { success: false, error: 'Paystack not configured' },
-      { status: 500 }
-    );
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 });
   }
 
-  const txRef = `remedy-${userId.slice(0, 8)}-${Date.now()}`;
+  const planId = String(body.planId || '');
+  const plan = getPlanById(planId);
+  if (!plan) {
+    return NextResponse.json({ success: false, error: 'Choose a valid plan' }, { status: 400 });
+  }
 
-  console.log('[Initiate] Calling Paystack with:', { email, amount: plan.priceNGN * 100, txRef });
+  const gateways = configuredGateways();
+  const requested = body.gateway === 'flutterwave' ? 'flutterwave' : 'paystack';
+  const gateway: PaymentGateway = gateways[requested]
+    ? requested
+    : gateways.paystack
+      ? 'paystack'
+      : gateways.flutterwave
+        ? 'flutterwave'
+        : requested;
 
-  let response;
-  try {
-    response = await fetch('https://api.paystack.co/transaction/initialize', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${secretKey}`,
-        'Content-Type': 'application/json'
+  if (!gateways[gateway]) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: gateway === 'paystack'
+          ? 'Naira checkout is not live yet. Add PAYSTACK_SECRET_KEY on Vercel.'
+          : 'Card checkout in USD is not live yet. Add FLUTTERWAVE_SECRET_KEY on Vercel.',
       },
-      body: JSON.stringify({
-        email,
-        amount: plan.priceNGN * 100, // kobo
-        reference: txRef,
-        callback_url: callback,
-        metadata: {
-          userId,
-          planId: plan.id,
-          planName: plan.name,
-          gateway: 'paystack',
-          interval: 'quarterly',
-          cancel_action: `${process.env.NEXT_PUBLIC_APP_URL || 'https://your-app.vercel.app'}/subscription?canceled=true`
-        }
-      })
-    });
-  } catch (fetchErr: any) {
-    console.error('[Initiate] Paystack fetch failed:', fetchErr);
-    return NextResponse.json(
-      { success: false, error: 'Failed to reach Paystack: ' + fetchErr.message },
-      { status: 502 }
+      { status: 503 }
     );
   }
 
-  let data;
-  try {
-    data = await response.json();
-  } catch (jsonErr) {
-    const text = await response.text();
-    console.error('[Initiate] Paystack non-JSON response:', text.slice(0, 500));
-    return NextResponse.json(
-      { success: false, error: 'Paystack returned invalid response' },
-      { status: 502 }
-    );
+  const email = user.email;
+  if (!email) {
+    return NextResponse.json({ success: false, error: 'Your account needs an email address' }, { status: 400 });
   }
 
-  console.log('[Initiate] Paystack response:', data);
+  const origin = request.headers.get('origin');
+  const appUrl = publicAppUrl(origin && origin.startsWith('http') ? origin : undefined);
+  const callbackUrl = `${appUrl}/subscription`;
+  const reference = paymentReference(user.uid);
+  const rate = await getUsdToNgnRate();
+  const amount = gateway === 'paystack' ? usdToNgn(plan.priceUSD, rate) : plan.priceUSD;
+  const currency = gateway === 'paystack' ? 'NGN' : 'USD';
+  const amountMinor = gateway === 'paystack' ? ngnToKobo(amount) : Math.round(amount * 100);
 
-  if (!data.status) {
-    return NextResponse.json(
-      { success: false, error: data.message || 'Paystack initialization failed' },
-      { status: 400 }
-    );
-  }
-
-  return NextResponse.json({
-    success: true,
-    authorizationUrl: data.data.authorization_url,
-    reference: data.data.reference,
-    gateway: 'paystack'
+  await writePendingPayment({
+    userId: user.uid,
+    email,
+    planId: plan.id,
+    planName: plan.name,
+    gateway,
+    reference,
+    amount,
+    currency,
+    amountMinor,
   });
-}
 
-async function initiateFlutterwave(
-  email: string,
-  plan: any,
-  userId: string,
-  callback: string
-) {
-  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
-  if (!secretKey) {
-    console.error('[Initiate] FLUTTERWAVE_SECRET_KEY missing');
+  const metadata = {
+    userId: user.uid,
+    planId: plan.id,
+    planName: plan.name,
+    gateway,
+    interval: 'quarterly',
+    expectedAmount: String(amount),
+    expectedMinor: String(amountMinor),
+  };
+
+  try {
+    const started = gateway === 'paystack'
+      ? await initializePaystack({
+          email,
+          amountKobo: amountMinor,
+          reference,
+          callbackUrl,
+          metadata: {
+            ...metadata,
+            custom_fields: [
+              { display_name: 'Plan', variable_name: 'plan_name', value: plan.name },
+              { display_name: 'Season', variable_name: 'interval', value: '3 months' },
+            ],
+          },
+        })
+      : await initializeFlutterwave({
+          email,
+          amountUsd: plan.priceUSD,
+          reference,
+          redirectUrl: callbackUrl,
+          planName: plan.name,
+          description: plan.description,
+          metadata,
+        });
+
+    if (!started.ok) {
+      return NextResponse.json({ success: false, error: started.error }, { status: started.status || 502 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      authorizationUrl: started.authorizationUrl,
+      reference: started.reference,
+      gateway,
+      amount,
+      currency,
+      planId: plan.id,
+    });
+  } catch (error: any) {
+    console.error('[Initiate] failed', error);
     return NextResponse.json(
-      { success: false, error: 'Flutterwave not configured' },
+      { success: false, error: error?.message || 'Could not start checkout' },
       { status: 500 }
     );
   }
+}
 
-  const txRef = `remedy-${userId.slice(0, 8)}-${Date.now()}`;
-
-  console.log('[Initiate] Calling Flutterwave with:', { email, amount: plan.priceUSD, txRef });
-
-  let response;
-  try {
-    response = await fetch('https://api.flutterwave.com/v3/payments', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${secretKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        tx_ref: txRef,
-        amount: plan.priceUSD,
-        currency: 'USD',
-        redirect_url: callback,
-        payment_options: 'card',
-        customer: {
-          email,
-          name: email.split('@')[0]
-        },
-        customizations: {
-          title: 'RemedyAfrica — 3 Month Subscription',
-          description: `${plan.name} Plan — ${plan.description}`,
-          logo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://your-app.vercel.app'}/logo.png`
-        },
-        meta: {
-          userId,
-          planId: plan.id,
-          planName: plan.name,
-          gateway: 'flutterwave',
-          interval: 'quarterly'
-        }
-      })
-    });
-  } catch (fetchErr: any) {
-    console.error('[Initiate] Flutterwave fetch failed:', fetchErr);
-    return NextResponse.json(
-      { success: false, error: 'Failed to reach Flutterwave: ' + fetchErr.message },
-      { status: 502 }
-    );
-  }
-
-  let data;
-  try {
-    data = await response.json();
-  } catch (jsonErr) {
-    const text = await response.text();
-    console.error('[Initiate] Flutterwave non-JSON response:', text.slice(0, 500));
-    return NextResponse.json(
-      { success: false, error: 'Flutterwave returned invalid response' },
-      { status: 502 }
-    );
-  }
-
-  console.log('[Initiate] Flutterwave response:', data);
-
-  if (data.status !== 'success') {
-    return NextResponse.json(
-      { success: false, error: data.message || 'Flutterwave initialization failed' },
-      { status: 400 }
-    );
-  }
-
+export async function GET() {
   return NextResponse.json({
     success: true,
-    authorizationUrl: data.data.link,
-    txRef: txRef,
-    gateway: 'flutterwave'
+    plans: SUBSCRIPTION_PLANS.map((plan) => plan.id),
   });
 }

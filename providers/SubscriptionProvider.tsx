@@ -76,6 +76,7 @@ export function SubscriptionProvider({ children }: { children: ReactNode }) {
     role: profile?.role,
     subscriptionTier: profile?.subscriptionTier,
     subscriptionStatus: profile?.subscriptionStatus,
+    subscriptionExpiresAt: profile?.subscriptionExpiresAt || record?.expiresAt,
     record,
   });
   const isPremium = tier === 'premium' || tier === 'premium_pro';

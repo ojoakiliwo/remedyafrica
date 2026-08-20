@@ -1,88 +1,40 @@
-// app/api/payments/cancel/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase/client';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { getAdminDb } from '@/lib/firebase/admin';
+import { isAuthError, requireUser } from '@/lib/auth/request';
+import { cancelFlutterwaveSubscription, disablePaystackSubscription } from '@/lib/payments/gateways';
+import { setCancelAtPeriodEnd } from '@/lib/payments/server';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  const user = await requireUser(request);
+  if (isAuthError(user)) return user;
+
+  const body = await request.json().catch(() => ({}));
+  const action = body.action === 'resume' ? 'resume' : 'cancel';
+
   try {
-    const body = await request.json();
-    const { userId } = body;
-
-    if (!userId) {
-      return NextResponse.json({ success: false, error: 'User ID required' }, { status: 400 });
-    }
-
-    const subRef = doc(db, 'users', userId, 'subscription', 'current');
-    const subSnap = await getDoc(subRef);
-
-    if (!subSnap.exists()) {
-      return NextResponse.json({ success: false, error: 'No active subscription found' }, { status: 404 });
-    }
-
-    const sub = subSnap.data();
-    const gateway = sub.gateway;
-
-    // Cancel on gateway side if possible
-    if (gateway === 'paystack') {
-      const subCode = sub.paystackSubscriptionCode;
-      const emailToken = sub.paystackEmailToken;
-
-      if (subCode && emailToken) {
-        const response = await fetch('https://api.paystack.co/subscription/disable', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            code: subCode,
-            token: emailToken
-          })
-        });
-
-        const result = await response.json();
-        if (!result.status) {
-          console.error('[Cancel] Paystack disable failed:', result.message);
-          // Continue to update Firestore anyway
-        }
+    if (action === 'cancel') {
+      const snap = await getAdminDb().doc(`users/${user.uid}/subscription/current`).get();
+      const sub = snap.data() || {};
+      if (sub.paystackSubscriptionCode && sub.paystackEmailToken) {
+        await disablePaystackSubscription(sub.paystackSubscriptionCode, sub.paystackEmailToken);
       }
-    } else if (gateway === 'flutterwave') {
-      // Flutterwave subscription cancellation requires subscription ID
-      // If we stored it during creation, use it here
-      const flutterSubId = sub.flutterwaveSubscriptionId;
-      if (flutterSubId) {
-        const response = await fetch(
-          `https://api.flutterwave.com/v3/subscriptions/${flutterSubId}/cancel`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`
-            }
-          }
-        );
-        const result = await response.json();
-        if (result.status !== 'success') {
-          console.error('[Cancel] Flutterwave cancel failed:', result.message);
-        }
+      if (sub.flutterwaveSubscriptionId) {
+        await cancelFlutterwaveSubscription(sub.flutterwaveSubscriptionId);
       }
     }
 
-    // Update Firestore — cancel at period end (graceful)
-    await updateDoc(subRef, {
-      status: 'cancelled',
-      cancelledAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      cancelMethod: 'user_requested'
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Subscription cancelled successfully. You will retain access until the end of your current billing period.'
-    });
+    const result = await setCancelAtPeriodEnd(user.uid, action === 'cancel');
+    if (!result.ok) {
+      return NextResponse.json({ success: false, error: result.error }, { status: 400 });
+    }
+    return NextResponse.json({ success: true, message: result.message, expiresAt: result.expiresAt?.toISOString() || null });
   } catch (error: any) {
-    console.error('[Cancel] Error:', error);
+    console.error('[Cancel] error', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to cancel subscription' },
+      { success: false, error: error?.message || 'Could not update this subscription' },
       { status: 500 }
     );
   }

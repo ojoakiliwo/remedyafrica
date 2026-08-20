@@ -9,6 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Leaf, Loader2, Eye, EyeOff } from 'lucide-react';
+import { safeInternalPath } from '@/lib/auth/redirect';
+
+function nextPathFromWindow() {
+  if (typeof window === 'undefined') return '/profile';
+  return safeInternalPath(new URLSearchParams(window.location.search).get('redirect'));
+}
 
 export default function SignupPage() {
   const { user, signup, loading: authLoading } = useAuth();
@@ -19,13 +25,18 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [nextPath, setNextPath] = useState('/profile');
+
+  useEffect(() => {
+    setNextPath(nextPathFromWindow());
+  }, []);
 
   // Redirect if already logged in
   useEffect(() => {
     if (user && !authLoading) {
-      router.push('/profile');
+      router.push(nextPath);
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, nextPath]);
 
   // Show loading while checking auth state
   if (authLoading) {
@@ -57,7 +68,7 @@ export default function SignupPage() {
     setSubmitting(true);
     try {
       await signup(email, password, displayName.trim());
-      router.push('/profile');
+      router.push(nextPath);
     } catch (err: any) {
       setError(err.message || 'Failed to create account');
     } finally {
@@ -153,7 +164,7 @@ export default function SignupPage() {
 
           <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
             Already have an account?{' '}
-            <Link href="/login" className="text-bronze hover:underline font-medium">
+            <Link href={`/login?redirect=${encodeURIComponent(nextPath)}`} className="text-bronze hover:underline font-medium">
               Sign In
             </Link>
           </p>

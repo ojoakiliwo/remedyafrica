@@ -9,6 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Leaf, Loader2, Eye, EyeOff } from 'lucide-react';
+import { safeInternalPath } from '@/lib/auth/redirect';
+
+function nextPathFromWindow() {
+  if (typeof window === 'undefined') return '/profile';
+  return safeInternalPath(new URLSearchParams(window.location.search).get('redirect'));
+}
 
 export default function LoginPage() {
   const { user, login, loading: authLoading } = useAuth();
@@ -18,13 +24,18 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [nextPath, setNextPath] = useState('/profile');
+
+  useEffect(() => {
+    setNextPath(nextPathFromWindow());
+  }, []);
 
   // Redirect if already logged in
   useEffect(() => {
     if (user && !authLoading) {
-      router.push('/profile');
+      router.push(nextPath);
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, nextPath]);
 
   // Show loading while checking auth state
   if (authLoading) {
@@ -47,7 +58,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      router.push('/profile');
+      router.push(nextPath);
     } catch (err: any) {
       setError(err.message || 'Invalid email or password');
     } finally {
@@ -130,7 +141,7 @@ export default function LoginPage() {
 
           <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
             Don't have an account?{' '}
-            <Link href="/signup" className="text-bronze hover:underline font-medium">
+            <Link href={`/signup?redirect=${encodeURIComponent(nextPath)}`} className="text-bronze hover:underline font-medium">
               Get Started
             </Link>
           </p>

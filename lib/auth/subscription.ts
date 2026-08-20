@@ -1,3 +1,5 @@
+import { hasPaidAccess, toJsDate } from '@/lib/payments/logic';
+
 export type SubscriptionTier = 'free' | 'premium' | 'premium_pro';
 
 export const GRANTABLE_PLANS = [
@@ -32,34 +34,26 @@ export function rankTier(tier?: string | null) {
   return 0;
 }
 
-function toDate(value: unknown): Date | null {
-  if (!value) return null;
-  if (value instanceof Date) return value;
-  if (typeof value === 'object' && value && 'toDate' in value && typeof (value as { toDate: () => Date }).toDate === 'function') {
-    return (value as { toDate: () => Date }).toDate();
-  }
-  const parsed = new Date(String(value));
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
-
 export function isActiveSubscriptionRecord(record?: {
   status?: string | null;
   expiresAt?: unknown;
+  cancelAtPeriodEnd?: boolean | null;
 } | null) {
-  if (!record || record.status !== 'active') return false;
-  const expiresAt = toDate(record.expiresAt);
-  if (!expiresAt) return true;
-  return expiresAt.getTime() > Date.now();
+  return hasPaidAccess(record);
 }
 
 export function profileTierFromUser(opts: {
   subscriptionTier?: string | null;
   subscriptionStatus?: string | null;
+  subscriptionExpiresAt?: unknown;
 }): SubscriptionTier {
+  const expiresAt = toJsDate(opts.subscriptionExpiresAt);
+  if (expiresAt && expiresAt.getTime() <= Date.now()) return 'free';
+
   const status = opts.subscriptionStatus;
-  if (status === 'inactive' || status === 'cancelled' || status === 'past_due') {
-    return 'free';
-  }
+  if (status === 'inactive' || status === 'past_due') return 'free';
+  if (status === 'cancelled' && (!expiresAt || expiresAt.getTime() <= Date.now())) return 'free';
+
   if (opts.subscriptionTier === 'premium_pro' || opts.subscriptionTier === 'premium') {
     return opts.subscriptionTier;
   }
@@ -70,7 +64,8 @@ export function effectiveSubscriptionTier(opts: {
   role?: string | null;
   subscriptionTier?: string | null;
   subscriptionStatus?: string | null;
-  record?: { status?: string | null; plan?: string | null; expiresAt?: unknown } | null;
+  subscriptionExpiresAt?: unknown;
+  record?: { status?: string | null; plan?: string | null; expiresAt?: unknown; cancelAtPeriodEnd?: boolean | null } | null;
 }): SubscriptionTier {
   if (opts.role === 'admin') return 'premium_pro';
   const fromProfile = profileTierFromUser(opts);
@@ -97,11 +92,14 @@ export function buildGrantFields(input: {
     userFields: {
       subscriptionTier: plan.tier,
       subscriptionStatus: 'active' as const,
+      subscriptionPlan: plan.id,
+      subscriptionExpiresAt: expiresAt,
     },
     record: {
       plan: plan.id,
       planName: plan.name,
       status: 'active' as const,
+      cancelAtPeriodEnd: false,
       gateway: 'manual',
       interval: 'quarterly',
       months,

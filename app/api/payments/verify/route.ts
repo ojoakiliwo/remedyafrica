@@ -1,226 +1,209 @@
-// app/api/payments/verify/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase/client';
-import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { getAdminDb } from '@/lib/firebase/admin';
+import { getPlanById } from '@/lib/payments/plans';
+import { verifyFlutterwaveTransaction, verifyPaystackTransaction } from '@/lib/payments/gateways';
+import { amountMatches, publicAppUrl, readMeta } from '@/lib/payments/logic';
+import { activatePaidSubscription, markPaymentFailed } from '@/lib/payments/server';
 
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const reference = searchParams.get('reference');
-  const txRef = searchParams.get('tx_ref');
-  const transactionId = searchParams.get('transaction_id');
-  const status = searchParams.get('status');
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-  try {
-    // Flutterwave returns tx_ref, transaction_id, status
-    if (txRef && transactionId) {
-      return await verifyFlutterwave(txRef, transactionId, status);
-    }
+function redirectToSubscription(request: NextRequest, params: Record<string, string>) {
+  const url = new URL(`${publicAppUrl(request.nextUrl.origin)}/subscription`);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) url.searchParams.set(key, value);
+  });
+  return NextResponse.redirect(url);
+}
 
-    // Paystack returns reference
-    if (reference) {
-      return await verifyPaystack(reference);
-    }
-
-    return NextResponse.json(
-      { success: false, error: 'No transaction reference provided' },
-      { status: 400 }
-    );
-  } catch (error: any) {
-    console.error('Verification error:', error);
-    return NextResponse.json(
-      { success: false, error: error.message },
-      { status: 500 }
-    );
+async function verifyCharge(input: {
+  reference?: string | null;
+  txRef?: string | null;
+  transactionId?: string | null;
+  status?: string | null;
+}) {
+  const cancelled = input.status === 'cancelled' || input.status === 'canceled' || input.status === 'failed';
+  if (cancelled) {
+    const reference = input.reference || input.txRef;
+    if (reference) await markPaymentFailed(reference, `Payment ${input.status}`);
+    return {
+      success: false,
+      verified: false,
+      message: input.status === 'failed' ? 'Payment failed' : 'Payment was cancelled',
+    };
   }
+
+  if (input.transactionId) {
+    return verifyFlutterwave(String(input.transactionId), input.txRef || undefined);
+  }
+  if (input.reference) {
+    return verifyPaystack(String(input.reference));
+  }
+  return { success: false, verified: false, error: 'No payment reference found' };
 }
 
 async function verifyPaystack(reference: string) {
-  const secretKey = process.env.PAYSTACK_SECRET_KEY;
-  if (!secretKey) {
-    return NextResponse.json(
-      { success: false, error: 'Paystack not configured' },
-      { status: 500 }
-    );
+  const verified = await verifyPaystackTransaction(reference);
+  if (!verified.ok) {
+    return { success: false, verified: false, error: verified.error, reference };
   }
 
-  const response = await fetch(
-    `https://api.paystack.co/transaction/verify/${reference}`,
-    {
-      headers: {
-        Authorization: `Bearer ${secretKey}`
-      }
-    }
-  );
-
-  const data = await response.json();
-
-  if (!data.status || data.data.status !== 'success') {
-    return NextResponse.json({
+  const data = verified.data || {};
+  if (data.status !== 'success') {
+    await markPaymentFailed(reference, data.gateway_response || 'Payment not successful');
+    return {
       success: false,
       verified: false,
-      message: data.message || 'Payment not successful',
-      reference
-    });
+      message: data.gateway_response || 'Payment not successful',
+      reference,
+    };
   }
 
-  const metadata = data.data.metadata || {};
-  const userId = metadata.userId;
-  const planId = metadata.planId;
-  const planName = metadata.planName;
-
-  if (!userId) {
-    return NextResponse.json(
-      { success: false, error: 'User ID not found in metadata' },
-      { status: 400 }
-    );
+  const meta = readMeta(data.metadata || {});
+  const pending = await loadPending(reference);
+  const userId = meta.userId || pending?.userId;
+  const planId = meta.planId || pending?.planId;
+  const plan = getPlanById(String(planId || ''));
+  if (!userId || !plan) {
+    return { success: false, verified: false, error: 'This payment is missing plan details', reference };
   }
 
-  // Update subscription
-  const expiresAt = new Date();
-  expiresAt.setMonth(expiresAt.getMonth() + 1);
+  const paidKobo = Number(data.amount);
+  const expectedMinor = Number(pending?.amountMinor || 0);
+  if (expectedMinor && !amountMatches(paidKobo, expectedMinor, 100)) {
+    console.error('[Verify] Paystack amount mismatch', { paidKobo, expectedMinor, reference });
+    return { success: false, verified: false, error: 'Paid amount did not match this plan', reference };
+  }
 
-  await setDoc(doc(db, 'users', userId, 'subscription', 'current'), {
-    plan: planId,
-    planName: planName || planId,
-    status: 'active',
+  const result = await activatePaidSubscription({
+    userId,
+    planId: plan.id,
+    planName: plan.name,
     gateway: 'paystack',
     reference,
-    amount: data.data.amount / 100,
-    currency: data.data.currency,
-    interval: 'monthly',
-    startedAt: serverTimestamp(),
-    expiresAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    paystackData: {
-      channel: data.data.channel,
-      paidAt: data.data.paid_at,
-      cardType: data.data.authorization?.card_type
-    }
+    amount: paidKobo / 100,
+    currency: 'NGN',
+    amountMinor: paidKobo,
+    paidAt: data.paid_at,
+    channel: data.channel,
+    authorization: data.authorization || null,
+    event: 'verify.paystack',
   });
 
-  // Log payment
-  await setDoc(
-    doc(db, 'payments', reference),
-    {
-      userId,
-      planId,
-      planName: planName || planId,
-      gateway: 'paystack',
-      reference,
-      amount: data.data.amount / 100,
-      currency: data.data.currency,
-      status: 'successful',
-      verifiedAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
-  );
-
-  return NextResponse.json({
+  return {
     success: true,
     verified: true,
+    alreadyProcessed: result.alreadyProcessed,
     reference,
-    plan: planId,
-    message: 'Payment verified successfully'
+    plan: result.planId,
+    planName: result.planName,
+    expiresAt: result.expiresAt?.toISOString() || null,
+    message: result.alreadyProcessed
+      ? 'This payment was already confirmed.'
+      : `Your ${result.planName} season is now active.`,
+  };
+}
+
+async function verifyFlutterwave(transactionId: string, txRef?: string) {
+  const verified = await verifyFlutterwaveTransaction(transactionId);
+  if (!verified.ok) {
+    return { success: false, verified: false, error: verified.error, txRef };
+  }
+
+  const data = verified.data || {};
+  const reference = String(txRef || data.tx_ref || '');
+  if (data.status !== 'successful') {
+    if (reference) await markPaymentFailed(reference, 'Payment not successful');
+    return { success: false, verified: false, message: 'Payment not successful', txRef: reference };
+  }
+
+  const meta = readMeta(data.meta || {});
+  const pending = reference ? await loadPending(reference) : null;
+  const userId = meta.userId || pending?.userId;
+  const planId = meta.planId || pending?.planId;
+  const plan = getPlanById(String(planId || ''));
+  if (!userId || !plan || !reference) {
+    return { success: false, verified: false, error: 'This payment is missing plan details', txRef: reference };
+  }
+
+  const paid = Number(data.amount);
+  const expected = Number(pending?.amount || plan.priceUSD);
+  if (expected && Math.abs(paid - expected) > 1) {
+    console.error('[Verify] Flutterwave amount mismatch', { paid, expected, reference });
+    return { success: false, verified: false, error: 'Paid amount did not match this plan', txRef: reference };
+  }
+
+  const result = await activatePaidSubscription({
+    userId,
+    planId: plan.id,
+    planName: plan.name,
+    gateway: 'flutterwave',
+    reference,
+    amount: paid,
+    currency: 'USD',
+    amountMinor: Math.round(paid * 100),
+    paidAt: data.created_at,
+    transactionId: data.id,
+    event: 'verify.flutterwave',
+  });
+
+  return {
+    success: true,
+    verified: true,
+    alreadyProcessed: result.alreadyProcessed,
+    reference,
+    txRef: reference,
+    transactionId,
+    plan: result.planId,
+    planName: result.planName,
+    expiresAt: result.expiresAt?.toISOString() || null,
+    message: result.alreadyProcessed
+      ? 'This payment was already confirmed.'
+      : `Your ${result.planName} season is now active.`,
+  };
+}
+
+async function loadPending(reference: string) {
+  try {
+    const snap = await getAdminDb().doc(`payments/${reference}`).get();
+    return snap.exists ? snap.data() : null;
+  } catch (error) {
+    console.error('[Verify] pending lookup failed', error);
+    return null;
+  }
+}
+
+export async function GET(request: NextRequest) {
+  const search = request.nextUrl.searchParams;
+  const result = await verifyCharge({
+    reference: search.get('reference') || search.get('trxref'),
+    txRef: search.get('tx_ref'),
+    transactionId: search.get('transaction_id'),
+    status: search.get('status'),
+  });
+
+  return redirectToSubscription(request, {
+    verified: result.success ? 'true' : 'false',
+    canceled: result.success ? '' : (search.get('status') === 'cancelled' ? 'true' : ''),
+    reference: (result as any).reference || search.get('reference') || '',
   });
 }
 
-async function verifyFlutterwave(txRef: string, transactionId: string, status?: string | null) {
-  if (status === 'cancelled' || status === 'failed') {
-    return NextResponse.json({
-      success: false,
-      verified: false,
-      message: `Payment ${status}`,
-      txRef
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json().catch(() => ({}));
+    const result = await verifyCharge({
+      reference: body.reference || body.trxref,
+      txRef: body.tx_ref || body.txRef,
+      transactionId: body.transaction_id || body.transactionId,
+      status: body.status,
     });
-  }
-
-  const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
-  if (!secretKey) {
+    return NextResponse.json(result, { status: result.success ? 200 : 400 });
+  } catch (error: any) {
+    console.error('[Verify] error', error);
     return NextResponse.json(
-      { success: false, error: 'Flutterwave not configured' },
+      { success: false, error: error?.message || 'Could not confirm this payment' },
       { status: 500 }
     );
   }
-
-  const response = await fetch(
-    `https://api.flutterwave.com/v3/transactions/${transactionId}/verify`,
-    {
-      headers: {
-        Authorization: `Bearer ${secretKey}`
-      }
-    }
-  );
-
-  const data = await response.json();
-
-  if (data.status !== 'success' || data.data.status !== 'successful') {
-    return NextResponse.json({
-      success: false,
-      verified: false,
-      message: data.message || 'Payment not successful',
-      txRef
-    });
-  }
-
-  const meta = data.data.meta || {};
-  const userId = meta.userId;
-  const planId = meta.planId;
-  const planName = meta.planName;
-
-  if (!userId) {
-    return NextResponse.json(
-      { success: false, error: 'User ID not found in metadata' },
-      { status: 400 }
-    );
-  }
-
-  // Update subscription
-  await setDoc(doc(db, 'users', userId, 'subscription', 'current'), {
-    plan: planId,
-    planName: planName || planId,
-    status: 'active',
-    gateway: 'flutterwave',
-    reference: txRef,
-    transactionId,
-    amount: data.data.amount,
-    currency: data.data.currency,
-    interval: 'monthly',
-    startedAt: serverTimestamp(),
-    expiresAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    flutterwaveData: {
-      processorResponse: data.data.processor_response,
-      paymentType: data.data.payment_type,
-      card: data.data.card
-    }
-  });
-
-  // Log payment
-  await setDoc(
-    doc(db, 'payments', txRef),
-    {
-      userId,
-      planId,
-      planName: planName || planId,
-      gateway: 'flutterwave',
-      reference: txRef,
-      transactionId,
-      amount: data.data.amount,
-      currency: data.data.currency,
-      status: 'successful',
-      verifiedAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    },
-    { merge: true }
-  );
-
-  return NextResponse.json({
-    success: true,
-    verified: true,
-    txRef,
-    transactionId,
-    plan: planId,
-    message: 'Payment verified successfully'
-  });
 }

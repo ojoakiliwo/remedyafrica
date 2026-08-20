@@ -56,7 +56,18 @@ service cloud.firestore {
       allow write: if isAdmin();
 
       match /subscription/{docId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, delete: if isAdmin();
+        allow update: if isAdmin() || (
+          isOwner(userId) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['consultationsUsedThisMonth', 'plantIdsUsedThisMonth', 'updatedAt'])
+        );
+      }
+
+      match /payments/{paymentId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow write: if false;
       }
     }
 
@@ -126,6 +137,11 @@ service cloud.firestore {
     match /search_queries/{docId} {
       allow create: if true;
       allow read: if isAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow write: if false;
     }
 
     match /{document=**} {

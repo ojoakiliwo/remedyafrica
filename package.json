@@ -8,7 +8,8 @@
     "start": "next start",
     "herb-images:test": "node scripts/refresh-herb-images.js --self-test",
     "herb-images:dry": "node scripts/refresh-herb-images.js --dry-run",
-    "herb-images": "node scripts/refresh-herb-images.js"
+    "herb-images": "node scripts/refresh-herb-images.js",
+    "test:payments": "npx tsx scripts/test-payment-logic.ts"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.0",

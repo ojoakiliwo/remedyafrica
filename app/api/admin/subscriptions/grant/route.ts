@@ -71,6 +71,7 @@ export async function POST(request: Request) {
 
     await db.doc(`users/${targetUid}`).set({
       ...grant.userFields,
+      subscriptionExpiresAt: Timestamp.fromDate(grant.expiresAt),
       updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
 
