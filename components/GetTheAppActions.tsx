@@ -86,24 +86,6 @@ export default function GetTheAppActions() {
     window.open(`https://wa.me/?text=${encodeURIComponent(shareMessage())}`, '_blank', 'noopener,noreferrer');
   };
 
-  const shareNative = async () => {
-    const url = shareUrl({ utm_source: 'share', utm_medium: 'native', utm_campaign: 'get_the_app' });
-    if (navigator.share) {
-      trackCampaignEvent('share_native');
-      try {
-        await navigator.share({
-          title: 'RemedyAfrica',
-          text: 'Identify African herbs on your phone.',
-          url,
-        });
-      } catch {
-        // user cancelled
-      }
-      return;
-    }
-    await copyLink();
-  };
-
   const copyLink = async () => {
     const url = `${window.location.origin}${withCampaignParams(GET_THE_APP_PATH, {
       utm_source: 'copy',
@@ -182,7 +164,7 @@ export default function GetTheAppActions() {
               </button>
               <button
                 type="button"
-                onClick={shareNative}
+                onClick={copyLink}
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-forest/20 px-5 py-3 text-sm font-medium text-forest hover:bg-cream"
               >
                 {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
