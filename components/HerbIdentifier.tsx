@@ -38,6 +38,7 @@ export default function HerbIdentifier() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -215,24 +216,74 @@ export default function HerbIdentifier() {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const openFilePicker = () => {
+    const input = fileInputRef.current;
+    if (!input) return;
+    input.value = '';
+    input.click();
+  };
+
+  const fileToJpegDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const objectUrl = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const maxSide = 1600;
+        let width = image.naturalWidth || image.width;
+        let height = image.naturalHeight || image.height;
+        if (!width || !height) {
+          reject(new Error('Could not read this photo.'));
+          return;
+        }
+        if (Math.max(width, height) > maxSide) {
+          const scale = maxSide / Math.max(width, height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Could not prepare this photo.'));
+          return;
+        }
+        ctx.drawImage(image, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      image.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Could not read this photo. Use a JPEG or PNG, or open the camera.'));
+      };
+      image.src = objectUrl;
+    });
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-    
-    if (file.size > 3 * 1024 * 1024) {
-      toast.error('Image too large. Please choose an image under 3MB.');
+
+    if (!file.type.startsWith('image/') && !/\.(jpe?g|png|webp|heic|heif)$/i.test(file.name)) {
+      toast.error('Please choose a plant photograph.');
       return;
     }
-    
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64 = reader.result as string;
-      setCapturedImage(base64);
+
+    try {
+      const dataUrl = await fileToJpegDataUrl(file);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      setStream(null);
+      setCameraReady(false);
+      setCapturedImage(dataUrl);
       setIsOpen(true);
       setSavedToCollection(false);
-      identifyHerb(base64);
-    };
-    reader.readAsDataURL(file);
+      identifyHerb(dataUrl);
+    } catch (error: any) {
+      toast.error(error?.message || 'Could not open that photo.');
+    }
   };
 
   const handleViewInDatabase = (herbName: string) => {
@@ -253,11 +304,27 @@ export default function HerbIdentifier() {
     setCapturedImage(null);
     setResult(null);
     setSavedToCollection(false);
+    if (!streamRef.current) {
+      setIsOpen(false);
+    }
   };
+
+  const filePicker = (
+    <input
+      id="herb-identify-upload"
+      ref={fileInputRef}
+      type="file"
+      accept="image/jpeg,image/png,image/webp,image/*"
+      className="sr-only"
+      onChange={handleFileUpload}
+      aria-label="Upload herb photo from device"
+    />
+  );
 
   if (!isOpen) {
     return (
       <div className="bg-white rounded-3xl shadow-soft p-8 sm:p-10 text-center border border-forest/10">
+        {filePicker}
         <div className="w-16 h-16 bg-cream rounded-full flex items-center justify-center mx-auto mb-5">
           <Camera className="w-7 h-7 text-forest" aria-hidden="true" />
         </div>
@@ -266,23 +333,19 @@ export default function HerbIdentifier() {
           Take a photo of any plant. We will name it and show traditional African uses.
         </p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center mb-2">
-          <Button onClick={startCamera} className="bg-forest hover:bg-forest-mist text-cream">
+          <Button type="button" onClick={startCamera} className="bg-forest hover:bg-forest-mist text-cream">
             <Camera className="w-4 h-4 mr-2" aria-hidden="true" />
             Open camera
           </Button>
-          <label className="cursor-pointer">
-            <input 
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
-              onChange={handleFileUpload}
-              aria-label="Upload herb photo from device"
-            />
-            <Button variant="outline" className="border-forest/20 text-forest w-full">
-              <Upload className="w-4 h-4 mr-2" aria-hidden="true" />
-              Upload photo
-            </Button>
-          </label>
+          <Button
+            type="button"
+            variant="outline"
+            className="border-forest/20 text-forest w-full sm:w-auto"
+            onClick={openFilePicker}
+          >
+            <Upload className="w-4 h-4 mr-2" aria-hidden="true" />
+            Upload photo
+          </Button>
         </div>
         {user && (
           <div className="mt-4 flex gap-4 justify-center text-sm text-gray-500">
@@ -300,6 +363,7 @@ export default function HerbIdentifier() {
 
   return (
     <div className="fixed inset-0 bg-black z-50 flex flex-col" role="dialog" aria-modal="true" aria-label="Herb identification camera">
+      {filePicker}
       <div className="flex justify-between items-center p-4 bg-black/90 text-white border-b border-gray-800">
         <div className="flex items-center gap-2">
           <Leaf className="w-5 h-5 text-[#97A97C]" aria-hidden="true" />
@@ -352,16 +416,15 @@ export default function HerbIdentifier() {
             </div>
             
             <div className="absolute top-4 right-4">
-              <label className="cursor-pointer bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-colors block">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  className="hidden" 
-                  onChange={handleFileUpload}
-                  aria-label="Upload photo instead of using camera"
-                />
+              <button
+                type="button"
+                onClick={openFilePicker}
+                className="bg-black/50 hover:bg-black/70 text-white p-3 rounded-full transition-colors"
+                aria-label="Upload photo instead of using camera"
+                title="Upload photo"
+              >
                 <Upload className="w-5 h-5" aria-hidden="true" />
-              </label>
+              </button>
             </div>
           </div>
         ) : (
