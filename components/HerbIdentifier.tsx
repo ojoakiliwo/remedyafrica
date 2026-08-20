@@ -223,12 +223,26 @@ export default function HerbIdentifier() {
     input.click();
   };
 
-  const fileToJpegDataUrl = (file: File) =>
+  const readFileAsDataUrl = (file: File) =>
     new Promise<string>((resolve, reject) => {
-      const objectUrl = URL.createObjectURL(file);
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = String(reader.result || '');
+        if (!result.startsWith('data:')) {
+          reject(new Error('Could not read this photo.'));
+          return;
+        }
+        resolve(result);
+      };
+      reader.onerror = () => reject(new Error('Could not read this photo.'));
+      reader.readAsDataURL(file);
+    });
+
+  const fileToJpegDataUrl = async (file: File) => {
+    const dataUrl = await readFileAsDataUrl(file);
+    return new Promise<string>((resolve, reject) => {
       const image = new Image();
       image.onload = () => {
-        URL.revokeObjectURL(objectUrl);
         const maxSide = 1600;
         let width = image.naturalWidth || image.width;
         let height = image.naturalHeight || image.height;
@@ -253,11 +267,11 @@ export default function HerbIdentifier() {
         resolve(canvas.toDataURL('image/jpeg', 0.82));
       };
       image.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
         reject(new Error('Could not read this photo. Use a JPEG or PNG, or open the camera.'));
       };
-      image.src = objectUrl;
+      image.src = dataUrl;
     });
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
