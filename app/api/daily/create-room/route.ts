@@ -1,25 +1,5 @@
 import { NextResponse } from 'next/server';
-
-const ROOM_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days for scheduled consultations
-
-async function dailyFetch(apiKey: string, path: string, body: unknown) {
-  const response = await fetch(`https://api.daily.co/v1${path}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body),
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    console.error(`Daily.co ${path} failed`, response.status, data);
-    throw new Error(data.info || `Daily.co ${path} failed`);
-  }
-
-  return data;
-}
+import { createDailyMeetingToken, dailyFetch, dailyRoomExpiry } from '@/lib/daily/api';
 
 export async function POST(request: Request) {
   try {
@@ -42,7 +22,7 @@ export async function POST(request: Request) {
 
     const isAudio = type === 'audio';
     const roomName = `remedy-${consultationId.slice(0, 8)}-${Date.now()}`;
-    const exp = Math.floor(Date.now() / 1000) + ROOM_TTL_SECONDS;
+    const exp = dailyRoomExpiry();
 
     const roomData = await dailyFetch(apiKey, '/rooms', {
       name: roomName,
@@ -61,16 +41,9 @@ export async function POST(request: Request) {
       },
     });
 
-    // Private rooms require a meeting token to join. Embed it in the shared
-    // room URL so copy-link and the consultation iframe both work.
-    const tokenData = await dailyFetch(apiKey, '/meeting-tokens', {
-      properties: {
-        room_name: roomData.name,
-        is_owner: true,
-        exp,
-        start_video_off: isAudio,
-        enable_prejoin_ui: true,
-      },
+    const tokenData = await createDailyMeetingToken(apiKey, {
+      roomName: roomData.name,
+      isAudio,
     });
 
     const roomUrl = new URL(roomData.url);

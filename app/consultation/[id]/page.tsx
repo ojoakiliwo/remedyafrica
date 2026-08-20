@@ -5,8 +5,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { canUserCancelConsultation, consultationCancelFields } from '@/lib/consultations/cancel';
+import { canUserCancelConsultation, consultationCancelFields, isConsultationParticipant } from '@/lib/consultations/cancel';
 import { getPractitionerLookupIds } from '@/lib/consultations/lookup';
+import { resolveCallDisplayName, withDailyJoinIdentity } from '@/lib/consultations/call-identity';
 import { 
   ArrowLeft,
   Video,
@@ -39,6 +40,7 @@ interface Consultation {
   notes?: string;
   dailyRoomUrl?: string;
   dailyRoomName?: string;
+  roomName?: string;
   startedAt?: any;
   endedAt?: any;
 }
@@ -46,7 +48,7 @@ interface Consultation {
 export default function ConsultationRoom() {
   const params = useParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, userData, loading: authLoading } = useAuth();
   const consultationId = params.id as string;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   
@@ -57,6 +59,7 @@ export default function ConsultationRoom() {
   const [callActive, setCallActive] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [actorIds, setActorIds] = useState<string[]>([]);
+  const [joinUrl, setJoinUrl] = useState('');
 
   useEffect(() => {
     loadConsultation();
@@ -207,16 +210,70 @@ export default function ConsultationRoom() {
     }
   };
 
-  const getDailyUrl = () => {
-    if (!consultation?.dailyRoomUrl) return '';
-    // Keep any meeting token already on the room URL (`?t=...`).
-    // Audio vs video is configured on the Daily room/token (start_video_off).
-    try {
-      return new URL(consultation.dailyRoomUrl).toString();
-    } catch {
-      return consultation.dailyRoomUrl;
+  const fallbackCallName = consultation
+    ? user && isConsultationParticipant(user.uid, consultation, actorIds) && user.uid !== consultation.patientId
+      ? consultation.practitionerName
+      : consultation.patientName
+    : '';
+
+  const callName = resolveCallDisplayName({
+    displayName: userData?.displayName || user?.displayName,
+    name: userData?.name,
+    email: user?.email,
+    fallback: fallbackCallName,
+  });
+
+  useEffect(() => {
+    if (!consultation?.dailyRoomUrl) {
+      setJoinUrl('');
+      return;
     }
-  };
+    if (consultation.status === 'cancelled' || consultation.status === 'completed') {
+      setJoinUrl('');
+      return;
+    }
+    if (authLoading) return;
+
+    let cancelled = false;
+    fetch('/api/daily/join-token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        roomUrl: consultation.dailyRoomUrl,
+        roomName: consultation.dailyRoomName || consultation.roomName,
+        userName: callName,
+        type: consultation.type,
+        userId: user?.uid,
+      }),
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        setJoinUrl(
+          data?.roomUrl ||
+            withDailyJoinIdentity(consultation.dailyRoomUrl!, { userName: callName })
+        );
+      })
+      .catch((err) => {
+        console.error('Error creating named meeting token:', err);
+        if (!cancelled) {
+          setJoinUrl(withDailyJoinIdentity(consultation.dailyRoomUrl!, { userName: callName }));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    consultation?.dailyRoomUrl,
+    consultation?.dailyRoomName,
+    consultation?.roomName,
+    consultation?.status,
+    consultation?.type,
+    callName,
+    authLoading,
+    user?.uid,
+  ]);
 
   if (loading) {
     return (
@@ -319,12 +376,20 @@ export default function ConsultationRoom() {
                   <p className="text-sm text-gray-400 mt-2">This may take a moment</p>
                 </div>
               </div>
+            ) : showVideo && !joinUrl ? (
+              <div className="flex-1 min-h-[420px] bg-gray-900 rounded-lg flex items-center justify-center text-white">
+                <div className="text-center">
+                  <RefreshCw className="w-12 h-12 animate-spin mx-auto mb-4 text-[#97A97C]" />
+                  <p className="text-lg">Joining as {callName}...</p>
+                  <p className="text-sm text-gray-400 mt-2">Using the name on your profile</p>
+                </div>
+              </div>
             ) : showVideo ? (
               <>
                 <div className="flex-1 min-h-[420px] bg-gray-900 rounded-lg overflow-hidden relative">
                   <iframe
                     ref={iframeRef}
-                    src={getDailyUrl()}
+                    src={joinUrl}
                     className="w-full h-full min-h-[420px] border-0"
                     allow="camera; microphone; fullscreen; speaker; display-capture"
                     title="Consultation video"
@@ -334,7 +399,7 @@ export default function ConsultationRoom() {
                 {isActive && (
                   <div className="bg-white p-4 rounded-lg shadow flex items-center justify-between">
                     <span className="text-sm text-[#2C3E2D]">
-                      {consultation.type === 'audio' ? 'Audio consultation' : 'Video consultation'} is running on this page.
+                      Joined as {callName}. {consultation.type === 'audio' ? 'Audio' : 'Video'} is running on this page.
                     </span>
                     
                     <Button variant="outline" size="sm" onClick={copyRoomLink} className="text-[#2C3E2D]">
