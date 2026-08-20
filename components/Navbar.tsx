@@ -264,7 +264,7 @@ export default function Navbar() {
                 )}
 
                 <DropdownMenuItem asChild className="cursor-pointer dark:text-gray-300 dark:focus:bg-[#2a3a2b] dark:focus:text-white">
-                  <Link href={isPractitioner ? '/practitioners/dashboard' : '/consultations'} className="flex items-center gap-2">
+                  <Link href={isPractitioner ? '/practitioners/consultations' : '/consultations'} className="flex items-center gap-2">
                     <Video className="h-4 w-4" /> {isPractitioner ? 'Consultations' : 'My Consultations'}
                   </Link>
                 </DropdownMenuItem>
@@ -344,12 +344,30 @@ export default function Navbar() {
               </Link>
             ))}
             {isPractitioner && (
+              <>
+                <Link
+                  href="/practitioners/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-md px-3 py-2.5 text-sm font-medium text-[#5a5a5a] hover:bg-[#5c7c6b]/5 dark:text-gray-300 dark:hover:bg-[#97A97C]/10"
+                >
+                  Practitioner Dashboard
+                </Link>
+                <Link
+                  href="/practitioners/consultations"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-md px-3 py-2.5 text-sm font-medium text-[#5a5a5a] hover:bg-[#5c7c6b]/5 dark:text-gray-300 dark:hover:bg-[#97A97C]/10"
+                >
+                  Consultations
+                </Link>
+              </>
+            )}
+            {user && !isPractitioner && (
               <Link
-                href="/practitioners/dashboard"
+                href="/consultations"
                 onClick={() => setMobileMenuOpen(false)}
                 className="rounded-md px-3 py-2.5 text-sm font-medium text-[#5a5a5a] hover:bg-[#5c7c6b]/5 dark:text-gray-300 dark:hover:bg-[#97A97C]/10"
               >
-                Practitioner Dashboard
+                My Consultations
               </Link>
             )}
             {!isPremiumPro && !isAdmin && user && (

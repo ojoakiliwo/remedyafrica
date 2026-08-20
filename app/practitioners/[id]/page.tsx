@@ -7,6 +7,7 @@ import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/fires
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { resolvePractitionerBookingIds } from '@/lib/consultations/booking';
+import { resolvePractitionerReservedPath } from '@/lib/practitioners/routes';
 
 interface Practitioner {
   id: string;
@@ -32,6 +33,7 @@ export default function PractitionerProfilePage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
+  const reservedPath = resolvePractitionerReservedPath(params.id as string);
   const [practitioner, setPractitioner] = useState<Practitioner | null>(null);
   const [loading, setLoading] = useState(true);
   const [showBookingModal, setShowBookingModal] = useState(false);
@@ -44,8 +46,13 @@ export default function PractitionerProfilePage() {
   const [bookingLoading, setBookingLoading] = useState(false);
 
   useEffect(() => {
+    const reserved = resolvePractitionerReservedPath(params.id as string);
+    if (reserved) {
+      router.replace(reserved);
+      return;
+    }
     if (params.id) loadPractitioner();
-  }, [params.id]);
+  }, [params.id, router]);
 
   const loadPractitioner = async () => {
     try {
@@ -121,7 +128,7 @@ export default function PractitionerProfilePage() {
     }
   };
 
-  if (loading) {
+  if (reservedPath || loading) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
         <div className="text-bronze text-xl">Loading...</div>

@@ -154,7 +154,7 @@ export default function Navbar() {
                       </Link>
                       
                       <Link
-                        href="/dashboard"
+                        href="/consultations"
                         onClick={() => setUserMenuOpen(false)}
                         className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-[#97A97C]/10 hover:text-[#2C3E2D] transition-colors"
                       >
@@ -247,7 +247,7 @@ export default function Navbar() {
                       My Profile
                     </Link>
                     <Link
-                      href="/dashboard"
+                      href="/consultations"
                       onClick={() => setMobileMenuOpen(false)}
                       className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-gray-700 hover:bg-gray-50"
                     >

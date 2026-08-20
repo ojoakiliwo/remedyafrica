@@ -16,6 +16,12 @@ const nextConfig = {
   images: {
     domains: ['firebasestorage.googleapis.com'],
   },
+  async redirects() {
+    return [
+      { source: '/consultation', destination: '/consultations', permanent: false },
+      { source: '/support', destination: '/contact', permanent: false },
+    ];
+  },
 }
 
 module.exports = nextConfig

@@ -205,7 +205,7 @@ export default function HomePage() {
               </Link>
             ))}
 
-            <Link href="/profile" className="group">
+            <Link href="/consultations" className="group">
               <div className="h-full rounded-3xl border border-forest/10 bg-white p-8 shadow-soft transition-all duration-500 hover:-translate-y-1 hover:shadow-lift">
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-cream">
                   <Video className="h-5 w-5 text-forest" />

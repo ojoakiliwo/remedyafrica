@@ -29,6 +29,12 @@ const nextConfig = {
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
     NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   },
+  async redirects() {
+    return [
+      { source: '/consultation', destination: '/consultations', permanent: false },
+      { source: '/support', destination: '/contact', permanent: false },
+    ];
+  },
 };
 
 export default nextConfig;
