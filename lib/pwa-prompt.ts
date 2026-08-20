@@ -44,5 +44,7 @@ export function consumeDeferredInstallPrompt() {
 export function subscribeInstallPrompt(listener: PromptListener) {
   listeners.add(listener);
   listener(deferredPrompt);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
