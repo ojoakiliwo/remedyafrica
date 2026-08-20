@@ -13,6 +13,25 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isConsultationPatient() {
+      return isSignedIn() && request.auth.uid == resource.data.patientId;
+    }
+
+    function isConsultationPractitioner() {
+      return isSignedIn() && (
+        request.auth.uid == resource.data.practitionerId ||
+        (
+          resource.data.keys().hasAny(['practitionerProfileId']) &&
+          request.auth.uid == resource.data.practitionerProfileId
+        ) ||
+        (
+          resource.data.keys().hasAny(['practitionerId']) &&
+          exists(/databases/$(database)/documents/practitioners/$(resource.data.practitionerId)) &&
+          get(/databases/$(database)/documents/practitioners/$(resource.data.practitionerId)).data.userId == request.auth.uid
+        )
+      );
+    }
+
     match /herbs/{herbId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -42,11 +61,7 @@ service cloud.firestore {
     }
 
     match /consultations/{consultationId} {
-      allow read, write: if isSignedIn() && (
-        request.auth.uid == resource.data.patientId ||
-        request.auth.uid == resource.data.practitionerId ||
-        isAdmin()
-      );
+      allow read, write: if isConsultationPatient() || isConsultationPractitioner() || isAdmin();
       allow create: if isSignedIn();
     }
 

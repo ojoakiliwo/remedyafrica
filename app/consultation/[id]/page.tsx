@@ -2,29 +2,27 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { canUserCancelConsultation, consultationCancelFields } from '@/lib/consultations/cancel';
+import { getPractitionerLookupIds } from '@/lib/consultations/lookup';
 import { 
-  Calendar, 
   ArrowLeft,
   Video,
   Phone,
   Clock,
   User,
   Copy,
-  ExternalLink,
   AlertCircle,
-  Mic,
-  MicOff,
-  Camera,
-  CameraOff,
   PhoneOff,
-  RefreshCw
+  RefreshCw,
+  XCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
 
 interface Consultation {
   id: string;
@@ -33,6 +31,7 @@ interface Consultation {
   patientName: string;
   patientId: string;
   practitionerId: string;
+  practitionerProfileId?: string;
   date: string;
   time: string;
   status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
@@ -47,6 +46,7 @@ interface Consultation {
 export default function ConsultationRoom() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const consultationId = params.id as string;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   
@@ -55,11 +55,26 @@ export default function ConsultationRoom() {
   const [error, setError] = useState('');
   const [creatingRoom, setCreatingRoom] = useState(false);
   const [callActive, setCallActive] = useState(false);
-  const [isAudioOnly, setIsAudioOnly] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [actorIds, setActorIds] = useState<string[]>([]);
 
   useEffect(() => {
     loadConsultation();
   }, [consultationId]);
+
+  useEffect(() => {
+    if (!user?.uid) {
+      setActorIds([]);
+      return;
+    }
+    let cancelled = false;
+    getPractitionerLookupIds(user.uid).then((ids) => {
+      if (!cancelled) setActorIds(ids);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid]);
 
   const loadConsultation = async () => {
     try {
@@ -68,7 +83,6 @@ export default function ConsultationRoom() {
       if (docSnap.exists()) {
         const data = { id: docSnap.id, ...docSnap.data() } as Consultation;
         setConsultation(data);
-        setIsAudioOnly(data.type === 'audio');
         
         // Auto-create room if scheduled and no room exists
         if (data.status === 'scheduled' && !data.dailyRoomUrl) {
@@ -123,22 +137,32 @@ export default function ConsultationRoom() {
     }
   };
 
-  const startCall = async () => {
+  useEffect(() => {
     if (!consultation?.dailyRoomUrl) return;
-    
-    try {
-      // Update status to in-progress
-      await updateDoc(doc(db, 'consultations', consultationId), {
-        status: 'in-progress',
-        startedAt: serverTimestamp()
-      });
-      
-      setCallActive(true);
-      setConsultation(prev => prev ? { ...prev, status: 'in-progress' } : null);
-    } catch (error) {
-      console.error('Error starting call:', error);
+    if (consultation.status === 'cancelled' || consultation.status === 'completed') {
+      setCallActive(false);
+      return;
     }
-  };
+
+    setCallActive(true);
+
+    if (consultation.status !== 'scheduled') return;
+
+    let cancelled = false;
+    updateDoc(doc(db, 'consultations', consultationId), {
+      status: 'in-progress',
+      startedAt: serverTimestamp()
+    }).then(() => {
+      if (cancelled) return;
+      setConsultation(prev => prev ? { ...prev, status: 'in-progress' } : null);
+    }).catch((err) => {
+      console.error('Error starting call:', err);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [consultation?.dailyRoomUrl, consultation?.status, consultationId]);
 
   const endCall = async () => {
     try {
@@ -154,10 +178,32 @@ export default function ConsultationRoom() {
     }
   };
 
+  const cancelAppointment = async () => {
+    if (!consultation || !user || !canUserCancelConsultation(user.uid, consultation, actorIds)) return;
+    if (!confirm('Cancel this appointment? The other person will no longer be able to join.')) return;
+
+    setCancelling(true);
+    try {
+      await updateDoc(doc(db, 'consultations', consultationId), {
+        ...consultationCancelFields(user.uid),
+        cancelledAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      setCallActive(false);
+      setConsultation(prev => prev ? { ...prev, status: 'cancelled' } : null);
+      toast.success('Appointment cancelled');
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      toast.error('Could not cancel this appointment. Please try again.');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   const copyRoomLink = async () => {
     if (consultation?.dailyRoomUrl) {
       await navigator.clipboard.writeText(consultation.dailyRoomUrl);
-      // Show toast or feedback
+      toast.success('Meeting link copied');
     }
   };
 
@@ -198,12 +244,13 @@ export default function ConsultationRoom() {
     );
   }
 
-  const isUpcoming = consultation.status === 'scheduled';
   const isActive = consultation.status === 'in-progress' || callActive;
   const isPast = consultation.status === 'completed' || consultation.status === 'cancelled';
+  const showVideo = Boolean(consultation.dailyRoomUrl) && !isPast;
+  const canCancel = canUserCancelConsultation(user?.uid, consultation, actorIds);
 
   return (
-    <div className="min-h-screen bg-[#F5F5F0]">
+    <div className="min-h-screen bg-[#F5F5F0] text-[#2C3E2D]">
       {/* Header */}
       <header className="bg-white border-b border-[#E5E5E5] sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
@@ -214,7 +261,7 @@ export default function ConsultationRoom() {
               </Button>
               <div>
                 <h1 className="text-xl font-bold text-[#2C3E2D]">Consultation Room</h1>
-                <p className="text-sm text-gray-500">with {consultation.practitionerName}</p>
+                <p className="text-sm text-gray-600">with {consultation.practitionerName}</p>
               </div>
             </div>
             
@@ -227,8 +274,21 @@ export default function ConsultationRoom() {
               }`}>
                 {consultation.status}
               </div>
+
+              {canCancel && (
+                <Button
+                  onClick={cancelAppointment}
+                  variant="outline"
+                  size="sm"
+                  disabled={cancelling}
+                  className="border-red-300 text-red-700 hover:bg-red-50"
+                >
+                  <XCircle className="w-4 h-4 mr-2" />
+                  {cancelling ? 'Cancelling...' : 'Cancel appointment'}
+                </Button>
+              )}
               
-              {isActive && (
+              {isActive && !isPast && (
                 <Button onClick={endCall} variant="destructive" size="sm" className="bg-red-600 hover:bg-red-700">
                   <PhoneOff className="w-4 h-4 mr-2" />
                   End Call
@@ -240,90 +300,60 @@ export default function ConsultationRoom() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-3 gap-6 h-[calc(100vh-140px)]">
+        <div className="grid lg:grid-cols-3 gap-6 min-h-[calc(100vh-140px)]">
           {/* Main Video Area */}
           <div className="lg:col-span-2 flex flex-col gap-4">
-            {creatingRoom ? (
-              <div className="flex-1 bg-gray-900 rounded-lg flex items-center justify-center text-white">
+            {consultation.status === 'cancelled' ? (
+              <div className="flex-1 min-h-[420px] bg-white rounded-lg flex items-center justify-center border border-red-100">
+                <div className="text-center p-8">
+                  <XCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-[#2C3E2D] mb-2">This appointment was cancelled</h3>
+                  <p className="text-gray-600">The video room is no longer available.</p>
+                </div>
+              </div>
+            ) : creatingRoom ? (
+              <div className="flex-1 min-h-[420px] bg-gray-900 rounded-lg flex items-center justify-center text-white">
                 <div className="text-center">
                   <RefreshCw className="w-12 h-12 animate-spin mx-auto mb-4 text-[#97A97C]" />
                   <p className="text-lg">Creating secure meeting room...</p>
                   <p className="text-sm text-gray-400 mt-2">This may take a moment</p>
                 </div>
               </div>
-            ) : consultation.dailyRoomUrl ? (
+            ) : showVideo ? (
               <>
-                <div className="flex-1 bg-gray-900 rounded-lg overflow-hidden relative">
-                  {!callActive ? (
-                    <div className="absolute inset-0 flex items-center justify-center text-white">
-                      <div className="text-center p-8">
-                        <div className="w-20 h-20 rounded-full bg-[#97A97C] mx-auto mb-4 flex items-center justify-center">
-                          {consultation.type === 'audio' ? <Phone className="w-10 h-10" /> : <Video className="w-10 h-10" />}
-                        </div>
-                        <h3 className="text-2xl font-bold mb-2">Ready to Connect</h3>
-                        <p className="text-gray-300 mb-6">
-                          {consultation.type === 'audio' 
-                            ? 'Start your audio consultation with your practitioner' 
-                            : 'Start your video consultation with your practitioner'}
-                        </p>
-                        <div className="flex gap-3 justify-center">
-                          <Button 
-                            onClick={startCall} 
-                            className="bg-[#97A97C] hover:bg-[#7A8A63] text-white px-8 py-6 text-lg"
-                          >
-                            <ExternalLink className="w-5 h-5 mr-2" />
-                            Join {consultation.type === 'audio' ? 'Audio' : 'Video'} Call
-                          </Button>
-                        </div>
-                        <p className="text-sm text-gray-400 mt-4">
-                          Meeting ID: {consultation.dailyRoomName}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <iframe
-                      ref={iframeRef}
-                      src={getDailyUrl()}
-                      className="w-full h-full border-0"
-                      allow="camera; microphone; fullscreen; speaker; display-capture"
-                      title="Daily.co Meeting"
-                    />
-                  )}
+                <div className="flex-1 min-h-[420px] bg-gray-900 rounded-lg overflow-hidden relative">
+                  <iframe
+                    ref={iframeRef}
+                    src={getDailyUrl()}
+                    className="w-full h-full min-h-[420px] border-0"
+                    allow="camera; microphone; fullscreen; speaker; display-capture"
+                    title="Consultation video"
+                  />
                 </div>
 
-                {/* Call Controls */}
                 {isActive && (
                   <div className="bg-white p-4 rounded-lg shadow flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <Button 
-                        variant="outline" 
-                        size="icon"
-                        onClick={() => setIsAudioOnly(!isAudioOnly)}
-                        className={isAudioOnly ? 'bg-yellow-100 border-yellow-300' : ''}
-                        title={isAudioOnly ? "Switch to video" : "Switch to audio only"}
-                      >
-                        {isAudioOnly ? <Video className="w-5 h-5" /> : <Camera className="w-5 h-5" />}
-                      </Button>
-                      <span className="text-sm text-gray-600">
-                        {isAudioOnly ? 'Audio Only Mode' : 'Video Enabled'}
-                      </span>
-                    </div>
+                    <span className="text-sm text-[#2C3E2D]">
+                      {consultation.type === 'audio' ? 'Audio consultation' : 'Video consultation'} is running on this page.
+                    </span>
                     
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={copyRoomLink}>
-                        <Copy className="w-4 h-4 mr-2" />
-                        Copy Link
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => window.open(getDailyUrl(), '_blank')}>
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        Open in New Tab
-                      </Button>
-                    </div>
+                    <Button variant="outline" size="sm" onClick={copyRoomLink} className="text-[#2C3E2D]">
+                      <Copy className="w-4 h-4 mr-2" />
+                      Copy Link
+                    </Button>
                   </div>
                 )}
               </>
+            ) : consultation.status === 'completed' ? (
+              <div className="flex-1 min-h-[420px] bg-white rounded-lg flex items-center justify-center border border-gray-200">
+                <div className="text-center p-8">
+                  <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-[#2C3E2D] mb-2">This consultation has ended</h3>
+                  <p className="text-gray-600">The live video is no longer available.</p>
+                </div>
+              </div>
             ) : (
-              <div className="flex-1 bg-gray-100 rounded-lg flex items-center justify-center">
+              <div className="flex-1 min-h-[420px] bg-gray-100 rounded-lg flex items-center justify-center">
                 <div className="text-center p-8">
                   <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
                   <h3 className="text-xl font-bold text-[#2C3E2D] mb-2">Meeting Room Not Available</h3>
@@ -349,29 +379,29 @@ export default function ConsultationRoom() {
           {/* Sidebar */}
           <div className="space-y-4 overflow-y-auto">
             {/* Session Info */}
-            <Card className="border-[#E5E5E5]">
+            <Card className="session-details border-[#E5E5E5] bg-white text-[#2C3E2D]">
               <CardHeader>
                 <CardTitle className="text-[#2C3E2D] text-base flex items-center gap-2">
                   <User className="w-4 h-4 text-[#97A97C]" />
                   Session Details
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Practitioner</span>
-                  <span className="font-medium text-right">{consultation.practitionerName}</span>
+              <CardContent className="space-y-3 text-sm text-[#2C3E2D]">
+                <div className="flex justify-between gap-4">
+                  <span className="session-details-label">Practitioner</span>
+                  <span className="session-details-value text-right">{consultation.practitionerName}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Date</span>
-                  <span className="font-medium">{consultation.date}</span>
+                <div className="flex justify-between gap-4">
+                  <span className="session-details-label">Date</span>
+                  <span className="session-details-value">{consultation.date || 'To be scheduled'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Time</span>
-                  <span className="font-medium">{consultation.time}</span>
+                <div className="flex justify-between gap-4">
+                  <span className="session-details-label">Time</span>
+                  <span className="session-details-value">{consultation.time || 'To be scheduled'}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Type</span>
-                  <span className="font-medium capitalize flex items-center gap-1">
+                <div className="flex justify-between gap-4">
+                  <span className="session-details-label">Type</span>
+                  <span className="session-details-value capitalize flex items-center gap-1">
                     {consultation.type === 'video' ? <Video className="w-3 h-3" /> : <Phone className="w-3 h-3" />}
                     {consultation.type}
                   </span>
@@ -379,11 +409,11 @@ export default function ConsultationRoom() {
                 <hr className="border-gray-200" />
                 <div className="bg-[#97A97C]/10 p-3 rounded-lg">
                   <p className="text-xs font-semibold text-[#2C3E2D] mb-2">Preparation Tips</p>
-                  <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside">
-                    <li>Join 5 minutes early to test your camera/mic</li>
+                  <ul className="text-xs text-gray-700 space-y-1 list-disc list-inside">
+                    <li>Stay on this page — the call opens here, not in another tab</li>
                     <li>Find a quiet, private space</li>
                     <li>Have your questions ready</li>
-                    <li>Ensure good lighting if using video</li>
+                    <li>Allow camera and microphone access when asked</li>
                   </ul>
                 </div>
               </CardContent>
@@ -391,12 +421,12 @@ export default function ConsultationRoom() {
 
             {/* Notes */}
             {consultation.notes && (
-              <Card className="border-[#E5E5E5]">
+              <Card className="border-[#E5E5E5] bg-white text-[#2C3E2D]">
                 <CardHeader>
                   <CardTitle className="text-[#2C3E2D] text-base">Your Notes</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{consultation.notes}</p>
+                  <p className="text-sm text-[#2C3E2D] whitespace-pre-wrap">{consultation.notes}</p>
                 </CardContent>
               </Card>
             )}
@@ -404,9 +434,9 @@ export default function ConsultationRoom() {
             {/* Support */}
             <Card className="border-[#E5E5E5] bg-[#2C3E2D] text-white">
               <CardContent className="p-4">
-                <h4 className="font-semibold mb-2">Connection Issues?</h4>
-                <p className="text-sm text-gray-300 mb-4">
-                  If you're having trouble with video/audio, try opening the call in a new tab or contact support.
+                <h4 className="font-semibold mb-2 text-white">Connection Issues?</h4>
+                <p className="text-sm text-gray-200 mb-4">
+                  Allow camera and microphone access in your browser, then refresh this page. The call stays here so you do not need a second tab.
                 </p>
                 <Button 
                   variant="outline" 

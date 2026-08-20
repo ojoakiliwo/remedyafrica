@@ -21,4 +21,6 @@ export interface Consultation {
   viewedAt?: any;                    // Timestamp when patient viewed the room
   createdAt?: any;
   updatedAt?: any;
+  cancelledAt?: any;
+  cancelledBy?: string;
 }

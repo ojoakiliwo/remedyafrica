@@ -8,11 +8,16 @@ import {
   query,
   where,
   onSnapshot,
+  doc,
+  updateDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { getPractitionerLookupIds } from '@/lib/consultations/lookup';
+import { canUserCancelConsultation, consultationCancelFields } from '@/lib/consultations/cancel';
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 import {
   Loader2,
   Calendar,
@@ -21,12 +26,14 @@ import {
   ArrowLeft,
   AlertCircle,
   Clock,
+  XCircle,
 } from 'lucide-react';
 
 interface ConsultationItem {
   id: string;
   patientId?: string;
   practitionerId?: string;
+  practitionerProfileId?: string;
   patientName?: string;
   practitionerName?: string;
   date?: string;
@@ -48,6 +55,8 @@ export default function ConsultationsPage() {
   const [consultations, setConsultations] = useState<ConsultationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [actorIds, setActorIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -102,6 +111,7 @@ export default function ConsultationsPage() {
 
     getPractitionerLookupIds(user.uid).then((ids) => {
       if (cancelled) return;
+      setActorIds(ids);
       ids.forEach((id) => listen(`practitioner:${id}`, 'practitionerId', id));
     });
 
@@ -115,6 +125,26 @@ export default function ConsultationsPage() {
     () => consultations.filter((item) => item.status !== 'completed' && item.status !== 'cancelled'),
     [consultations]
   );
+
+  const cancelAppointment = async (item: ConsultationItem) => {
+    if (!user || !canUserCancelConsultation(user.uid, item, actorIds)) return;
+    if (!confirm('Cancel this appointment? The other person will no longer be able to join.')) return;
+
+    setCancellingId(item.id);
+    try {
+      await updateDoc(doc(db, 'consultations', item.id), {
+        ...consultationCancelFields(user.uid),
+        cancelledAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      toast.success('Appointment cancelled');
+    } catch (err) {
+      console.error('Error cancelling appointment:', err);
+      toast.error('Could not cancel this appointment. Please try again.');
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   if (authLoading || (user && loading)) {
     return (
@@ -180,24 +210,40 @@ export default function ConsultationsPage() {
               const isPatient = item.patientId === user.uid;
               const counterpart = isPatient ? item.practitionerName : item.patientName;
               const TypeIcon = item.type === 'audio' ? Phone : Video;
+              const canCancel = canUserCancelConsultation(user.uid, item, actorIds);
+              const isCancelled = item.status === 'cancelled';
+              const isCompleted = item.status === 'completed';
               return (
                 <div key={item.id} className="bg-white rounded-2xl border border-forest/10 p-5 flex flex-col sm:flex-row sm:items-center gap-4 justify-between">
                   <div>
                     <p className="font-semibold text-forest">{counterpart || 'Consultation'}</p>
-                    <p className="text-sm text-gray-500 capitalize mt-1 flex items-center gap-2">
+                    <p className="text-sm text-gray-600 capitalize mt-1 flex items-center gap-2">
                       <Clock className="h-4 w-4" />
                       {item.date || 'Date TBD'} {item.time ? `at ${item.time}` : ''}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1 capitalize">
+                    <p className="text-xs text-gray-600 mt-1 capitalize">
                       {statusLabel(item.status)} · {item.type || 'video'}
                     </p>
                   </div>
-                  <Link href={`/consultation/${item.id}`}>
-                    <Button className="bg-forest hover:bg-forest-mist">
-                      <TypeIcon className="h-4 w-4 mr-2" />
-                      {item.dailyRoomUrl || item.status === 'in-progress' ? 'Join' : 'Open'}
-                    </Button>
-                  </Link>
+                  <div className="flex flex-wrap gap-2">
+                    <Link href={`/consultation/${item.id}`}>
+                      <Button className="bg-forest hover:bg-forest-mist">
+                        <TypeIcon className="h-4 w-4 mr-2" />
+                        {isCancelled || isCompleted ? 'View' : 'Join on this page'}
+                      </Button>
+                    </Link>
+                    {canCancel && (
+                      <Button
+                        variant="outline"
+                        className="border-red-300 text-red-700 hover:bg-red-50"
+                        disabled={cancellingId === item.id}
+                        onClick={() => cancelAppointment(item)}
+                      >
+                        <XCircle className="h-4 w-4 mr-2" />
+                        {cancellingId === item.id ? 'Cancelling...' : 'Cancel'}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
             })}

@@ -15,16 +15,18 @@ import {
   Shield,
   Loader2,
   AlertCircle,
-  Crown
+  Crown,
+  XCircle
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useSubscription } from '@/providers/SubscriptionProvider';
 import { db } from '@/lib/firebase/client';
-import { collection, query, where, getDocs, orderBy, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { canUserCancelConsultation, consultationCancelFields } from '@/lib/consultations/cancel';
 
 interface SavedHerb {
   id: string;
@@ -37,6 +39,7 @@ interface Consultation {
   id: string;
   practitionerId: string;
   practitionerName: string;
+  patientId?: string;
   status: string;
   scheduledDate?: Date;
   createdAt: Date;
@@ -67,6 +70,7 @@ export default function DashboardPage() {
   const [plantHistory, setPlantHistory] = useState<PlantHistory[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   // Check admin status manually
   useEffect(() => {
@@ -141,11 +145,12 @@ export default function DashboardPage() {
           limit(5)
         );
         const consultationsSnapshot = await getDocs(consultationsQuery);
-        const consultationsData = consultationsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate(),
-          scheduledDate: doc.data().scheduledDate?.toDate()
+        const consultationsData = consultationsSnapshot.docs.map(docSnap => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+          patientId: docSnap.data().patientId || user.uid,
+          createdAt: docSnap.data().createdAt?.toDate(),
+          scheduledDate: docSnap.data().scheduledDate?.toDate()
         })) as Consultation[];
         setConsultations(consultationsData);
       } catch (e) {
@@ -176,6 +181,29 @@ export default function DashboardPage() {
       toast.error('Failed to load some dashboard data');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const cancelAppointment = async (consultation: Consultation) => {
+    if (!user || !canUserCancelConsultation(user.uid, consultation)) return;
+    if (!confirm('Cancel this appointment? The other person will no longer be able to join.')) return;
+
+    setCancellingId(consultation.id);
+    try {
+      await updateDoc(doc(db, 'consultations', consultation.id), {
+        ...consultationCancelFields(user.uid),
+        cancelledAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+      setConsultations((current) =>
+        current.map((item) => item.id === consultation.id ? { ...item, status: 'cancelled' } : item)
+      );
+      toast.success('Appointment cancelled');
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      toast.error('Could not cancel this appointment. Please try again.');
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -358,18 +386,32 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-3">
                   {consultations.map((consultation) => (
-                    <div key={consultation.id} className="flex items-center justify-between p-3 bg-cream rounded-lg">
+                    <div key={consultation.id} className="flex items-center justify-between gap-3 p-3 bg-cream rounded-lg">
                       <div>
                         <p className="font-medium text-forest">{consultation.practitionerName}</p>
-                        <p className="text-xs text-stone-500 capitalize">
+                        <p className="text-xs text-stone-600 capitalize">
                           {consultation.status} • {consultation.scheduledDate?.toLocaleDateString() || 'Not scheduled'}
                         </p>
                       </div>
-                      <Link href={`/consultation/${consultation.id}`}>
-                        <Button variant="ghost" size="sm" className="text-bronze">
-                          {consultation.status === 'active' ? 'Join' : 'View'}
-                        </Button>
-                      </Link>
+                      <div className="flex items-center gap-1">
+                        <Link href={`/consultation/${consultation.id}`}>
+                          <Button variant="ghost" size="sm" className="text-bronze">
+                            {consultation.status === 'cancelled' || consultation.status === 'completed' ? 'View' : 'Join'}
+                          </Button>
+                        </Link>
+                        {canUserCancelConsultation(user?.uid, consultation) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-700"
+                            disabled={cancellingId === consultation.id}
+                            onClick={() => cancelAppointment(consultation)}
+                          >
+                            <XCircle className="w-4 h-4 mr-1" />
+                            {cancellingId === consultation.id ? 'Cancelling...' : 'Cancel'}
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

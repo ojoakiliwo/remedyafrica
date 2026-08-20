@@ -17,6 +17,7 @@ import {
 import { db } from '@/lib/firebase/client';
 import { useAuth } from '@/providers/AuthProvider';
 import { getPractitionerLookupIds } from '@/lib/consultations/lookup';
+import { canCancelConsultation } from '@/lib/consultations/cancel';
 import { 
   Calendar, 
   Clock, 
@@ -66,6 +67,8 @@ interface Consultation {
   patientEmail?: string;
   patientPhone?: string;
   patientId?: string;
+  practitionerId?: string;
+  practitionerProfileId?: string;
   date: string;
   time: string;
   status: 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
@@ -284,6 +287,7 @@ export default function PractitionerDashboard() {
         updateData.completedAt = serverTimestamp();
       } else if (newStatus === 'cancelled') {
         updateData.cancelledAt = serverTimestamp();
+        if (user?.uid) updateData.cancelledBy = user.uid;
       }
       
       await updateDoc(doc(db, 'consultations', selectedConsultation.id), updateData);
@@ -597,28 +601,27 @@ export default function PractitionerDashboard() {
                         )}
 
                         <div className="flex gap-2 flex-wrap">
+                          <Button 
+                            size="sm"
+                            onClick={() => router.push(`/consultation/${consultation.id}`)}
+                            className="bg-[#97A97C] hover:bg-[#7A8A63]"
+                          >
+                            <Video className="w-4 h-4 mr-2" />
+                            Join Call
+                          </Button>
                           {consultation.dailyRoomUrl ? (
-                            <>
-                              <Button 
-                                size="sm"
-                                onClick={() => window.open(consultation.dailyRoomUrl!, '_blank')}
-                                className="bg-[#97A97C] hover:bg-[#7A8A63]"
-                              >
-                                <Video className="w-4 h-4 mr-2" />
-                                Join Call
-                              </Button>
-                              <Button 
-                                size="sm"
-                                variant="outline"
-                                onClick={() => copyRoomLink(consultation.dailyRoomUrl!, consultation.id)}
-                              >
-                                {copiedId === consultation.id ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
-                                {copiedId === consultation.id ? 'Copied!' : 'Copy Link'}
-                              </Button>
-                            </>
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              onClick={() => copyRoomLink(consultation.dailyRoomUrl!, consultation.id)}
+                            >
+                              {copiedId === consultation.id ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+                              {copiedId === consultation.id ? 'Copied!' : 'Copy Link'}
+                            </Button>
                           ) : (
                             <Button 
                               size="sm"
+                              variant="outline"
                               onClick={() => createDailyCoRoom(consultation)}
                               disabled={creatingRoom === consultation.id}
                             >
@@ -628,6 +631,17 @@ export default function PractitionerDashboard() {
                                 <Plus className="w-4 h-4 mr-2" />
                               )}
                               Create Room
+                            </Button>
+                          )}
+                          {canCancelConsultation(consultation.status) && (
+                            <Button 
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openStatusDialog(consultation, 'cancelled')}
+                              className="border-red-300 text-red-700 hover:bg-red-50"
+                            >
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Cancel
                             </Button>
                           )}
                           
@@ -682,6 +696,25 @@ export default function PractitionerDashboard() {
                         </div>
                         
                         <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => router.push(`/consultation/${consultation.id}`)}
+                            className="bg-[#97A97C] hover:bg-[#7A8A63]"
+                          >
+                            <Video className="w-4 h-4 mr-2" />
+                            Join
+                          </Button>
+                          {canCancelConsultation(consultation.status) && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => openStatusDialog(consultation, 'cancelled')}
+                              className="border-red-300 text-red-700 hover:bg-red-50"
+                            >
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Cancel
+                            </Button>
+                          )}
                           {consultation.dailyRoomUrl ? (
                             <Badge className="bg-green-100 text-green-800">
                               <Radio className="w-3 h-3 mr-1" />

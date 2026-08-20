@@ -80,6 +80,17 @@
     @apply w-full p-2 rounded-lg border border-forest/20 bg-white text-ink caret-ink placeholder:text-ink-muted;
     color-scheme: light;
   }
+  .session-details {
+    color-scheme: light;
+    color: #2c3e2d;
+  }
+  .session-details-label {
+    color: #4b5563;
+  }
+  .session-details-value {
+    color: #2c3e2d;
+    font-weight: 600;
+  }
   .eyebrow {
     @apply text-[11px] sm:text-xs font-semibold uppercase tracking-[0.28em] text-bronze;
   }
