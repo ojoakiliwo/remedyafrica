@@ -1,9 +1,5 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 export interface AISearchResult {
   type: 'herb' | 'ailment-info' | 'no-match';
   query: string;
@@ -45,6 +41,10 @@ export async function smartSearch(
   }
 
   // No direct match - use AI to explain the ailment
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
   const completion = await openai.chat.completions.create({
     model: 'gpt-4',
     messages: [
